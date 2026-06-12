@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    @apply antialiased;
+    color: theme('colors.ink.DEFAULT');
+  }
+  body {
+    @apply m-0 min-h-screen text-[15px] leading-normal;
+    background-color: theme('colors.canvas');
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+}
