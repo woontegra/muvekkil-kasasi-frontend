@@ -7,7 +7,7 @@ type AuthContextValue = {
   session: AuthSession | null
   loading: boolean
   isAuthenticated: boolean
-  login: (input: { epostaVeyaKullaniciAdi: string; tenantSlug?: string; sifre: string }) => Promise<void>
+  login: (input: { identifier: string; sifre: string }) => Promise<void>
   registerOffice: (input: {
     buroAdi: string
     adSoyad: string
@@ -28,7 +28,8 @@ function applyAuthPayload(payload: AuthLoginResponse): void {
 
 export function AuthProvider({ children }: { children: ReactNode }): ReactElement {
   const [session, setSession] = useState<AuthSession | null>(null)
-  const [loading, setLoading] = useState(true)
+  /** Yalnızca kayıtlı token varken /me beklenirken true; token yoksa ilk pikselden false (public auth flicker olmaz). */
+  const [loading, setLoading] = useState(() => !!getAccessToken())
 
   const refreshMe = useCallback(async () => {
     const r = await apiFetch<MeResponse>('/api/v1/me')
@@ -63,19 +64,13 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     }
   }, [])
 
-  const login = useCallback(async (input: { epostaVeyaKullaniciAdi: string; tenantSlug?: string; sifre: string }) => {
-    const raw = input.epostaVeyaKullaniciAdi.trim()
-    const isEmail = raw.includes('@')
-    const body: Record<string, string> = {
-      epostaVeyaKullaniciAdi: raw,
-      sifre: input.sifre
-    }
-    if (!isEmail && input.tenantSlug?.trim()) {
-      body.tenantSlug = input.tenantSlug.trim().toLowerCase()
-    }
+  const login = useCallback(async (input: { identifier: string; sifre: string }) => {
     const r = await apiFetch<AuthLoginResponse>('/api/v1/auth/login', {
       method: 'POST',
-      body: JSON.stringify(body)
+      body: JSON.stringify({
+        identifier: input.identifier.trim(),
+        sifre: input.sifre
+      })
     })
     applyAuthPayload(r)
     setSession({ user: r.user, tenant: r.tenant })

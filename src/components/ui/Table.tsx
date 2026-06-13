@@ -25,8 +25,26 @@ export function TBody({ className, ...rest }: HTMLAttributes<HTMLTableSectionEle
   return <tbody className={cn('divide-y divide-border bg-panel', className)} {...rest} />
 }
 
-export function TR({ className, ...rest }: HTMLAttributes<HTMLTableRowElement>): ReactElement {
-  return <tr className={cn('hover:bg-surface-muted/60', className)} {...rest} />
+export type TRProps = HTMLAttributes<HTMLTableRowElement> & {
+  /**
+   * Tıklanabilir satır: pointer, mavi–turkuaz hover, sol accent çizgisi.
+   * Klavye erişimi için satır içinde gerçek link/buton kullanın.
+   */
+  interactive?: boolean
+}
+
+export function TR({ className, interactive, ...rest }: TRProps): ReactElement {
+  return (
+    <tr
+      className={cn(
+        interactive
+          ? 'group/row cursor-pointer border-l-[3px] border-l-transparent transition-[background-color,border-color,box-shadow] duration-150 hover:border-l-primary hover:bg-gradient-to-r hover:from-primary-soft/55 hover:to-accent-soft/40 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] focus-within:border-l-primary focus-within:bg-gradient-to-r focus-within:from-primary-soft/55 focus-within:to-accent-soft/40 focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
+          : 'hover:bg-surface-muted/60',
+        className
+      )}
+      {...rest}
+    />
+  )
 }
 
 export function TH({ className, ...rest }: HTMLAttributes<HTMLTableCellElement>): ReactElement {

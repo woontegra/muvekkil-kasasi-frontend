@@ -8,7 +8,7 @@ export type PlaceholderPageProps = {
 
 export function PlaceholderPage({ title, description }: PlaceholderPageProps): ReactElement {
   return (
-    <div className="mx-auto max-w-[960px]">
+    <div className="w-full">
       <PageHeader title={title} description={description} />
       <EmptyState
         title="Bu modül yakında"

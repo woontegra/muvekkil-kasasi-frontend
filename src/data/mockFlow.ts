@@ -2,6 +2,15 @@
 
 export type MuvekkilTuru = 'GERCEK_KISI' | 'TUZEL_KISI'
 
+export type MockTuzelDetay = {
+  yetkiliAdSoyad: string
+  yetkiliTelefon: string
+  mudurAdSoyad: string
+  mudurTelefon: string
+  muhasebeAdSoyad: string
+  muhasebeTelefon: string
+}
+
 export type MockMuvekkil = {
   id: string
   tur: MuvekkilTuru
@@ -10,6 +19,8 @@ export type MockMuvekkil = {
   telefon: string | null
   eposta: string | null
   not: string | null
+  /** Tüzel müvekkil ek iletişim (mock UI). */
+  tuzelDetay?: MockTuzelDetay | null
 }
 
 export type MockDosya = {
@@ -224,6 +235,28 @@ export function muvekkilById(id: string): MockMuvekkil | undefined {
   return MOCK_MUVEKKILLER.find((x) => x.id === id)
 }
 
+/** Dinamik liste (context) ile arama. */
+export function filterMuvekkillerFromList(list: MockMuvekkil[], q: string): MockMuvekkil[] {
+  const t = q.trim().toLowerCase()
+  if (!t) return [...list]
+  return list.filter((m) => {
+    const parts = [gorunenAd(m), m.telefon ?? '', m.eposta ?? '', m.not ?? '', m.adSoyad, m.sirketUnvani ?? '']
+    if (m.tuzelDetay) {
+      const d = m.tuzelDetay
+      parts.push(
+        d.yetkiliAdSoyad,
+        d.yetkiliTelefon,
+        d.mudurAdSoyad,
+        d.mudurTelefon,
+        d.muhasebeAdSoyad,
+        d.muhasebeTelefon
+      )
+    }
+    const hay = parts.join(' ').toLowerCase()
+    return hay.includes(t)
+  })
+}
+
 export function dosyalarByMuvekkil(muvekkilId: string): MockDosya[] {
   return MOCK_DOSYALAR.filter((d) => d.muvekkilId === muvekkilId)
 }
@@ -249,14 +282,7 @@ export function smmBekleyenForDosya(dosyaId: string): MockTaksit[] {
 }
 
 export function filterMuvekkiller(q: string): MockMuvekkil[] {
-  const t = q.trim().toLowerCase()
-  if (!t) return [...MOCK_MUVEKKILLER]
-  return MOCK_MUVEKKILLER.filter((m) => {
-    const hay = [gorunenAd(m), m.telefon ?? '', m.eposta ?? '', m.not ?? '', m.adSoyad, m.sirketUnvani ?? '']
-      .join(' ')
-      .toLowerCase()
-    return hay.includes(t)
-  })
+  return filterMuvekkillerFromList(MOCK_MUVEKKILLER, q)
 }
 
 export function islemTipiLabel(t: IslemTipi): string {

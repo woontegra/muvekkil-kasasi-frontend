@@ -7,4 +7,9 @@ export { Input } from './Input'
 export { PageHeader } from './PageHeader'
 export { Select } from './Select'
 export { StatCard } from './StatCard'
-export { Table, TBody, TD, TH, THead, TR, TableEmptyRow } from './Table'
+export { Table, TBody, TD, TH, THead, TR, TableEmptyRow, type TRProps } from './Table'
+export {
+  tableActionsFlexRow,
+  tableActionLinkAccentClass,
+  tableActionButtonShrinkClass
+} from './tableActionClasses'
