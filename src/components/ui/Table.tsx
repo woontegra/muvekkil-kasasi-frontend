@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactElement, ReactNode } from 'react'
+import type { ComponentPropsWithoutRef, HTMLAttributes, ReactElement, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
 export function Table({ className, ...rest }: HTMLAttributes<HTMLTableElement>): ReactElement {
@@ -51,7 +51,7 @@ export function TH({ className, ...rest }: HTMLAttributes<HTMLTableCellElement>)
   return <th className={cn('px-3 py-2.5', className)} {...rest} />
 }
 
-export function TD({ className, ...rest }: HTMLAttributes<HTMLTableCellElement>): ReactElement {
+export function TD({ className, ...rest }: ComponentPropsWithoutRef<'td'>): ReactElement {
   return <td className={cn('px-3 py-2 text-ink', className)} {...rest} />
 }
 

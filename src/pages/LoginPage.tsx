@@ -43,11 +43,8 @@ export function LoginPage(): ReactElement {
       subtitle="Devam etmek için kullanıcı bilgilerinizi girin."
       icon="lock"
       footer={
-        <p className="text-center text-sm text-ink-muted">
-          Hesabınız yok mu?{' '}
-          <Link to="/register-office" className="font-semibold text-primary hover:underline">
-            Büro hesabı oluşturun
-          </Link>
+        <p className="text-center text-xs leading-relaxed text-ink-muted">
+          Hesabınız Woontegra tarafından oluşturulduktan sonra size iletilen bilgilerle giriş yapabilirsiniz.
         </p>
       }
     >

@@ -1,11 +1,133 @@
 import type { ReactElement, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { getCurrentLicense } from '../api/license'
 import { APP_BASE } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
 import { roleLabel } from '../lib/roleLabel'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, PageHeader } from '../components/ui'
+
+import type { AuthUserDto } from '../types/auth'
+import type { LicenseWarningLevel, TenantLicenseCurrent } from '../types/license'
+import { formatDateTR } from '../utils/formatters'
+
+function lisansDurumuLabel(d: TenantLicenseCurrent['lisansDurumu']): string {
+  switch (d) {
+    case 'AKTIF':
+      return 'Aktif'
+    case 'DEMO':
+      return 'Demo'
+    case 'SURESI_DOLDU':
+      return 'Süresi doldu'
+    case 'PASIF':
+      return 'Pasif'
+    default:
+      return d
+  }
+}
+
+function licenseCardClass(level: LicenseWarningLevel): string {
+  switch (level) {
+    case 'NORMAL':
+      return 'border-emerald-200/90 bg-gradient-to-br from-emerald-50/90 to-white shadow-sm'
+    case 'YAKLASIYOR':
+      return 'border-amber-300 bg-gradient-to-br from-amber-50 to-white shadow-sm'
+    case 'KRITIK':
+      return 'border-orange-400 bg-gradient-to-br from-orange-50 to-amber-50/80 shadow-md'
+    case 'BITTI':
+      return 'border-red-400 bg-gradient-to-br from-red-50 to-white shadow-md'
+    case 'PASIF':
+      return 'border-slate-400 bg-slate-100/80 shadow-sm'
+    case 'BILGI_EKSIK':
+      return 'border-sky-300 bg-gradient-to-br from-sky-50 to-white shadow-sm'
+    default:
+      return 'border-border bg-panel'
+  }
+}
+
+function licenseLeadText(lic: TenantLicenseCurrent, role?: AuthUserDto['role']): string {
+  const katip = role === 'KATIP_PERSONEL'
+  if (katip && (lic.uyariSeviyesi === 'YAKLASIYOR' || lic.uyariSeviyesi === 'KRITIK')) {
+    return 'Lisans süresi yaklaşıyor. Yenileme için büro yöneticiniz veya Woontegra ile iletişime geçin.'
+  }
+  switch (lic.uyariSeviyesi) {
+    case 'NORMAL':
+      return 'Lisansınız aktif.'
+    case 'YAKLASIYOR':
+      return `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı.`
+    case 'KRITIK':
+      return `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı. Yenileme için Woontegra ile iletişime geçin.`
+    case 'BITTI':
+      return 'Lisans süreniz sona erdi. Yeni kayıt oluşturma işlemleri kısıtlanabilir.'
+    case 'PASIF':
+      return 'Büro erişimi pasif durumda.'
+    case 'BILGI_EKSIK':
+      return lic.bilgiMesaji ?? 'Lisans bitiş tarihi henüz tanımlanmamış.'
+    default:
+      return ''
+  }
+}
+
+function displayLicenseDate(iso: string | null | undefined): string {
+  return iso ? formatDateTR(iso) : 'Tanımlanmamış'
+}
+
+function displayKalanGun(lic: TenantLicenseCurrent): string {
+  if (lic.uyariSeviyesi === 'BILGI_EKSIK') return 'Bitiş tarihi tanımlanmamış'
+  if (lic.kalanGun != null) return `${lic.kalanGun} gün`
+  return 'Hesaplanamadı'
+}
+
+function AyarlarLicenseCard(): ReactElement {
+  const { session } = useAuth()
+  const role = session?.user.role
+  const showFullLicenseDetail = role === 'BURO_SAHIBI' || role === 'AVUKAT_YONETICI'
+
+  const q = useQuery({
+    queryKey: ['tenant-license-current'],
+    queryFn: getCurrentLicense,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true
+  })
+  const lic = q.data
+
+  return (
+    <Card className={cn('min-w-0 overflow-hidden', lic ? licenseCardClass(lic.uyariSeviyesi) : 'border-border')}>
+      <CardHeader className="border-b border-black/5 bg-white/40">
+        <CardTitle className="text-base">Lisans ve kullanım durumu</CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-3 px-4 py-4 sm:px-5">
+        {q.isLoading ? <p className="text-sm text-ink-muted">Lisans bilgisi yükleniyor…</p> : null}
+        {q.isError ? (
+          <p className="text-sm text-danger">{q.error instanceof Error ? q.error.message : 'Lisans bilgisi alınamadı.'}</p>
+        ) : null}
+        {lic ? (
+          <>
+            <p className="text-sm font-medium leading-snug text-ink">{licenseLeadText(lic, role)}</p>
+            <div className="space-y-0 rounded-lg border border-black/5 bg-white/60 px-3 py-1">
+              <SettingRow label="Büro adı" value={lic.buroAdi} />
+              <SettingRow label="Lisans durumu" value={lisansDurumuLabel(lic.lisansDurumu)} />
+              {showFullLicenseDetail ? (
+                <>
+                  <SettingRow label="Lisans başlangıç" value={displayLicenseDate(lic.lisansBaslangicTarihi)} />
+                  <SettingRow label="Lisans bitiş" value={displayLicenseDate(lic.lisansBitisTarihi)} />
+                  <SettingRow label="Kalan gün" value={displayKalanGun(lic)} />
+                </>
+              ) : null}
+              <SettingRow label="Demo" value={lic.demoMu ? 'Evet' : 'Hayır'} />
+              {showFullLicenseDetail && lic.demoMu && lic.demoBitisTarihi ? (
+                <SettingRow label="Demo bitiş" value={formatDateTR(lic.demoBitisTarihi)} />
+              ) : null}
+              {lic.yillikUcret != null ? <SettingRow label="Yıllık ücret" value={`${lic.yillikUcret} TL`} /> : null}
+            </div>
+          </>
+        ) : null}
+      </CardBody>
+    </Card>
+  )
+}
 
 function SettingRow(props: { label: string; value: ReactNode; mono?: boolean }): ReactElement {
   const { label, value, mono } = props
@@ -69,6 +191,8 @@ export function AyarlarPage(): ReactElement {
         title="Ayarlar"
         description="Büro bilgileri, kullanıcı tercihleri, veri aktarımı ve sistem ayarları."
       />
+
+      <AyarlarLicenseCard />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="min-w-0">

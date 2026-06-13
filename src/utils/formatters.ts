@@ -23,6 +23,13 @@ export function formatDateTR(dateValue: string | null | undefined): string {
   return s
 }
 
+export function formatDateTimeTR(dateValue: string | null | undefined): string {
+  if (!dateValue?.trim()) return '—'
+  const dt = new Date(dateValue.trim())
+  if (Number.isNaN(dt.getTime())) return formatDateTR(dateValue)
+  return dt.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
+}
+
 export function formatCurrencyTR(amount: number): string {
   if (!Number.isFinite(amount)) return '—'
   const s = new Intl.NumberFormat('tr-TR', {

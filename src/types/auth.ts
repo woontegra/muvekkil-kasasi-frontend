@@ -23,6 +23,14 @@ export type AuthTenantDto = {
   vergiNo: string | null
   vergiDairesi: string | null
   aktifMi: boolean
+  lisansBaslangicTarihi?: string | null
+  lisansBitisTarihi?: string | null
+  lisansDurumu?: 'DEMO' | 'AKTIF' | 'SURESI_DOLDU' | 'PASIF'
+  demoMu?: boolean
+  demoBitisTarihi?: string | null
+  sonOdemeTarihi?: string | null
+  yillikUcret?: string | null
+  lisansNotlari?: string | null
   createdAt: string
   updatedAt: string
 }

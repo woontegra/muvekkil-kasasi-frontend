@@ -8,14 +8,6 @@ type AuthContextValue = {
   loading: boolean
   isAuthenticated: boolean
   login: (input: { identifier: string; sifre: string }) => Promise<void>
-  registerOffice: (input: {
-    buroAdi: string
-    adSoyad: string
-    kullaniciAdi: string
-    eposta: string
-    telefon: string
-    sifre: string
-  }) => Promise<void>
   logout: () => void
   refreshMe: () => Promise<void>
 }
@@ -76,25 +68,6 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
     setSession({ user: r.user, tenant: r.tenant })
   }, [])
 
-  const registerOffice = useCallback(
-    async (input: {
-      buroAdi: string
-      adSoyad: string
-      kullaniciAdi: string
-      eposta: string
-      telefon: string
-      sifre: string
-    }) => {
-      const r = await apiFetch<AuthLoginResponse>('/api/v1/auth/register-office', {
-        method: 'POST',
-        body: JSON.stringify(input)
-      })
-      applyAuthPayload(r)
-      setSession({ user: r.user, tenant: r.tenant })
-    },
-    []
-  )
-
   const logout = useCallback(() => {
     void apiFetch<{ ok: boolean }>('/api/v1/auth/logout', { method: 'POST' })
       .catch(() => undefined)
@@ -110,11 +83,10 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
       loading,
       isAuthenticated: !!session,
       login,
-      registerOffice,
       logout,
       refreshMe
     }),
-    [session, loading, login, registerOffice, logout, refreshMe]
+    [session, loading, login, logout, refreshMe]
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

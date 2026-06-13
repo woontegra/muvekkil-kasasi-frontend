@@ -3,6 +3,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { AdminAuthProvider } from './contexts/AdminAuthContext'
 import { AuthProvider } from './contexts/AuthContext'
 import './index.css'
 
@@ -17,7 +18,9 @@ createRoot(document.getElementById('root')!).render(
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AuthProvider>
-          <App />
+          <AdminAuthProvider>
+            <App />
+          </AdminAuthProvider>
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>

@@ -3,12 +3,13 @@ import type { ReactElement } from 'react'
 import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { getDashboardSummary } from '../api/dashboard'
+import { getCurrentLicense } from '../api/license'
 import { APP_BASE } from '../config/appPaths'
 import { sidebarNavForRole } from '../config/nav'
 import { useAuth } from '../contexts/AuthContext'
 import { roleLabel } from '../lib/roleLabel'
 import { cn } from '../lib/cn'
-import { Badge, Button, Card, CardBody, CardHeader, CardTitle } from '../components/ui'
+import { Badge, Button, Card, CardBody, CardHeader, CardTitle, AlertBox } from '../components/ui'
 
 import type { AuthUserDto } from '../types/auth'
 
@@ -66,9 +67,25 @@ export function DashboardShell(): ReactElement {
     retry: 1
   })
 
+  const licenseQuery = useQuery({
+    queryKey: ['tenant-license-current'],
+    queryFn: getCurrentLicense,
+    staleTime: 60_000,
+    refetchOnWindowFocus: true,
+    retry: 1
+  })
+
   const s = summaryQuery.data
   const onaySayisi = s?.onayBekleyenToplam ?? 0
   const hasBadge = onaySayisi > 0
+
+  const lic = licenseQuery.data
+  const licenseHard =
+    lic &&
+    (lic.uyariSeviyesi === 'BITTI' || lic.uyariSeviyesi === 'PASIF' || lic.lisansDurumu === 'SURESI_DOLDU')
+  const licenseInfoEksik = lic && lic.uyariSeviyesi === 'BILGI_EKSIK'
+  const licenseSoftKritik = lic && lic.uyariSeviyesi === 'KRITIK' && !licenseHard
+  const licenseSoftYaklasiyor = lic && lic.uyariSeviyesi === 'YAKLASIYOR' && !licenseHard
 
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
@@ -224,6 +241,65 @@ export function DashboardShell(): ReactElement {
         </div>
 
         <main className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain bg-canvas px-3 py-4 md:px-6 md:py-5">
+          {licenseInfoEksik && lic ? (
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-3 text-sm text-sky-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <p className="min-w-0 font-medium">{lic.bilgiMesaji ?? 'Lisans bitiş tarihi henüz tanımlanmamış.'}</p>
+              <Link
+                to={`${APP_BASE}/ayarlar`}
+                className="inline-flex shrink-0 items-center justify-center rounded-md border border-sky-400 bg-white px-3 py-1.5 text-xs font-bold text-sky-950 hover:bg-sky-100"
+              >
+                Detayları gör
+              </Link>
+            </div>
+          ) : null}
+          {licenseHard ? (
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-3 text-sm text-red-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <p className="min-w-0 font-medium">
+                {lic.uyariSeviyesi === 'PASIF'
+                  ? 'Büro erişimi pasif durumda. Woontegra ile iletişime geçin.'
+                  : lic.lisansDurumu === 'SURESI_DOLDU' || lic.uyariSeviyesi === 'BITTI'
+                    ? 'Lisans süreniz sona erdi. Görüntüleme yapabilirsiniz; yeni kayıt ve düzenleme kısıtlanabilir. Yenileme için Woontegra ile iletişime geçin.'
+                    : 'Lisans uyarısı: lütfen ayarlar sayfasından kontrol edin.'}
+              </p>
+              <Link
+                to={`${APP_BASE}/ayarlar`}
+                className="inline-flex shrink-0 items-center justify-center rounded-md border border-red-400 bg-white px-3 py-1.5 text-xs font-bold text-red-900 hover:bg-red-100"
+              >
+                Detayları gör
+              </Link>
+            </div>
+          ) : null}
+          {licenseSoftKritik && lic ? (
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-3 text-sm text-orange-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <p className="min-w-0 font-medium">
+                Lisansınızın bitmesine {lic.kalanGun ?? '—'} gün kaldı. Yenileme için Woontegra ile iletişime geçin.
+              </p>
+              <Link
+                to={`${APP_BASE}/ayarlar`}
+                className="inline-flex shrink-0 items-center justify-center rounded-md border border-orange-500 bg-white px-3 py-1.5 text-xs font-bold text-orange-950 hover:bg-orange-100"
+              >
+                Detayları gör
+              </Link>
+            </div>
+          ) : null}
+          {licenseSoftYaklasiyor && lic ? (
+            <div className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              <p className="min-w-0 font-medium">Lisansınızın bitmesine {lic.kalanGun ?? '—'} gün kaldı.</p>
+              <Link
+                to={`${APP_BASE}/ayarlar`}
+                className="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-500/60 bg-white px-3 py-1.5 text-xs font-bold text-amber-950 hover:bg-amber-100"
+              >
+                Detayları gör
+              </Link>
+            </div>
+          ) : null}
+          {!lic && session?.tenant.lisansDurumu === 'SURESI_DOLDU' ? (
+            <div className="mb-4">
+              <AlertBox variant="warning" title="Lisans süreniz sona erdi">
+                Görüntüleme yapabilirsiniz; yeni kayıt ve düzenleme işlemleri engellenmiştir. Yenileme için Woontegra ile iletişime geçin.
+              </AlertBox>
+            </div>
+          ) : null}
           <Outlet />
         </main>
       </div>
