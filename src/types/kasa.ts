@@ -20,7 +20,7 @@ export const MASRAF_TURU_OPTIONS = [
 
 export type MasrafTuruOption = (typeof MASRAF_TURU_OPTIONS)[number]
 
-export type KasaHareketTipiApi = 'AVANS_GIRISI' | 'MASRAF' | 'DUZELTME'
+export type KasaHareketTipiApi = 'AVANS_GIRISI' | 'MASRAF' | 'DUZELTME' | 'VEKALET_TAHSILAT'
 
 export type KasaOnayDurumuApi = 'ONAYSIZ' | 'ONAYLI' | 'REDDEDILDI'
 

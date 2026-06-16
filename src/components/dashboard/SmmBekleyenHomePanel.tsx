@@ -55,7 +55,7 @@ export function SmmBekleyenHomePanel(props: SmmBekleyenHomePanelProps): ReactEle
       <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-2 border-b border-border">
         <div>
           <CardTitle>SMM Bekleyen Tahsilatlar</CardTitle>
-          <p className="mt-1 text-xs text-ink-muted">Ödenmiş, SMM kesilmemiş vekalet taksitleri.</p>
+          <p className="mt-1 text-xs text-ink-muted">SMM kesilmemiş vekalet tahsilatları.</p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
           Kapat

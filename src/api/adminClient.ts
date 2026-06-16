@@ -13,13 +13,7 @@ export function setAdminAccessToken(token: string | null): void {
   else localStorage.removeItem(ADMIN_TOKEN_KEY)
 }
 
-const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
-
-function joinUrl(path: string): string {
-  if (path.startsWith('http')) return path
-  const p = path.startsWith('/') ? path : `/${path}`
-  return `${base}${p}`
-}
+import { joinApiUrl } from './apiBase'
 
 const PUBLIC_ADMIN_PATHS = new Set(['/api/v1/admin/auth/login', '/api/v1/admin/auth/logout'])
 
@@ -57,7 +51,7 @@ export async function adminApiFetch<T>(path: string, init?: RequestInit): Promis
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const res = await fetch(joinUrl(path), { ...init, headers })
+  const res = await fetch(joinApiUrl(path), { ...init, headers })
   if (!res.ok) {
     let message = res.statusText
     let code: string | undefined

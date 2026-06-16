@@ -1,3 +1,5 @@
+import { apiBaseLabel, getApiBaseUrl, joinApiUrl, warnIfLocalFrontendHitsRemoteApi } from './apiBase'
+
 const TOKEN_KEY = 'mkd_access_token'
 
 export const ACCESS_TOKEN_STORAGE_KEY = TOKEN_KEY
@@ -18,11 +20,59 @@ export class ApiError extends Error {
     message: string,
     public readonly status: number,
     public readonly code?: string,
-    public readonly details?: unknown
+    public readonly details?: unknown,
+    public readonly infraError = false
   ) {
     super(message)
     this.name = 'ApiError'
   }
+}
+
+export const API_INFRA_ERROR_MESSAGE =
+  'İşlem sırasında bir hata oluştu. İlgili API endpointi bulunamadı veya sunucu cevap vermedi.'
+
+/** Ödeme al modalı için kullanıcıya gösterilen altyapı hatası mesajı */
+export const ODEME_API_INFRA_USER_MESSAGE =
+  'Ödeme kaydedilemedi. Sunucu bağlantısı veya API yolu kontrol edilmeli.'
+
+function looksLikeHtml(text: string): boolean {
+  const t = text.trimStart()
+  return t.startsWith('<!') || t.startsWith('<html') || /<\/html>/i.test(t) || /Cannot (GET|POST|PUT|PATCH|DELETE)/i.test(t)
+}
+
+function resolveErrorMessage(raw: string, status: number): { message: string; infra: boolean } {
+  if (!raw || looksLikeHtml(raw)) {
+    return { message: API_INFRA_ERROR_MESSAGE, infra: true }
+  }
+  if (status === 404) {
+    return { message: API_INFRA_ERROR_MESSAGE, infra: true }
+  }
+  return { message: raw, infra: false }
+}
+
+function logApiRequest(method: string, path: string, fullUrl: string): void {
+  if (!import.meta.env.DEV) return
+  // eslint-disable-next-line no-console
+  console.info('[api]', method, path, { fullUrl, apiBaseUrl: apiBaseLabel() })
+}
+
+function logApiError(
+  method: string,
+  path: string,
+  fullUrl: string,
+  status: number,
+  contentType: string | null
+): void {
+  if (!import.meta.env.DEV) return
+  // eslint-disable-next-line no-console
+  console.error('[api error]', {
+    method,
+    path,
+    apiBaseUrl: apiBaseLabel(),
+    fullUrl,
+    statusCode: status,
+    contentType: contentType ?? '(yok)'
+  })
 }
 
 /** Ağ kopuk / sunucu ulaşılamaz (fetch TypeError vb.) */
@@ -37,13 +87,19 @@ export function friendlyClientErrorMessage(err: unknown, fallback = 'İşlem tam
   return fallback
 }
 
-const base = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
-
-function joinUrl(path: string): string {
-  if (path.startsWith('http')) return path
-  const p = path.startsWith('/') ? path : `/${path}`
-  return `${base}${p}`
+export function isApiInfraError(err: unknown): boolean {
+  if (err instanceof TypeError) return true
+  if (err instanceof ApiError) return err.infraError || err.status === 404
+  return false
 }
+
+export function resolveOdemeApiError(err: unknown): string | null {
+  if (!err) return null
+  if (isApiInfraError(err)) return ODEME_API_INFRA_USER_MESSAGE
+  return friendlyClientErrorMessage(err, 'Ödeme kaydedilemedi.')
+}
+
+export { getApiBaseUrl, joinApiUrl }
 
 const PUBLIC_AUTH_PATHS = new Set([
   '/api/v1/auth/login',
@@ -56,7 +112,54 @@ function isPublicAuthPath(path: string): boolean {
   return PUBLIC_AUTH_PATHS.has(path)
 }
 
+async function handleFailedResponse(
+  res: Response,
+  method: string,
+  path: string,
+  fullUrl: string
+): Promise<never> {
+  let message = res.statusText
+  let code: string | undefined
+  let details: unknown
+  let infra = false
+  const ct = res.headers.get('content-type')
+  logApiError(method, path, fullUrl, res.status, ct)
+
+  if (ct?.includes('application/json')) {
+    try {
+      const j = (await res.json()) as { message?: string; error?: string; code?: string; details?: unknown }
+      if (j.message) message = j.message
+      code = j.code ?? j.error
+      details = j.details
+      if (res.status === 404) {
+        infra = true
+        message = API_INFRA_ERROR_MESSAGE
+      }
+    } catch {
+      infra = true
+      message = API_INFRA_ERROR_MESSAGE
+    }
+  } else {
+    try {
+      const t = await res.text()
+      const resolved = resolveErrorMessage(t, res.status)
+      message = resolved.message
+      infra = resolved.infra
+    } catch {
+      infra = true
+      message = API_INFRA_ERROR_MESSAGE
+    }
+  }
+
+  throw new ApiError(message, res.status, code, details, infra)
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  warnIfLocalFrontendHitsRemoteApi()
+  const method = (init?.method ?? 'GET').toUpperCase()
+  const fullUrl = joinApiUrl(path)
+  logApiRequest(method, path, fullUrl)
+
   const token = getAccessToken()
   const headers = new Headers(init?.headers)
   if (!headers.has('Content-Type') && init?.body != null) {
@@ -66,34 +169,27 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const res = await fetch(joinUrl(path), {
-    ...init,
-    headers
-  })
+  let res: Response
+  try {
+    res = await fetch(fullUrl, { ...init, headers })
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.error('[api error]', {
+        method,
+        path,
+        apiBaseUrl: apiBaseLabel(),
+        fullUrl,
+        statusCode: '(ağ hatası)',
+        contentType: '(yok)',
+        error: err
+      })
+    }
+    throw err
+  }
 
   if (!res.ok) {
-    let message = res.statusText
-    let code: string | undefined
-    let details: unknown
-    const ct = res.headers.get('content-type')
-    if (ct?.includes('application/json')) {
-      try {
-        const j = (await res.json()) as { message?: string; error?: string; details?: unknown }
-        if (j.message) message = j.message
-        code = j.error
-        details = j.details
-      } catch {
-        /* ignore */
-      }
-    } else {
-      try {
-        const t = await res.text()
-        if (t) message = t
-      } catch {
-        /* ignore */
-      }
-    }
-    throw new ApiError(message, res.status, code, details)
+    await handleFailedResponse(res, method, path, fullUrl)
   }
 
   if (res.status === 204) return undefined as T
@@ -102,41 +198,37 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 
 /** multipart/form-data (Content-Type otomatik boundary); dosya yükleme vb. */
 export async function apiFetchMultipart<T>(path: string, formData: FormData): Promise<T> {
+  const method = 'POST'
+  const fullUrl = joinApiUrl(path)
+  logApiRequest(method, path, fullUrl)
+
   const token = getAccessToken()
   const headers = new Headers()
   if (!isPublicAuthPath(path) && token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const res = await fetch(joinUrl(path), {
-    method: 'POST',
-    body: formData,
-    headers
-  })
+  let res: Response
+  try {
+    res = await fetch(fullUrl, { method: 'POST', body: formData, headers })
+  } catch (err) {
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.error('[api error]', {
+        method,
+        path,
+        apiBaseUrl: apiBaseLabel(),
+        fullUrl,
+        statusCode: '(ağ hatası)',
+        contentType: '(yok)',
+        error: err
+      })
+    }
+    throw err
+  }
 
   if (!res.ok) {
-    let message = res.statusText
-    let code: string | undefined
-    let details: unknown
-    const ct = res.headers.get('content-type')
-    if (ct?.includes('application/json')) {
-      try {
-        const j = (await res.json()) as { message?: string; error?: string; details?: unknown }
-        if (j.message) message = j.message
-        code = j.error
-        details = j.details
-      } catch {
-        /* ignore */
-      }
-    } else {
-      try {
-        const t = await res.text()
-        if (t) message = t
-      } catch {
-        /* ignore */
-      }
-    }
-    throw new ApiError(message, res.status, code, details)
+    await handleFailedResponse(res, method, path, fullUrl)
   }
 
   return (await res.json()) as T

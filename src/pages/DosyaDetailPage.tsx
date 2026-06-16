@@ -12,19 +12,22 @@ import {
   rejectKasaHareketi
 } from '../api/kasa'
 import { invalidateDashboardSummary } from '../api/dashboard'
+import { invalidateSmmBekleyen } from '../api/smm'
 import { getDosya } from '../api/dosyalar'
 import { getDosyaHesapOzeti } from '../api/hesapOzeti'
 import { getDosyaMakbuzlari } from '../api/makbuzlar'
 import {
   cancelVekaletTaksiti,
+  createVekaletTaksitOdeme,
   createVekaletTaksiti,
   getDosyaVekalet,
-  markTaksitPaid,
-  markTaksitSmmKesildi,
+  getVekaletOdemeMakbuz,
+  listVekaletTaksitOdemeler,
+  markOdemeSmmKesildi,
   updateVekaletTaksiti,
   upsertDosyaVekalet
 } from '../api/vekalet'
-import { ApiError } from '../api/client'
+import { ApiError, resolveOdemeApiError } from '../api/client'
 import { APP_BASE } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
 import { dosyaDurumuBadgeVariant, dosyaDurumuLabel, mahkemeIcraSatir } from '../lib/dosyaLabels'
@@ -47,38 +50,46 @@ import {
   TR
 } from '../components/ui'
 import { cn } from '../lib/cn'
+import { resolveSmmBekleyenOdemeId, resolveTaksitRow } from '../lib/vekaletTaksitOzet'
 import { formatCurrencyTR, formatDateTR } from '../utils/formatters'
 import { MASRAF_TURU_OPTIONS, type KasaHareketiDto, type OdemeYontemiApi } from '../types/kasa'
 import type {
+  CreateVekaletTaksitOdemePayload,
   CreateVekaletTaksitPayload,
-  MarkTaksitPaidPayload,
-  MarkTaksitSmmPayload,
+  TaksitComputedDurumApi,
+  TaksitSmmDurumApi,
   UpdateVekaletTaksitPayload,
   UpsertVekaletPayload,
-  VekaletTaksitiDto,
-  VekaletTaksitOdemeDurumuApi
+  VekaletOdemeMakbuzDto,
+  VekaletTaksitOdemeDto,
+  VekaletTaksitiDto
 } from '../types/vekalet'
-import type { VekaletMakbuzListeDto } from '../types/makbuz'
+import type { ListKasaHareketleriParams } from '../api/kasa'
 import { AdvanceReceipt } from '../components/receipt/AdvanceReceipt'
 import { ReceiptModal } from '../components/receipt/ReceiptModal'
+import { VekaletOdemeReceipt } from '../components/receipt/VekaletOdemeReceipt'
 import { VekaletReceipt } from '../components/receipt/VekaletReceipt'
 import { HesapOzetiPrintView } from '../components/reports/HesapOzetiPrintView'
+import type { VekaletMakbuzListeDto } from '../types/makbuz'
 
 type ReceiptModalState =
   | null
   | { kind: 'advance'; hareket: KasaHareketiDto; printRootId: string; printedAt: string }
   | { kind: 'vekalet'; taksit: VekaletTaksitiDto; printRootId: string; printedAt: string }
+  | { kind: 'vekalet-odeme'; makbuz: VekaletOdemeMakbuzDto; printRootId: string; printedAt: string }
   | { kind: 'hesap'; printRootId: string; printedAt: string }
 
 type TabKey = 'kasa' | 'vekalet' | 'smm' | 'makbuz' | 'hesap'
+
+type KasaListeFiltre = 'tum' | 'avans' | 'masraf' | 'onaysiz' | 'onayli' | 'reddedildi'
 
 type VekModalState =
   | null
   | { type: 'vekalet-upsert' }
   | { type: 'taksit-create' }
   | { type: 'taksit-edit'; t: VekaletTaksitiDto }
-  | { type: 'taksit-paid'; t: VekaletTaksitiDto }
-  | { type: 'taksit-smm'; t: VekaletTaksitiDto }
+  | { type: 'taksit-odeme'; t: VekaletTaksitiDto }
+  | { type: 'odeme-gecmisi'; t: VekaletTaksitiDto }
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'kasa', label: 'Kasa Hareketleri' },
@@ -95,17 +106,48 @@ const ODEME_OPTIONS: { value: OdemeYontemiApi; label: string }[] = [
   { value: 'DIGER', label: 'Diğer' }
 ]
 
-function vekaletDurumLabel(d: VekaletTaksitOdemeDurumuApi): string {
+function taksitDurumLabel(d: TaksitComputedDurumApi): string {
   switch (d) {
     case 'ODENMEDI':
       return 'Ödenmedi'
+    case 'KISMI_ODENDI':
+      return 'Kısmi ödendi'
     case 'ODENDI':
       return 'Ödendi'
-    case 'IPTAL':
-      return 'İptal'
+    case 'GECIKTI':
+      return 'Gecikti'
     default:
       return d
   }
+}
+
+function taksitDurumBadge(d: TaksitComputedDurumApi): 'success' | 'warning' | 'danger' | 'default' {
+  switch (d) {
+    case 'ODENDI':
+      return 'success'
+    case 'KISMI_ODENDI':
+      return 'warning'
+    case 'GECIKTI':
+      return 'danger'
+    default:
+      return 'warning'
+  }
+}
+
+function smmDurumRozet(s: TaksitSmmDurumApi): ReactElement | string {
+  if (s === 'YOK') return '—'
+  if (s === 'KESILDI') {
+    return (
+      <Badge variant="success" className="!normal-case">
+        SMM kesildi
+      </Badge>
+    )
+  }
+  return (
+    <Badge variant="danger" className="animate-pulse !normal-case bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-200">
+      SMM bekliyor
+    </Badge>
+  )
 }
 
 function smmListeDurum(t: VekaletMakbuzListeDto): string {
@@ -137,6 +179,8 @@ function tipLabel(tip: KasaHareketiDto['tip']): string {
       return 'Masraf'
     case 'DUZELTME':
       return 'Düzeltme'
+    case 'VEKALET_TAHSILAT':
+      return 'Vekalet tahsilatı'
     default:
       return tip
   }
@@ -175,6 +219,31 @@ function aciklamaCell(h: KasaHareketiDto): string {
     return base
   }
   return h.aciklama?.trim() || '—'
+}
+
+function DosyaSmmBekleyenBanner(props: { count: number; onGoVekalet?: () => void }): ReactElement {
+  const { count, onGoVekalet } = props
+  if (count <= 0) return <></>
+
+  const title =
+    count === 1
+      ? 'Serbest meslek makbuzu kesilmemiş tahsilat var.'
+      : `Serbest meslek makbuzu kesilmemiş ${count} tahsilat var.`
+
+  return (
+    <div
+      role="alert"
+      className="rounded-lg border-2 border-rose-400/90 bg-rose-50 px-4 py-3 text-sm text-rose-950 shadow-sm dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-50"
+    >
+      <p className="font-bold">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed">Vekalet ücreti tahsilatı için SMM durumunu kontrol edin.</p>
+      {onGoVekalet ? (
+        <Button type="button" size="sm" variant="outline" className="mt-2 h-7 border-rose-300 text-xs" onClick={onGoVekalet}>
+          Vekalet / Taksitler sekmesine git
+        </Button>
+      ) : null}
+    </div>
+  )
 }
 
 function VekaletOzetCards(props: { anlasilan: string; odenenToplam: string; kalanVekalet: string }): ReactElement {
@@ -305,6 +374,9 @@ export function DosyaDetailPage(): ReactElement {
 
   const [vekModal, setVekModal] = useState<VekModalState>(null)
   const [receiptModal, setReceiptModal] = useState<ReceiptModalState>(null)
+  const [kasaSearch, setKasaSearch] = useState('')
+  const [kasaFilter, setKasaFilter] = useState<KasaListeFiltre>('tum')
+  const [smmNotice, setSmmNotice] = useState<{ variant: 'success' | 'danger'; text: string } | null>(null)
 
   const role = session?.user.role
   const canYoneticiIslem = role === 'BURO_SAHIBI' || role === 'AVUKAT_YONETICI'
@@ -324,9 +396,19 @@ export function DosyaDetailPage(): ReactElement {
   const kasaFetchEnabled =
     Boolean(dosyaId) && dosyaQuery.status === 'success' && dosyaQuery.data != null
 
+  const kasaListParams = (): ListKasaHareketleriParams => {
+    const p: ListKasaHareketleriParams = { q: kasaSearch.trim() || undefined, limit: 200 }
+    if (kasaFilter === 'avans') p.tip = 'AVANS_GIRISI'
+    else if (kasaFilter === 'masraf') p.tip = 'MASRAF'
+    else if (kasaFilter === 'onaysiz') p.onayDurumu = 'ONAYSIZ'
+    else if (kasaFilter === 'onayli') p.onayDurumu = 'ONAYLI'
+    else if (kasaFilter === 'reddedildi') p.onayDurumu = 'REDDEDILDI'
+    return p
+  }
+
   const kasaListQuery = useQuery({
-    queryKey: ['kasa-hareketleri', dosyaId],
-    queryFn: () => listKasaHareketleri(dosyaId!),
+    queryKey: ['kasa-hareketleri', dosyaId, kasaSearch, kasaFilter],
+    queryFn: () => listKasaHareketleri(dosyaId!, kasaListParams()),
     enabled: kasaFetchEnabled
   })
 
@@ -397,6 +479,8 @@ export function DosyaDetailPage(): ReactElement {
 
   const invalidateVekalet = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['vekalet', dosyaId] })
+    void queryClient.invalidateQueries({ queryKey: ['kasa-hareketleri', dosyaId] })
+    void queryClient.invalidateQueries({ queryKey: ['kasa-ozet', dosyaId] })
     void queryClient.invalidateQueries({ queryKey: ['dosya-hesap-ozeti', dosyaId] })
     void queryClient.invalidateQueries({ queryKey: ['dosya-makbuzlar', dosyaId] })
     invalidateDashboardSummary(queryClient)
@@ -423,18 +507,24 @@ export function DosyaDetailPage(): ReactElement {
       setVekModal(null)
     }
   })
-  const paidTaksitMu = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: MarkTaksitPaidPayload }) => markTaksitPaid(id, body),
+  const odemeTaksitMu = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: CreateVekaletTaksitOdemePayload }) =>
+      createVekaletTaksitOdeme(id, body),
     onSuccess: () => {
       invalidateVekalet()
       setVekModal(null)
     }
   })
-  const smmTaksitMu = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: MarkTaksitSmmPayload }) => markTaksitSmmKesildi(id, body),
+  const smmOdemeMu = useMutation({
+    mutationFn: (odemeId: string) => markOdemeSmmKesildi(odemeId),
     onSuccess: () => {
       invalidateVekalet()
-      setVekModal(null)
+      invalidateSmmBekleyen(queryClient)
+      void queryClient.invalidateQueries({ queryKey: ['taksit-odemeler'] })
+      setSmmNotice({ variant: 'success', text: 'SMM kesildi olarak işaretlendi.' })
+    },
+    onError: () => {
+      setSmmNotice({ variant: 'danger', text: 'SMM durumu güncellenemedi.' })
     }
   })
   const cancelTaksitMu = useMutation({
@@ -444,6 +534,12 @@ export function DosyaDetailPage(): ReactElement {
       setVekModal(null)
     }
   })
+
+  useEffect(() => {
+    if (!smmNotice) return
+    const timer = window.setTimeout(() => setSmmNotice(null), 4000)
+    return () => window.clearTimeout(timer)
+  }, [smmNotice])
 
   if (!dosyaId || !muvekkilIdFromUrl) {
     return <Navigate to={APP_BASE} replace />
@@ -489,6 +585,7 @@ export function DosyaDetailPage(): ReactElement {
   }
 
   const kasaItems = kasaListQuery.data?.items ?? []
+  const kasaTotal = kasaListQuery.data?.total ?? kasaItems.length
   const ozet = kasaOzetQuery.data?.ozet
 
   const vekaletData = vekaletQuery.data
@@ -571,24 +668,45 @@ export function DosyaDetailPage(): ReactElement {
           onSubmit={(body) => updateTaksitMu.mutate({ id: vekModal.t.id, body })}
         />
       ) : null}
-      {vekModal?.type === 'taksit-paid' ? (
-        <VekaletTaksitPaidModal
-          taksitNo={vekModal.t.taksitNo}
-          onClose={() => setVekModal(null)}
-          loading={paidTaksitMu.isPending}
-          error={paidTaksitMu.error instanceof Error ? paidTaksitMu.error.message : null}
-          onSubmit={(body) => paidTaksitMu.mutate({ id: vekModal.t.id, body })}
+      {vekModal?.type === 'taksit-odeme' ? (
+        <VekaletTaksitOdemeModal
+          taksit={vekModal.t}
+          onClose={() => {
+            odemeTaksitMu.reset()
+            setVekModal(null)
+          }}
+          loading={odemeTaksitMu.isPending}
+          error={resolveOdemeApiError(odemeTaksitMu.error)}
+          onSubmit={(body) => odemeTaksitMu.mutate({ id: vekModal.t.id, body })}
         />
       ) : null}
-      {vekModal?.type === 'taksit-smm' ? (
-        <VekaletTaksitSmmModal
-          taksitNo={vekModal.t.taksitNo}
-          makbuzNo={vekModal.t.makbuzNo}
+      {vekModal?.type === 'odeme-gecmisi' ? (
+        <VekaletOdemeGecmisiModal
+          taksit={vekModal.t}
           onClose={() => setVekModal(null)}
-          loading={smmTaksitMu.isPending}
-          error={smmTaksitMu.error instanceof Error ? smmTaksitMu.error.message : null}
-          onSubmit={(body) => smmTaksitMu.mutate({ id: vekModal.t.id, body })}
+          canSmm={canSmmIsaretle}
+          smmLoading={smmOdemeMu.isPending}
+          onSmmKesildi={(odemeId) => smmOdemeMu.mutate(odemeId)}
+          onMakbuz={async (odemeId) => {
+            const res = await getVekaletOdemeMakbuz(odemeId)
+            setReceiptModal({
+              kind: 'vekalet-odeme',
+              makbuz: res.makbuz,
+              printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
+              printedAt: new Date().toISOString()
+            })
+          }}
         />
+      ) : null}
+
+      {receiptModal?.kind === 'vekalet-odeme' ? (
+        <ReceiptModal
+          title="Vekalet tahsilat makbuzu"
+          printRootId={receiptModal.printRootId}
+          onClose={() => setReceiptModal(null)}
+        >
+          <VekaletOdemeReceipt makbuz={receiptModal.makbuz} printedAt={receiptModal.printedAt} />
+        </ReceiptModal>
       ) : null}
 
       {receiptModal?.kind === 'advance' && hesapData ? (
@@ -666,6 +784,17 @@ export function DosyaDetailPage(): ReactElement {
           </div>
         </CardHeader>
         <CardBody className="space-y-4 p-4">
+          {vekaletData && vekaletData.ozet.smmBekleyenSayisi > 0 ? (
+            <DosyaSmmBekleyenBanner
+              count={vekaletData.ozet.smmBekleyenSayisi}
+              onGoVekalet={() => setTab('vekalet')}
+            />
+          ) : null}
+          {smmNotice ? (
+            <AlertBox variant={smmNotice.variant} title={smmNotice.variant === 'success' ? 'Başarılı' : 'Hata'}>
+              {smmNotice.text}
+            </AlertBox>
+          ) : null}
           <p className="rounded-md border border-border bg-surface-muted/50 px-3 py-2 text-xs text-ink-muted">
             Kasa hareketleri dosyaya ait avans, masraf ve düzeltme kayıtlarını birlikte gösterir. Vekalet ücreti avans kasasından
             ayrıdır. Vekalet / taksitler ve SMM takibi <span className="font-semibold text-ink">canlı API</span> ile gelir.
@@ -731,6 +860,43 @@ export function DosyaDetailPage(): ReactElement {
                     ) : (
                       <p className="text-xs text-ink-muted">Yeni kasa girişi için yetkiniz yok.</p>
                     )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Input
+                      label="Ara"
+                      placeholder="Belge no, açıklama, tutar, tarih veya ödeme yöntemi ara..."
+                      value={kasaSearch}
+                      onChange={(e) => setKasaSearch(e.target.value)}
+                    />
+                    <div className="flex flex-wrap gap-1">
+                      {(
+                        [
+                          ['tum', 'Tüm hareketler'],
+                          ['avans', 'Avans girişleri'],
+                          ['masraf', 'Masraf girişleri'],
+                          ['onaysiz', 'Onaysızlar'],
+                          ['onayli', 'Onaylananlar'],
+                          ['reddedildi', 'Reddedilenler']
+                        ] as const
+                      ).map(([key, label]) => (
+                        <Button
+                          key={key}
+                          type="button"
+                          size="sm"
+                          variant={kasaFilter === key ? 'secondary' : 'outline'}
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => setKasaFilter(key)}
+                        >
+                          {label}
+                        </Button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-ink-muted">
+                      {kasaItems.length === 0
+                        ? 'Aramanıza uygun kasa hareketi bulunamadı.'
+                        : `${kasaTotal} kayıt bulundu`}
+                    </p>
                   </div>
 
                   <div className="overflow-x-auto rounded-lg border border-border">
@@ -904,111 +1070,96 @@ export function DosyaDetailPage(): ReactElement {
                       </p>
                     ) : null}
                   </div>
-                  {vekaletData.ozet.smmBekleyenSayisi > 0 ? (
-                    <div className="rounded-lg border-2 border-amber-400/90 bg-amber-50 px-4 py-3 text-sm text-amber-950 shadow-sm dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-50">
-                      <p className="font-bold">SMM takibi</p>
-                      <p className="mt-1 text-xs leading-relaxed">
-                        <strong>{vekaletData.ozet.smmBekleyenSayisi}</strong> ödenmiş taksit için serbest meslek makbuzu (SMM)
-                        bekleniyor. Serbest meslek makbuzu kesildi mi? Lütfen işleyin veya «SMM Takibi» sekmesinden tamamlayın.
-                      </p>
-                    </div>
-                  ) : null}
                   <div className="overflow-x-auto rounded-lg border border-border">
                     <Table>
                       <THead>
                         <TR>
                           <TH>Taksit no</TH>
                           <TH>Vade tarihi</TH>
-                          <TH className="text-right">Tutar</TH>
+                          <TH className="text-right">Taksit tutarı</TH>
+                          <TH className="text-right">Ödenen</TH>
+                          <TH className="text-right">Kalan</TH>
                           <TH>Durum</TH>
-                          <TH>Ödeme tarihi</TH>
-                          <TH>Makbuz no</TH>
+                          <TH>Son ödeme</TH>
+                          <TH>Makbuz son</TH>
                           <TH>SMM</TH>
                           <TH>İşlem</TH>
                         </TR>
                       </THead>
                       <TBody>
                         {vekaletData.taksitler.length === 0 ? (
-                          <TableEmptyRow colSpan={8}>Taksit kaydı yok.</TableEmptyRow>
+                          <TableEmptyRow colSpan={10}>Taksit kaydı yok.</TableEmptyRow>
                         ) : (
                           vekaletData.taksitler.map((t) => {
+                            const row = resolveTaksitRow(t)
                             const iptal = t.odemeDurumu === 'IPTAL'
-                            const odenmedi = t.odemeDurumu === 'ODENMEDI'
-                            const odendi = t.odemeDurumu === 'ODENDI'
+                            const odenebilir = !iptal && Number(row.kalanTutar) > 0
                             return (
                               <TR key={t.id} className={cn(iptal && 'opacity-60')}>
                                 <TD className="tabular-nums font-medium">{t.taksitNo}</TD>
                                 <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(t.vadeTarihi)}</TD>
-                                <TD className="text-right font-medium tabular-nums">{formatCurrencyTR(Number(t.tutar))}</TD>
+                                <TD className="text-right font-medium tabular-nums">{formatCurrencyTR(Number(row.taksitTutari))}</TD>
+                                <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.odenenToplam))}</TD>
+                                <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.kalanTutar))}</TD>
                                 <TD>
-                                  <Badge
-                                    variant={odendi ? 'success' : iptal ? 'default' : 'warning'}
-                                    className="!normal-case"
-                                  >
-                                    {vekaletDurumLabel(t.odemeDurumu)}
+                                  <Badge variant={taksitDurumBadge(row.durum)} className="!normal-case">
+                                    {taksitDurumLabel(row.durum)}
                                   </Badge>
                                 </TD>
-                                <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(t.odemeTarihi ?? undefined)}</TD>
-                                <TD className="font-mono text-xs">{t.makbuzNo?.trim() ? t.makbuzNo : '—'}</TD>
-                                <TD className="max-w-[200px]">
-                                  {!odendi ? (
-                                    <span className="text-ink-muted">—</span>
-                                  ) : t.smmKesildiMi ? (
-                                    <div className="space-y-0.5">
-                                      <Badge variant="success" className="!normal-case">
-                                        SMM kesildi
-                                      </Badge>
-                                      {t.smmNo?.trim() ? (
-                                        <p className="text-[11px] text-ink-muted">
-                                          No: {t.smmNo}
-                                          {t.smmKesimTarihi ? ` · ${formatDateTR(t.smmKesimTarihi)}` : ''}
-                                        </p>
-                                      ) : null}
-                                    </div>
-                                  ) : (
-                                    <div className="space-y-1">
-                                      <Badge variant="danger" className="!normal-case">
-                                        SMM kesilmedi
-                                      </Badge>
-                                      <p className="text-[11px] font-medium text-danger">Serbest meslek makbuzu kesildi mi?</p>
-                                    </div>
-                                  )}
-                                </TD>
+                                <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(row.sonOdemeTarihi ?? undefined)}</TD>
+                                <TD className="font-mono text-xs">{row.sonMakbuzNo?.trim() ? row.sonMakbuzNo : '—'}</TD>
+                                <TD>{smmDurumRozet(row.smmDurumu)}</TD>
                                 <TD>
                                   <div className="flex flex-wrap gap-1">
-                                    {odenmedi && canTaksitOdendi ? (
+                                    {odenebilir && canTaksitOdendi ? (
                                       <Button
                                         type="button"
                                         size="sm"
                                         variant="secondary"
                                         className="h-7 px-2 text-[11px]"
-                                        disabled={paidTaksitMu.isPending}
-                                        onClick={() => setVekModal({ type: 'taksit-paid', t })}
+                                        disabled={odemeTaksitMu.isPending}
+                                        onClick={() => {
+                                          odemeTaksitMu.reset()
+                                          setVekModal({ type: 'taksit-odeme', t })
+                                        }}
                                       >
-                                        Ödendi
+                                        Ödeme al
                                       </Button>
                                     ) : null}
-                                    {odenmedi || odendi ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="outline"
+                                      className="h-7 px-2 text-[11px]"
+                                      onClick={() => setVekModal({ type: 'odeme-gecmisi', t })}
+                                    >
+                                      Ödeme geçmişi
+                                    </Button>
+                                    {row.smmDurumu === 'BEKLIYOR' && canSmmIsaretle ? (
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        variant="secondary"
+                                        className="h-7 px-2 text-[11px]"
+                                        disabled={smmOdemeMu.isPending}
+                                        onClick={() => {
+                                          const odemeId = resolveSmmBekleyenOdemeId(t, vekaletData?.smmBekleyen ?? [])
+                                          if (odemeId) smmOdemeMu.mutate(odemeId)
+                                        }}
+                                      >
+                                        SMM kesildi
+                                      </Button>
+                                    ) : null}
+                                    {!iptal ? (
                                       <Button
                                         type="button"
                                         size="sm"
                                         variant="outline"
                                         className="h-7 px-2 text-[11px]"
-                                        disabled={iptal || updateTaksitMu.isPending}
+                                        disabled={updateTaksitMu.isPending}
                                         onClick={() => setVekModal({ type: 'taksit-edit', t })}
                                       >
                                         Düzenle
-                                      </Button>
-                                    ) : null}
-                                    {odendi && !t.smmKesildiMi && canSmmIsaretle ? (
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        className="h-7 px-2 text-[11px]"
-                                        disabled={smmTaksitMu.isPending}
-                                        onClick={() => setVekModal({ type: 'taksit-smm', t })}
-                                      >
-                                        SMM kesildi
                                       </Button>
                                     ) : null}
                                     {!iptal && canTaksitIptal ? (
@@ -1021,8 +1172,8 @@ export function DosyaDetailPage(): ReactElement {
                                         onClick={() => {
                                           if (
                                             window.confirm(
-                                              t.odemeDurumu === 'ODENDI'
-                                                ? 'Ödenmiş taksiti iptal etmek istediğinize emin misiniz? (Yönetici işlemi)'
+                                              t.odemeDurumu === 'ODENDI' || t.odemeDurumu === 'KISMI_ODENDI'
+                                                ? 'Ödemeli taksiti iptal etmek istediğinize emin misiniz? (Yönetici işlemi)'
                                                 : 'Bu taksiti iptal etmek istediğinize emin misiniz?'
                                             )
                                           ) {
@@ -1052,8 +1203,8 @@ export function DosyaDetailPage(): ReactElement {
           {tab === 'smm' ? (
             <div className="space-y-3">
               <p className="text-sm text-ink-muted">
-                Ödenmiş ve SMM kesilmemiş vekalet taksitleri API ile listelenir. Ana sayfadaki SMM uyarısı için ileride genel özet
-                uçları eklenecek.
+                Vekalet tahsilatı yapılmış ancak SMM kesilmemiş ödemeler listelenir. Ana sayfadaki SMM bekleyen sayısı ile aynı
+                veri kaynağını kullanır.
               </p>
               {vekaletQuery.isLoading ? (
                 <p className="text-sm text-ink-muted">Yükleniyor…</p>
@@ -1066,37 +1217,45 @@ export function DosyaDetailPage(): ReactElement {
                   <Table>
                     <THead>
                       <TR>
-                        <TH>Taksit no</TH>
+                        <TH>Tahsilat tarihi</TH>
                         <TH className="text-right">Tutar</TH>
-                        <TH>Ödeme tarihi</TH>
                         <TH>Makbuz no</TH>
+                        <TH>SMM durumu</TH>
                         <TH>İşlem</TH>
                       </TR>
                     </THead>
                     <TBody>
-                      {vekaletData.smmBekleyen.map((t) => (
-                        <TR key={t.id}>
-                          <TD className="font-medium tabular-nums">{t.taksitNo}</TD>
-                          <TD className="text-right font-medium tabular-nums">{formatCurrencyTR(Number(t.tutar))}</TD>
-                          <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(t.odemeTarihi ?? undefined)}</TD>
-                          <TD className="font-mono text-xs">{t.makbuzNo ?? '—'}</TD>
-                          <TD>
-                            {canSmmIsaretle ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                className="h-7 px-2 text-[11px]"
-                                disabled={smmTaksitMu.isPending}
-                                onClick={() => setVekModal({ type: 'taksit-smm', t })}
-                              >
-                                SMM kesildi
-                              </Button>
-                            ) : (
-                              <span className="text-[11px] text-ink-muted">Yetki yok</span>
-                            )}
-                          </TD>
-                        </TR>
-                      ))}
+                      {vekaletData.smmBekleyen.map((row) => {
+                        const r = row as { id: string; odemeTarihi?: string; tutar?: string; makbuzNo?: string }
+                        return (
+                          <TR key={r.id}>
+                            <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(r.odemeTarihi)}</TD>
+                            <TD className="text-right font-medium tabular-nums">{formatCurrencyTR(Number(r.tutar ?? 0))}</TD>
+                            <TD className="font-mono text-xs">{r.makbuzNo ?? '—'}</TD>
+                            <TD>
+                              <Badge variant="danger" className="animate-pulse !normal-case bg-rose-100 text-rose-800">
+                                SMM bekliyor
+                              </Badge>
+                            </TD>
+                            <TD>
+                              {canSmmIsaretle ? (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="secondary"
+                                  className="h-7 px-2 text-[11px]"
+                                  disabled={smmOdemeMu.isPending}
+                                  onClick={() => smmOdemeMu.mutate(r.id)}
+                                >
+                                  SMM kesildi
+                                </Button>
+                              ) : (
+                                <span className="text-[11px] text-ink-muted">Yetki yok</span>
+                              )}
+                            </TD>
+                          </TR>
+                        )
+                      })}
                     </TBody>
                   </Table>
                 </div>
@@ -1225,15 +1384,14 @@ export function DosyaDetailPage(): ReactElement {
                                         size="sm"
                                         variant="outline"
                                         className="h-7 px-2 text-[11px]"
-                                        onClick={() => {
-                                          const fullT = hesapData.taksitler.find((x) => x.id === row.id)
-                                          if (!fullT) return
-                                          const printedAt = new Date().toISOString()
+                                        onClick={async () => {
+                                          const odemeId = row.odemeId ?? row.id
+                                          const res = await getVekaletOdemeMakbuz(odemeId)
                                           setReceiptModal({
-                                            kind: 'vekalet',
-                                            taksit: fullT,
-                                            printRootId: `vek-rcpt-${row.id}-${Date.now()}`,
-                                            printedAt
+                                            kind: 'vekalet-odeme',
+                                            makbuz: res.makbuz,
+                                            printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
+                                            printedAt: new Date().toISOString()
                                           })
                                         }}
                                       >
@@ -1243,14 +1401,14 @@ export function DosyaDetailPage(): ReactElement {
                                         type="button"
                                         size="sm"
                                         className="h-7 px-2 text-[11px]"
-                                        onClick={() => {
-                                          const fullT = hesapData.taksitler.find((x) => x.id === row.id)
-                                          if (!fullT) return
+                                        onClick={async () => {
+                                          const odemeId = row.odemeId ?? row.id
+                                          const res = await getVekaletOdemeMakbuz(odemeId)
                                           const printedAt = new Date().toISOString()
                                           setReceiptModal({
-                                            kind: 'vekalet',
-                                            taksit: fullT,
-                                            printRootId: `vek-rcpt-${row.id}-${Date.now()}`,
+                                            kind: 'vekalet-odeme',
+                                            makbuz: res.makbuz,
+                                            printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
                                             printedAt
                                           })
                                           window.setTimeout(() => window.print(), 400)
@@ -1514,96 +1672,188 @@ function VekaletTaksitEditModal(props: {
   )
 }
 
-function VekaletTaksitPaidModal(props: {
-  taksitNo: number
+function VekaletTaksitOdemeModal(props: {
+  taksit: VekaletTaksitiDto
   onClose: () => void
   loading: boolean
   error: string | null
-  onSubmit: (body: MarkTaksitPaidPayload) => void
+  onSubmit: (body: CreateVekaletTaksitOdemePayload) => void
 }): ReactElement {
-  const { taksitNo, onClose, loading, error, onSubmit } = props
+  const { taksit, onClose, loading, error, onSubmit } = props
+  const resolved = resolveTaksitRow(taksit)
+  const kalanNum = Number(resolved.kalanTutar)
+  const [tutar, setTutar] = useState('')
   const [odemeTarihi, setOdemeTarihi] = useState(todayInputDate())
+  const [odeme, setOdeme] = useState<OdemeYontemiApi>('NAKIT')
   const [aciklama, setAciklama] = useState('')
+  const [smmKesildiMi, setSmmKesildiMi] = useState(false)
+  const [localErr, setLocalErr] = useState<string | null>(null)
+
+  const tahsilPlaceholder = `En fazla ${formatCurrencyTR(kalanNum)} tahsil edilebilir.`
+
+  const fillKalan = (): void => {
+    setLocalErr(null)
+    setTutar(resolved.kalanTutar)
+  }
+
+  const submit = (): void => {
+    setLocalErr(null)
+    const trimmed = tutar.trim()
+    if (!trimmed) {
+      setLocalErr('Bugün tahsil edilen tutar boş olamaz.')
+      return
+    }
+    const n = Number(trimmed.replace(',', '.'))
+    if (!Number.isFinite(n) || n <= 0) {
+      setLocalErr('Bugün tahsil edilen tutar 0\'dan büyük olmalıdır.')
+      return
+    }
+    if (n > kalanNum + 0.0001) {
+      setLocalErr('Bugün tahsil edilen tutar kalan taksit tutarını aşamaz.')
+      return
+    }
+    onSubmit({
+      tutar: n,
+      odemeTarihi: `${odemeTarihi}T12:00:00.000Z`,
+      odemeYontemi: odeme,
+      aciklama: aciklama.trim() || null,
+      smmKesildiMi
+    })
+  }
 
   return (
-    <ModalShell title={`Ödendi — taksit #${taksitNo}`} onClose={onClose}>
+    <ModalShell title={`Ödeme al — taksit #${taksit.taksitNo}`} onClose={onClose}>
       <div className="space-y-3">
         {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
-        <p className="text-xs text-ink-muted">Makbuz numarası sunucuda otomatik atanır (VEK-YYYY-000001).</p>
+        {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
+        <div className="grid gap-2 rounded-md border border-border bg-surface-muted/40 p-3 text-xs">
+          <div className="flex justify-between">
+            <span>Taksit tutarı</span>
+            <span className="font-semibold tabular-nums">{formatCurrencyTR(Number(resolved.taksitTutari))}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Şimdiye kadar ödenen</span>
+            <span className="font-semibold tabular-nums">{formatCurrencyTR(Number(resolved.odenenToplam))}</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Ödenmesi gereken kalan tutar</span>
+            <span className="font-semibold tabular-nums text-primary">{formatCurrencyTR(kalanNum)}</span>
+          </div>
+        </div>
+        <div className="space-y-1">
+          <Input
+            label="Bugün tahsil edilen tutar (TL)"
+            value={tutar}
+            onChange={(e) => setTutar(e.target.value)}
+            inputMode="decimal"
+            placeholder={tahsilPlaceholder}
+            hint="Kısmi ödeme alabilirsiniz. Girilen tutar kalan taksit tutarını aşamaz."
+          />
+          <div className="flex justify-end">
+            <Button type="button" variant="outline" size="sm" onClick={fillKalan} disabled={loading || kalanNum <= 0}>
+              Kalanın tamamını al
+            </Button>
+          </div>
+        </div>
         <Input label="Ödeme tarihi" type="date" value={odemeTarihi} onChange={(e) => setOdemeTarihi(e.target.value)} />
+        <div>
+          <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
+          <select className={selectClassName()} value={odeme} onChange={(e) => setOdeme(e.target.value as OdemeYontemiApi)}>
+            {ODEME_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
+        </div>
         <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
+        <label className="flex cursor-pointer items-center gap-2 text-xs">
+          <input type="checkbox" checked={smmKesildiMi} onChange={(e) => setSmmKesildiMi(e.target.checked)} />
+          SMM kesildi mi
+        </label>
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-            Vazgeç
-          </Button>
-          <Button
-            type="button"
-            onClick={() =>
-              onSubmit({
-                odemeTarihi: `${odemeTarihi}T12:00:00.000Z`,
-                aciklama: aciklama.trim() || null
-              })
-            }
-            disabled={loading}
-          >
-            {loading ? 'Kaydediliyor…' : 'Ödendi işaretle'}
-          </Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Vazgeç</Button>
+          <Button type="button" onClick={submit} disabled={loading}>{loading ? 'Kaydediliyor…' : 'Kaydet'}</Button>
         </div>
       </div>
     </ModalShell>
   )
 }
 
-function VekaletTaksitSmmModal(props: {
-  taksitNo: number
-  makbuzNo: string | null
+function VekaletOdemeGecmisiModal(props: {
+  taksit: VekaletTaksitiDto
   onClose: () => void
-  loading: boolean
-  error: string | null
-  onSubmit: (body: MarkTaksitSmmPayload) => void
+  canSmm: boolean
+  smmLoading: boolean
+  onSmmKesildi: (odemeId: string) => void
+  onMakbuz: (odemeId: string) => void | Promise<void>
 }): ReactElement {
-  const { taksitNo, makbuzNo, onClose, loading, error, onSubmit } = props
-  const [smmNo, setSmmNo] = useState('')
-  const [kesim, setKesim] = useState(todayInputDate())
-  const [aciklama, setAciklama] = useState('')
-  const [localErr, setLocalErr] = useState<string | null>(null)
-
-  const submit = (): void => {
-    setLocalErr(null)
-    if (!smmNo.trim()) {
-      setLocalErr('SMM numarası zorunludur.')
-      return
-    }
-    onSubmit({
-      smmNo: smmNo.trim(),
-      smmKesimTarihi: `${kesim}T12:00:00.000Z`,
-      smmAciklama: aciklama.trim() || null
-    })
-  }
+  const { taksit, onClose, canSmm, smmLoading, onSmmKesildi, onMakbuz } = props
+  const q = useQuery({
+    queryKey: ['taksit-odemeler', taksit.id],
+    queryFn: () => listVekaletTaksitOdemeler(taksit.id)
+  })
 
   return (
-    <ModalShell title={`SMM kesildi — taksit #${taksitNo}`} onClose={onClose}>
+    <ModalShell title={`Ödeme geçmişi — taksit #${taksit.taksitNo}`} onClose={onClose}>
       <div className="space-y-3">
-        {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
-        {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
-        {makbuzNo?.trim() ? (
-          <p className="text-xs text-ink-muted">
-            Makbuz: <span className="font-mono font-semibold">{makbuzNo}</span>
-          </p>
+        {q.isLoading ? <p className="text-sm text-ink-muted">Yükleniyor…</p> : null}
+        {q.isError ? <AlertBox variant="danger" title="Hata">{(q.error as Error).message}</AlertBox> : null}
+        {q.data && q.data.items.length === 0 ? (
+          <p className="text-sm text-ink-muted">Henüz ödeme kaydı yok.</p>
         ) : null}
-        <p className="text-xs text-ink-muted">
-          Bu alan yalnızca takip içindir; muhasebe / resmi SMM düzenini değiştirmez.
-        </p>
-        <Input label="SMM no" value={smmNo} onChange={(e) => setSmmNo(e.target.value)} required />
-        <Input label="SMM kesim tarihi" type="date" value={kesim} onChange={(e) => setKesim(e.target.value)} />
-        <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
-            Vazgeç
-          </Button>
-          <Button type="button" onClick={submit} disabled={loading}>
-            {loading ? 'Kaydediliyor…' : 'Kaydet'}
-          </Button>
+        {q.data && q.data.items.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Tarih</TH>
+                  <TH className="text-right">Tutar</TH>
+                  <TH>Ödeme yöntemi</TH>
+                  <TH>Makbuz no</TH>
+                  <TH>SMM durumu</TH>
+                  <TH>İşlem</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {q.data.items.map((o: VekaletTaksitOdemeDto) => (
+                  <TR key={o.id}>
+                    <TD className="whitespace-nowrap">{formatDateTR(o.odemeTarihi)}</TD>
+                    <TD className="text-right tabular-nums">{formatCurrencyTR(Number(o.tutar))}</TD>
+                    <TD>{odemeLabel(o.odemeYontemi)}</TD>
+                    <TD className="font-mono text-xs">{o.makbuzNo}</TD>
+                    <TD>
+                      {o.smmKesildiMi ? (
+                        <Badge variant="success" className="!normal-case">SMM kesildi</Badge>
+                      ) : (
+                        <Badge variant="danger" className="animate-pulse !normal-case bg-rose-100 text-rose-800">SMM bekliyor</Badge>
+                      )}
+                    </TD>
+                    <TD>
+                      <div className="flex flex-wrap gap-1">
+                        <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => void onMakbuz(o.id)}>
+                          Makbuz
+                        </Button>
+                        {!o.smmKesildiMi && canSmm ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            className="h-7 px-2 text-[11px]"
+                            disabled={smmLoading}
+                            onClick={() => onSmmKesildi(o.id)}
+                          >
+                            SMM kesildi
+                          </Button>
+                        ) : null}
+                      </div>
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          </div>
+        ) : null}
+        <div className="flex justify-end pt-2">
+          <Button type="button" variant="outline" onClick={onClose}>Kapat</Button>
         </div>
       </div>
     </ModalShell>

@@ -9,12 +9,14 @@ export type AvansMakbuzListeDto = {
 
 export type VekaletMakbuzListeDto = {
   id: string
+  odemeId?: string
+  taksitId?: string
   taksitNo: number
   odemeTarihi: string | null
   makbuzNo: string | null
   tutar: string
   smmKesildiMi: boolean
-  smmNo: string | null
+  smmNo?: string | null
 }
 
 export type DosyaMakbuzlariResponse = {

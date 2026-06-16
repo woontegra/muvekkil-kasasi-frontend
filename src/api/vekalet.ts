@@ -1,11 +1,14 @@
 import { apiFetch } from './client'
 import type {
+  CreateVekaletTaksitOdemePayload,
   CreateVekaletTaksitPayload,
   DosyaVekaletResponse,
   MarkTaksitPaidPayload,
   MarkTaksitSmmPayload,
   UpdateVekaletTaksitPayload,
   UpsertVekaletPayload,
+  VekaletOdemeMakbuzDto,
+  VekaletTaksitOdemeDto,
   VekaletTaksitiDto,
   VekaletUcretiDto
 } from '../types/vekalet'
@@ -52,6 +55,33 @@ export async function markTaksitPaid(
     method: 'POST',
     body: JSON.stringify(payload)
   })
+}
+
+export async function createVekaletTaksitOdeme(
+  taksitId: string,
+  payload: CreateVekaletTaksitOdemePayload
+): Promise<{ ok: true; taksit: VekaletTaksitiDto }> {
+  return apiFetch(`/api/v1/vekalet-taksitleri/${encodeURIComponent(taksitId)}/odemeler`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function listVekaletTaksitOdemeler(
+  taksitId: string
+): Promise<{ ok: true; items: VekaletTaksitOdemeDto[] }> {
+  return apiFetch(`/api/v1/vekalet-taksitleri/${encodeURIComponent(taksitId)}/odemeler`)
+}
+
+export async function markOdemeSmmKesildi(odemeId: string): Promise<{ ok: true; odeme: VekaletTaksitOdemeDto }> {
+  return apiFetch(`/api/v1/vekalet-taksit-odemeleri/${encodeURIComponent(odemeId)}/smm-kesildi`, {
+    method: 'POST',
+    body: JSON.stringify({})
+  })
+}
+
+export async function getVekaletOdemeMakbuz(odemeId: string): Promise<{ ok: true; makbuz: VekaletOdemeMakbuzDto }> {
+  return apiFetch(`/api/v1/vekalet-taksit-odemeleri/${encodeURIComponent(odemeId)}/makbuz`)
 }
 
 export async function markTaksitSmmKesildi(

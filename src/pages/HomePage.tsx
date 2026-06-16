@@ -6,25 +6,16 @@ import { getDashboardSummary, invalidateDashboardSummary } from '../api/dashboar
 import { apiFetch } from '../api/client'
 import { listMuvekkiller } from '../api/muvekkiller'
 import { listSmmBekleyenler, SMM_BEKLEYEN_QUERY_KEY } from '../api/smm'
-import { markTaksitSmmKesildi } from '../api/vekalet'
+import { markOdemeSmmKesildi } from '../api/vekalet'
 import { SmmBekleyenHomePanel } from '../components/dashboard/SmmBekleyenHomePanel'
 import { APP_BASE } from '../config/appPaths'
 import { cn } from '../lib/cn'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, EmptyState, Input, StatCard, Table, TBody, TD, TH, THead, TR } from '../components/ui'
 import type { MuvekkilDto } from '../types/muvekkil'
-import type { MarkTaksitSmmPayload } from '../types/vekalet'
 import type { SmmBekleyenDto } from '../types/smm'
 import { formatCurrencyTR } from '../utils/formatters'
 
 type HealthResponse = { ok: boolean; db?: string }
-
-function todayInputDate(): string {
-  const d = new Date()
-  const y = d.getFullYear()
-  const mo = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${mo}-${day}`
-}
 
 export function HomePage(): ReactElement {
   const navigate = useNavigate()
@@ -64,9 +55,10 @@ export function HomePage(): ReactElement {
   })
 
   const markSmmMu = useMutation({
-    mutationFn: ({ id, body }: { id: string; body: MarkTaksitSmmPayload }) => markTaksitSmmKesildi(id, body),
+    mutationFn: (odemeId: string) => markOdemeSmmKesildi(odemeId),
     onSuccess: () => {
       invalidateDashboardSummary(queryClient)
+      void queryClient.invalidateQueries({ queryKey: SMM_BEKLEYEN_QUERY_KEY })
       setSmmModalRow(null)
     }
   })
@@ -81,10 +73,20 @@ export function HomePage(): ReactElement {
   const smmCountFallback = dash?.smmBekleyen
   const smmBekleyenForUyari = smmQuery.data?.total ?? smmCountFallback
   const onayBekleyen = dash?.onayBekleyenToplam
-  const uyariParcalari: string[] = []
-  if (vadesiGecmis != null && vadesiGecmis > 0) uyariParcalari.push(`${vadesiGecmis} vadesi geçmiş taksit`)
-  if (smmBekleyenForUyari != null && smmBekleyenForUyari > 0) uyariParcalari.push('SMM bekleyen tahsilat var')
-  if (onayBekleyen != null && onayBekleyen > 0) uyariParcalari.push('Onay bekleyen kasa kaydı var')
+  const uyariParcalari: { key: string; text: string; smmLink?: boolean }[] = []
+  if (vadesiGecmis != null && vadesiGecmis > 0) {
+    uyariParcalari.push({ key: 'vade', text: `${vadesiGecmis} vadesi geçmiş taksit` })
+  }
+  if (smmBekleyenForUyari != null && smmBekleyenForUyari > 0) {
+    uyariParcalari.push({
+      key: 'smm',
+      text: 'Serbest meslek makbuzu kesilmemiş tahsilat var',
+      smmLink: true
+    })
+  }
+  if (onayBekleyen != null && onayBekleyen > 0) {
+    uyariParcalari.push({ key: 'onay', text: 'Onay bekleyen kasa kaydı var' })
+  }
   const rows: MuvekkilDto[] = muvekkilQuery.data?.items ?? []
   const sonBakilan: MuvekkilDto[] = rows.slice(0, 2)
 
@@ -122,8 +124,8 @@ export function HomePage(): ReactElement {
       </div>
 
       {health.isError || health.data?.ok === false ? (
-        <AlertBox variant="warning" title="API / sağlık">
-          Sunucu yanıt vermiyor veya sağlık kontrolü başarısız. Müvekkil listesi yüklenemeyebilir.
+        <AlertBox variant="warning" title="Bağlantı uyarısı">
+          Sunucuya ulaşılamıyor. Müvekkil listesi ve özet kartları yüklenemeyebilir.
         </AlertBox>
       ) : null}
 
@@ -131,12 +133,12 @@ export function HomePage(): ReactElement {
         <StatCard
           label="Vadesi geçmiş taksit"
           value={statVal(dash?.vadesiGecmisTaksit, dashboardQuery.isLoading)}
-          sub="Ödenmemiş, vade geçmiş"
+          sub="Ödenmemiş, vadesi geçmiş taksitler"
         />
         <StatCard
           label="SMM bekleyen"
           value={smmStatValue}
-          sub="Ödenmiş, SMM kesilmemiş"
+          sub="SMM kesilmemiş tahsilatlar"
           interactive
           selected={smmPanelOpen}
           onClick={openSmmPanel}
@@ -145,20 +147,20 @@ export function HomePage(): ReactElement {
         <StatCard
           label="Onay bekleyen"
           value={statVal(dash?.onayBekleyenToplam, dashboardQuery.isLoading)}
-          sub="Dosya + ofis kasası (onaysız)"
+          sub="Onay bekleyen kasa hareketleri"
         />
-        <StatCard label="Ofis kasa bakiyesi" value={ofisBakiyeVal} sub="Onaylı hareketler (özet API)" />
+        <StatCard label="Ofis kasa bakiyesi" value={ofisBakiyeVal} sub="Onaylanmış kasa hareketlerine göre" />
         <StatCard
           label="Aktif müvekkil"
           value={statVal(dash?.toplamMuvekkil, dashboardQuery.isLoading)}
-          sub="aktifMi=true"
+          sub="Kayıtlı aktif müvekkiller"
         />
-        <StatCard label="Aktif dosya" value={statVal(dash?.aktifDosya, dashboardQuery.isLoading)} sub="aktifMi=true" />
+        <StatCard label="Aktif dosya" value={statVal(dash?.aktifDosya, dashboardQuery.isLoading)} sub="Takibi devam eden dosyalar" />
       </div>
 
       {dashboardQuery.isError ? (
-        <AlertBox variant="warning" title="Dashboard özeti">
-          Özet yüklenemedi; kartlarda &quot;—&quot; görünebilir.{' '}
+        <AlertBox variant="warning" title="Özet yüklenemedi">
+          Özet bilgiler alınamadı; kartlarda &quot;—&quot; görünebilir.{' '}
           {dashboardQuery.error instanceof Error ? dashboardQuery.error.message : ''}
         </AlertBox>
       ) : null}
@@ -175,27 +177,26 @@ export function HomePage(): ReactElement {
         <span>
           {uyariParcalari.length > 0 ? (
             <>
-              {uyariParcalari.map((fragment, i) => {
-                const isSmm = fragment.includes('SMM bekleyen')
+              {uyariParcalari.map((item, i) => {
                 const sep = i > 0 ? '. ' : ''
-                if (isSmm) {
+                if (item.smmLink) {
                   return (
-                    <span key={`u-${i}`}>
+                    <span key={item.key}>
                       {sep}
                       <button
                         type="button"
                         className="cursor-pointer font-semibold underline decoration-warning-ink/60 underline-offset-2 hover:decoration-warning-ink"
                         onClick={openSmmPanel}
                       >
-                        {fragment}
+                        {item.text}
                       </button>
                     </span>
                   )
                 }
                 return (
-                  <span key={`u-${i}`}>
+                  <span key={item.key}>
                     {sep}
-                    {fragment}
+                    {item.text}
                   </span>
                 )
               })}
@@ -225,7 +226,7 @@ export function HomePage(): ReactElement {
           loading={markSmmMu.isPending}
           error={markSmmMu.error instanceof Error ? markSmmMu.error.message : null}
           onClose={() => setSmmModalRow(null)}
-          onSubmit={(body) => markSmmMu.mutate({ id: smmModalRow.id, body })}
+          onConfirm={() => markSmmMu.mutate(smmModalRow.id)}
         />
       ) : null}
 
@@ -353,12 +354,6 @@ export function HomePage(): ReactElement {
           </CardBody>
         </Card>
       ) : null}
-
-      {health.isSuccess && health.data?.ok ? (
-        <p className="text-center text-[11px] text-ink-subtle">
-          API bağlı{health.data.db ? ` (${health.data.db})` : ''}.
-        </p>
-      ) : null}
     </div>
   )
 }
@@ -368,26 +363,9 @@ function HomeSmmKesildiModal(props: {
   loading: boolean
   error: string | null
   onClose: () => void
-  onSubmit: (body: MarkTaksitSmmPayload) => void
+  onConfirm: () => void
 }): ReactElement {
-  const { row, loading, error, onClose, onSubmit } = props
-  const [smmNo, setSmmNo] = useState('')
-  const [kesim, setKesim] = useState(todayInputDate())
-  const [aciklama, setAciklama] = useState('')
-  const [localErr, setLocalErr] = useState<string | null>(null)
-
-  const submit = (): void => {
-    setLocalErr(null)
-    if (!smmNo.trim()) {
-      setLocalErr('SMM numarası zorunludur.')
-      return
-    }
-    onSubmit({
-      smmNo: smmNo.trim(),
-      smmKesimTarihi: `${kesim}T12:00:00.000Z`,
-      smmAciklama: aciklama.trim() || null
-    })
-  }
+  const { row, loading, error, onClose, onConfirm } = props
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]">
@@ -411,24 +389,18 @@ function HomeSmmKesildiModal(props: {
               {error}
             </AlertBox>
           ) : null}
-          {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
           {row.belgeNo?.trim() ? (
             <p className="text-xs text-ink-muted">
               Makbuz / belge no: <span className="font-mono font-semibold">{row.belgeNo}</span>
             </p>
           ) : null}
-          <p className="text-xs text-ink-muted">
-            Bu alan yalnızca takip içindir; muhasebe / resmi SMM düzenini değiştirmez.
-          </p>
-          <Input label="SMM no" value={smmNo} onChange={(e) => setSmmNo(e.target.value)} required />
-          <Input label="SMM kesim tarihi" type="date" value={kesim} onChange={(e) => setKesim(e.target.value)} />
-          <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
+          <p className="text-xs text-ink-muted">Bu tahsilat için serbest meslek makbuzu kesildi olarak işaretlenecek.</p>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Vazgeç
             </Button>
-            <Button type="button" onClick={submit} disabled={loading}>
-              {loading ? 'Kaydediliyor…' : 'Kaydet'}
+            <Button type="button" onClick={onConfirm} disabled={loading}>
+              {loading ? 'Kaydediliyor…' : 'SMM kesildi'}
             </Button>
           </div>
         </div>

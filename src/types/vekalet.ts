@@ -1,4 +1,8 @@
-export type VekaletTaksitOdemeDurumuApi = 'ODENMEDI' | 'ODENDI' | 'IPTAL'
+export type VekaletTaksitOdemeDurumuApi = 'ODENMEDI' | 'KISMI_ODENDI' | 'ODENDI' | 'IPTAL'
+
+export type TaksitComputedDurumApi = 'ODENMEDI' | 'KISMI_ODENDI' | 'ODENDI' | 'GECIKTI'
+
+export type TaksitSmmDurumApi = 'YOK' | 'BEKLIYOR' | 'KESILDI'
 
 export type VekaletUcretiDto = {
   id: string
@@ -34,6 +38,50 @@ export type VekaletTaksitiDto = {
   updatedById: string | null
   createdAt: string
   updatedAt: string
+  taksitTutari?: string
+  odenenToplam?: string
+  kalanTutar?: string
+  durum?: TaksitComputedDurumApi
+  sonOdemeTarihi?: string | null
+  sonMakbuzNo?: string | null
+  smmDurumu?: TaksitSmmDurumApi
+  smmBekleyenOdemeId?: string | null
+}
+
+export type VekaletTaksitOdemeDto = {
+  id: string
+  tenantId: string
+  muvekkilId: string
+  dosyaId: string
+  taksitId: string
+  odemeTarihi: string
+  tutar: string
+  odemeYontemi: import('./kasa').OdemeYontemiApi
+  aciklama: string | null
+  makbuzNo: string
+  smmKesildiMi: boolean
+  kasaHareketId: string | null
+  createdById: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type VekaletOdemeMakbuzDto = {
+  buro: Record<string, unknown>
+  muvekkil: Record<string, unknown>
+  dosya: Record<string, unknown>
+  mahkemeIcra: string | null
+  dosyaNo: string | null
+  taksitNo: number
+  taksitTutari: string
+  odemeTarihi: string
+  odemeYontemi: string
+  tahsilatTutari: string
+  anlasilanVekalet: string
+  odenenToplam: string
+  kalanVekalet: string
+  makbuzNo: string
+  smmKesildiMi: boolean
 }
 
 export type DosyaVekaletOzetDto = {
@@ -49,7 +97,7 @@ export type DosyaVekaletResponse = {
   vekaletUcreti: VekaletUcretiDto | null
   taksitler: VekaletTaksitiDto[]
   ozet: DosyaVekaletOzetDto
-  smmBekleyen: VekaletTaksitiDto[]
+  smmBekleyen: Record<string, unknown>[]
 }
 
 export type UpsertVekaletPayload = {
@@ -82,4 +130,12 @@ export type MarkTaksitSmmPayload = {
   smmNo: string
   smmKesimTarihi: string
   smmAciklama?: string | null
+}
+
+export type CreateVekaletTaksitOdemePayload = {
+  tutar: number
+  odemeTarihi?: string
+  odemeYontemi: import('./kasa').OdemeYontemiApi
+  aciklama?: string | null
+  smmKesildiMi?: boolean
 }

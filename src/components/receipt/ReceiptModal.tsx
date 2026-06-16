@@ -26,16 +26,18 @@ export function ReceiptModal(props: ReceiptModalProps): ReactElement {
             top: 0 !important;
             width: 100% !important;
             margin: 0 !important;
-            padding: 12mm !important;
+            padding: 8mm !important;
             background: white !important;
             color: #111 !important;
             box-shadow: none !important;
           }
+          .no-print { display: none !important; }
         }
+        @page { size: portrait; margin: 10mm; }
       `}</style>
       <div
         id={printRootId}
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-white shadow-xl print:max-h-none print:overflow-visible print:rounded-none print:border-0 print:shadow-none"
+        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-white shadow-xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
         <div className="no-print flex items-center justify-between gap-2 border-b border-border px-4 py-3">
           <h2 className="text-sm font-bold text-ink">{title}</h2>
@@ -48,7 +50,7 @@ export function ReceiptModal(props: ReceiptModalProps): ReactElement {
             </Button>
           </div>
         </div>
-        <div className="p-6 text-sm text-black">{children}</div>
+        <div className="p-4 text-sm text-black print:p-0">{children}</div>
       </div>
     </div>
   )
