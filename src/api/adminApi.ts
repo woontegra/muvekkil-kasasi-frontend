@@ -101,6 +101,14 @@ export async function adminTenantDeactivateRequest(id: string): Promise<{ ok: tr
   return adminApiFetch(`/api/v1/admin/tenants/${encodeURIComponent(id)}/deactivate`, { method: 'POST' })
 }
 
+export async function adminResendWelcomeMailRequest(
+  id: string
+): Promise<{ ok: true; mailSent: boolean; mailError?: string }> {
+  return adminApiFetch(`/api/v1/admin/tenants/${encodeURIComponent(id)}/resend-welcome-mail`, {
+    method: 'POST'
+  })
+}
+
 export async function adminUserUpdateRequest(
   userId: string,
   body: {

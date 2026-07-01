@@ -12,5 +12,6 @@ export type TenantLicenseCurrent = {
   kalanGun: number | null
   uyariSeviyesi: LicenseWarningLevel
   bilgiMesaji?: string | null
+  yazmaIzinli: boolean
   yillikUcret?: string | null
 }

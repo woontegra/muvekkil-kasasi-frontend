@@ -41,7 +41,7 @@ export function AdminProtectedLayout(): ReactElement {
             Genel Bakış
           </NavLink>
           <NavLink to="/admin/burolar" className={navCls}>
-            Bürolar
+            Kullanıcı Yönetimi
           </NavLink>
           <NavLink to="/admin/lisans-uyarilar" className={navCls}>
             Lisansı Bitecekler

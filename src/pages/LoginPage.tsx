@@ -4,6 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { APP_BASE } from '../config/appPaths'
 import { friendlyClientErrorMessage } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
+import { normalizeLoginIdentifier } from '../lib/normalizeKullaniciAdi'
 import { AuthFormCard } from '../components/auth/AuthFormCard'
 import { AlertBox, Button, Input } from '../components/ui'
 
@@ -26,7 +27,7 @@ export function LoginPage(): ReactElement {
     setError(null)
     setSubmitting(true)
     try {
-      await login({ identifier, sifre })
+      await login({ identifier: normalizeLoginIdentifier(identifier), sifre })
       navigate(APP_BASE, { replace: true })
     } catch (err) {
       setError(friendlyClientErrorMessage(err, 'Giriş yapılamadı.'))
@@ -71,6 +72,10 @@ export function LoginPage(): ReactElement {
           autoComplete="username"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
+          onBlur={() => {
+            const v = identifier.trim()
+            if (v && !v.includes('@')) setIdentifier(normalizeLoginIdentifier(v))
+          }}
           disabled={submitting || bootstrapping}
         />
         <Input

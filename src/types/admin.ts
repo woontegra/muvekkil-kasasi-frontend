@@ -37,6 +37,10 @@ export type AdminTenantListItem = {
   lisansBitisTarihi: string | null
   demoMu: boolean
   demoBitisTarihi: string | null
+  lisansAnahtari: string | null
+  sahipAdSoyad: string | null
+  sahipKullaniciAdi: string | null
+  kalanGun: number | null
   toplamKullanici: number
   toplamMuvekkil: number
   toplamDosya: number
@@ -53,24 +57,33 @@ export type AdminTenantsListResponse = {
 
 export type AdminCreateTenantLicenseBirim = 'GUN' | 'AY' | 'YIL'
 export type AdminCreateTenantLicenseTipi = 'DEMO' | 'AKTIF'
+export type AdminCreateTenantLisansPaketi = 'DEMO' | 'AYLIK' | 'UC_AY' | 'ALTI_AY' | 'YILLIK' | 'OZEL'
+export type AdminCreateTenantParolaModu = 'AKTIVASYON_MAIL' | 'MANUEL'
 
 export type AdminCreateTenantPayload = {
   buroAdi: string
+  slug?: string
   telefon?: string
   eposta?: string
   adres?: string
   vergiNo?: string
   vergiDairesi?: string
   ownerAdSoyad: string
-  ownerKullaniciAdi: string
-  ownerEposta?: string
+  ownerKullaniciAdi?: string
+  ownerEposta: string
   ownerTelefon?: string
-  ownerSifre: string
-  lisansTipi: AdminCreateTenantLicenseTipi
-  lisansSuresiMiktar: number
-  lisansSuresiBirim: AdminCreateTenantLicenseBirim
+  parolaModu: AdminCreateTenantParolaModu
+  ownerSifre?: string
+  lisansPaketi: AdminCreateTenantLisansPaketi
+  lisansDurumu: 'AKTIF' | 'DEMO' | 'PASIF'
+  demoMu?: boolean
+  lisansBaslangicTarihi?: string
+  lisansBitisTarihi?: string
+  sonOdemeTarihi?: string | null
   yillikUcret?: number | null
-  notlar?: string
+  lisansNotlari?: string
+  gonderAktivasyonMaili: boolean
+  gonderHosgeldinMaili: boolean
 }
 
 export type AdminCreateTenantOwnerDto = {
@@ -89,7 +102,12 @@ export type AdminCreateTenantResponse = {
   ok: true
   tenant: AdminTenantDetailTenantDto
   ownerUser: AdminCreateTenantOwnerDto
-  geciciSifre: string
+  geciciSifre: string | null
+  lisansAnahtari: string | null
+  mailSent: boolean
+  mailError?: string
+  aktivasyonMailiGonderildi: boolean
+  hosgeldinMailiGonderildi: boolean
 }
 
 export type TenantUserRoleDto = 'BURO_SAHIBI' | 'AVUKAT_YONETICI' | 'KATIP_PERSONEL'
@@ -124,6 +142,7 @@ export type AdminTenantDetailTenantDto = {
   sonOdemeTarihi: string | null
   yillikUcret: string | null
   lisansNotlari: string | null
+  lisansAnahtari: string | null
   createdAt: string
   updatedAt: string
 }
@@ -135,6 +154,21 @@ export type AdminTenantDetailAuditDto = {
   entityId: string | null
   createdAt: string
   userId: string | null
+}
+
+export type LicenseRenewalSourceDto = 'WOONTEGRA_WEBSITE' | 'SUPER_ADMIN'
+
+export type AdminTenantLicenseRenewalDto = {
+  id: string
+  tarih: string
+  kaynak: LicenseRenewalSourceDto
+  eskiBitis: string
+  yeniBitis: string
+  gunSayisi: number
+  tutar: string | null
+  paraBirimi: string
+  externalOrderId: string | null
+  not: string | null
 }
 
 export type AdminTenantDetailResponse = {
@@ -149,6 +183,7 @@ export type AdminTenantDetailResponse = {
     auditKayit: number
   }
   sonAuditLoglar: AdminTenantDetailAuditDto[]
+  licenseRenewals: AdminTenantLicenseRenewalDto[]
 }
 
 export type AdminExpiringTenantRow = {
