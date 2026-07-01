@@ -31,6 +31,28 @@ export class ApiError extends Error {
 export const API_INFRA_ERROR_MESSAGE =
   'İşlem sırasında bir hata oluştu. İlgili API endpointi bulunamadı veya sunucu cevap vermedi.'
 
+export const LOGIN_ERROR_MESSAGE =
+  'Giriş yapılamadı. Bilgilerinizi kontrol edin veya hesabınız henüz aktifleştirilmemiş olabilir.'
+
+export function friendlyLoginErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.infraError || err.status === 404 || err.status >= 500) {
+      return LOGIN_ERROR_MESSAGE
+    }
+    if (err.status === 401) {
+      return LOGIN_ERROR_MESSAGE
+    }
+    if (/endpoint|API/i.test(err.message)) {
+      return LOGIN_ERROR_MESSAGE
+    }
+    return err.message
+  }
+  if (err instanceof TypeError) {
+    return LOGIN_ERROR_MESSAGE
+  }
+  return LOGIN_ERROR_MESSAGE
+}
+
 /** Ödeme al modalı için kullanıcıya gösterilen altyapı hatası mesajı */
 export const ODEME_API_INFRA_USER_MESSAGE =
   'Ödeme kaydedilemedi. Sunucu bağlantısı veya API yolu kontrol edilmeli.'

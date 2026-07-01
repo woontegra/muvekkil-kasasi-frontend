@@ -2,7 +2,7 @@ import type { FormEvent, ReactElement } from 'react'
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { APP_BASE } from '../config/appPaths'
-import { friendlyClientErrorMessage } from '../api/client'
+import { friendlyLoginErrorMessage } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 import { normalizeLoginIdentifier } from '../lib/normalizeKullaniciAdi'
 import { AuthFormCard } from '../components/auth/AuthFormCard'
@@ -30,7 +30,7 @@ export function LoginPage(): ReactElement {
       await login({ identifier: normalizeLoginIdentifier(identifier), sifre })
       navigate(APP_BASE, { replace: true })
     } catch (err) {
-      setError(friendlyClientErrorMessage(err, 'Giriş yapılamadı.'))
+      setError(friendlyLoginErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
