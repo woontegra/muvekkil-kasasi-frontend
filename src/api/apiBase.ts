@@ -14,6 +14,9 @@ function readConfiguredApiUrl(): string {
   return ''
 }
 
+/** Canlı build'de VITE_API_BASE_URL unutulursa istekler SPA origin'e gider ve 404 olur. */
+const PRODUCTION_API_FALLBACK = 'https://muvekkil-kasasi-backend-production.up.railway.app'
+
 export function getApiBaseUrl(): string {
   const configured = readConfiguredApiUrl()
 
@@ -23,7 +26,9 @@ export function getApiBaseUrl(): string {
     return ''
   }
 
-  return configured
+  if (configured) return configured
+  if (import.meta.env.PROD) return PRODUCTION_API_FALLBACK
+  return ''
 }
 
 export function joinApiUrl(path: string): string {

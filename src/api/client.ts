@@ -53,6 +53,25 @@ export function friendlyLoginErrorMessage(err: unknown): string {
   return LOGIN_ERROR_MESSAGE
 }
 
+export const FORGOT_PASSWORD_ERROR_MESSAGE =
+  'Şifre sıfırlama işlemi şu anda tamamlanamadı. Lütfen bilgilerinizi kontrol edin veya daha sonra tekrar deneyin.'
+
+export function friendlyForgotPasswordErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.infraError || err.status === 404 || err.status >= 500) {
+      return FORGOT_PASSWORD_ERROR_MESSAGE
+    }
+    if (/endpoint|API|sunucu cevap vermedi/i.test(err.message)) {
+      return FORGOT_PASSWORD_ERROR_MESSAGE
+    }
+    return err.message
+  }
+  if (err instanceof TypeError) {
+    return FORGOT_PASSWORD_ERROR_MESSAGE
+  }
+  return FORGOT_PASSWORD_ERROR_MESSAGE
+}
+
 /** Ödeme al modalı için kullanıcıya gösterilen altyapı hatası mesajı */
 export const ODEME_API_INFRA_USER_MESSAGE =
   'Ödeme kaydedilemedi. Sunucu bağlantısı veya API yolu kontrol edilmeli.'
