@@ -39,6 +39,8 @@ export type AdminTenantDetailBodyProps = {
   onOpenNote: () => void
   onPresetDemo: (days: number) => void
   onTenantToggle: () => void
+  onDeleteTenant: () => void
+  deletePending: boolean
   tenantAktif: boolean
   extendTur: ExtendTur
   setExtendTur: (v: ExtendTur) => void
@@ -136,6 +138,8 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
     onOpenNote,
     onPresetDemo,
     onTenantToggle,
+    onDeleteTenant,
+    deletePending,
     tenantAktif,
     onResetDone
   } = props
@@ -273,6 +277,9 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
               </Button>
               <Button type="button" size="sm" variant={tenantAktif ? 'danger' : 'secondary'} onClick={onTenantToggle}>
                 {tenantAktif ? 'Pasife Al' : 'Aktif Yap'}
+              </Button>
+              <Button type="button" size="sm" variant="danger" onClick={onDeleteTenant} disabled={deletePending}>
+                {deletePending ? 'Siliniyor…' : 'Sil'}
               </Button>
             </>
           ) : (

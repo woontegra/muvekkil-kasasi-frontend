@@ -7,6 +7,7 @@ import {
   adminResendWelcomeMailRequest,
   adminTenantActivateRequest,
   adminTenantDeactivateRequest,
+  adminTenantDeleteRequest,
   adminTenantDetailRequest,
   adminTenantUpdateRequest,
   type AdminExtendLicenseRequestBody
@@ -40,7 +41,7 @@ export function AdminTenantDetailPage(): ReactElement {
   const canManageTenantUsers = admin?.rol === 'SUPER_ADMIN' || admin?.rol === 'DESTEK' || admin?.rol === 'FINANS'
   const initialTab = (searchParams.get('tab') as TabId | null) ?? 'genel'
   const [tab, setTab] = useState<TabId>(initialTab)
-  const [tenantActionConfirm, setTenantActionConfirm] = useState<'activate' | 'deactivate' | null>(null)
+  const [tenantActionConfirm, setTenantActionConfirm] = useState<'activate' | 'deactivate' | 'delete' | null>(null)
   const [noteModalOpen, setNoteModalOpen] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [copyOk, setCopyOk] = useState(false)
@@ -144,6 +145,14 @@ export function AdminTenantDetailPage(): ReactElement {
       void qc.refetchQueries({ queryKey: ['admin-tenant', id] })
       setTenantActionConfirm(null)
       setBanner('Büro pasifleştirildi.')
+    }
+  })
+  const deleteM = useMutation({
+    mutationFn: () => adminTenantDeleteRequest(id!),
+    onSuccess: () => {
+      invalidateTenantRelatedQueries()
+      setTenantActionConfirm(null)
+      navigate('/admin/burolar', { replace: true, state: { toast: 'Büro kalıcı olarak silindi.' } })
     }
   })
 
@@ -301,6 +310,16 @@ export function AdminTenantDetailPage(): ReactElement {
         onCancel={() => setTenantActionConfirm(null)}
         onConfirm={() => void activateM.mutateAsync()}
       />
+      <AdminConfirmDialog
+        open={tenantActionConfirm === 'delete'}
+        title="Büroyu kalıcı olarak sil"
+        message={`"${t.buroAdi}" bürosu ve tüm verileri (kullanıcılar, müvekkiller, dosyalar vb.) kalıcı olarak silinecek. Bu işlem geri alınamaz. Devam etmek istiyor musunuz?`}
+        confirmLabel="Kalıcı olarak sil"
+        danger
+        loading={deleteM.isPending}
+        onCancel={() => setTenantActionConfirm(null)}
+        onConfirm={() => void deleteM.mutateAsync()}
+      />
       <AdminTenantDetailBody
         id={id}
         d={d}
@@ -330,6 +349,8 @@ export function AdminTenantDetailPage(): ReactElement {
         onOpenNote={openNoteModal}
         onPresetDemo={presetDemoExtend}
         onTenantToggle={() => setTenantActionConfirm(t.aktifMi ? 'deactivate' : 'activate')}
+        onDeleteTenant={() => setTenantActionConfirm('delete')}
+        deletePending={deleteM.isPending}
         tenantAktif={t.aktifMi}
         extendTur={extendTur}
         setExtendTur={setExtendTur}
@@ -359,9 +380,10 @@ export function AdminTenantDetailPage(): ReactElement {
         resetResult={resetResult}
         onResetDone={(pwd) => setResetResult(pwd)}
         errorMessage={
-          activateM.isError || deactivateM.isError || extendM.isError || updateTenantM.isError || mailM.isError
+          activateM.isError || deactivateM.isError || deleteM.isError || extendM.isError || updateTenantM.isError || mailM.isError
             ? ((activateM.error as Error)?.message ??
               (deactivateM.error as Error)?.message ??
+              (deleteM.error as Error)?.message ??
               (extendM.error as Error)?.message ??
               (updateTenantM.error as Error)?.message ??
               (mailM.error as Error)?.message)

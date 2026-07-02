@@ -20,7 +20,7 @@ const PRODUCTION_API_FALLBACK = 'https://muvekkil-kasasi-backend-production.up.r
 export function getApiBaseUrl(): string {
   const configured = readConfiguredApiUrl()
 
-  // Yerel geliştirme: localhost arayüzü → Vite proxy (http://localhost:4000)
+  // Yerel geliştirme: localhost arayüzü → Vite proxy (VITE_DEV_API_PROXY / backend PORT)
   // Uzak API testi için: VITE_FORCE_REMOTE_API=true
   if (import.meta.env.DEV && isLocalFrontend() && import.meta.env.VITE_FORCE_REMOTE_API !== 'true') {
     return ''
@@ -39,7 +39,7 @@ export function joinApiUrl(path: string): string {
 
 export function apiBaseLabel(): string {
   const base = getApiBaseUrl()
-  return base || '(vite proxy → http://localhost:4000)'
+  return base || '(vite proxy → yerel backend)'
 }
 
 let localRemoteWarned = false
