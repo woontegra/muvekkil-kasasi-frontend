@@ -17,6 +17,7 @@ export type AuthTenantDto = {
   id: string
   buroAdi: string
   slug: string
+  musteriNo?: string | null
   telefon: string | null
   eposta: string | null
   adres: string | null
@@ -40,14 +41,19 @@ export type AuthSession = {
   tenant: AuthTenantDto
 }
 
-export type AuthLoginResponse = {
+export type AuthOnboardingState = {
+  requiresLicenseActivation: boolean
+  mustChangePassword: boolean
+}
+
+export type AuthLoginResponse = AuthOnboardingState & {
   ok: true
   accessToken: string
   user: AuthUserDto
   tenant: AuthTenantDto
 }
 
-export type MeResponse = {
+export type MeResponse = AuthOnboardingState & {
   ok: true
   user: AuthUserDto
   tenant: AuthTenantDto

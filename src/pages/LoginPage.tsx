@@ -27,7 +27,9 @@ export function LoginPage(): ReactElement {
     setError(null)
     setSubmitting(true)
     try {
-      await login({ identifier: normalizeLoginIdentifier(identifier), sifre: sifre.trim() })
+      const id = identifier.trim()
+      const loginId = id.includes('@') ? id.toLowerCase() : normalizeLoginIdentifier(id)
+      await login({ identifier: loginId, sifre: sifre.trim() })
       navigate(APP_BASE, { replace: true })
     } catch (err) {
       setError(friendlyLoginErrorMessage(err))

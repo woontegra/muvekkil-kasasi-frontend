@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Navigate } from 'react-router-dom'
+import { FirstLoginOnboarding } from '../components/auth/FirstLoginOnboarding'
 import { useAuth } from '../contexts/AuthContext'
 import { DashboardShell } from './DashboardShell'
 
@@ -18,5 +19,9 @@ export function ProtectedLayout(): ReactElement {
     return <Navigate to="/login" replace />
   }
 
-  return <DashboardShell />
+  return (
+    <FirstLoginOnboarding>
+      <DashboardShell />
+    </FirstLoginOnboarding>
+  )
 }

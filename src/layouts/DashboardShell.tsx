@@ -4,12 +4,13 @@ import { useState } from 'react'
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { getDashboardSummary } from '../api/dashboard'
 import { getCurrentLicense } from '../api/license'
-import { APP_BASE } from '../config/appPaths'
+import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { sidebarNavForRole } from '../config/nav'
 import { useAuth } from '../contexts/AuthContext'
 import { roleLabel } from '../lib/roleLabel'
 import { cn } from '../lib/cn'
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, AlertBox } from '../components/ui'
+import { useSafeBackdropClose } from '../components/ui/useSafeBackdropClose'
 
 import type { AuthUserDto } from '../types/auth'
 
@@ -31,7 +32,7 @@ function selectedSidebarPath(pathname: string, role: AuthUserDto['role'] | undef
 
 function mobilePageSubtitle(pathname: string, role: AuthUserDto['role'] | undefined): string {
   const p = normalizePath(pathname)
-  if (p === APP_BASE) return 'Ana Sayfa'
+  if (p === APP_BASE) return HOME_PAGE_LABEL
   if (p.startsWith(`${APP_BASE}/muvekkiller/yeni`)) return 'Yeni müvekkil'
   if (p.includes('/dosyalar/yeni') && p.startsWith(`${APP_BASE}/muvekkil/`)) return 'Yeni dosya'
   if (p.includes('/dosya/') && p.startsWith(`${APP_BASE}/muvekkil/`)) return 'Dosya detayı'
@@ -58,6 +59,7 @@ export function DashboardShell(): ReactElement {
   const loc = useLocation()
   const navigate = useNavigate()
   const [onayAcik, setOnayAcik] = useState(false)
+  const onayBackdropClose = useSafeBackdropClose(() => setOnayAcik(false))
   const navItems = sidebarNavForRole(session?.user.role)
 
   const summaryQuery = useQuery({
@@ -123,11 +125,13 @@ export function DashboardShell(): ReactElement {
             <p className="truncate text-sm font-bold leading-tight text-ink">{session?.tenant.buroAdi}</p>
             <p className="truncate text-[11px] leading-tight text-ink-subtle">Kod: {session?.tenant.slug}</p>
           </div>
-          <div className="hidden min-w-0 md:block md:max-w-[260px]">
+          <div className="hidden min-w-0 md:block md:max-w-[280px]">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Kullanıcı</p>
             <p className="truncate text-sm font-bold leading-tight text-ink">
-              {session?.user.adSoyad}{' '}
-              <span className="font-normal text-ink-muted">({session?.user.kullaniciAdi})</span>
+              {session?.user.adSoyad}
+              {session?.tenant.musteriNo ? (
+                <span className="font-normal text-ink-muted"> · Müşteri No: {session.tenant.musteriNo}</span>
+              ) : null}
             </p>
           </div>
           <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
@@ -158,7 +162,7 @@ export function DashboardShell(): ReactElement {
           <div
             className="fixed inset-0 z-30 flex items-start justify-end bg-black/25 p-3 pt-16 backdrop-blur-[1px]"
             role="presentation"
-            onClick={() => setOnayAcik(false)}
+            {...onayBackdropClose}
           >
             <Card
               className="max-h-[min(80vh,520px)] w-full max-w-md overflow-hidden shadow-card"
@@ -258,7 +262,7 @@ export function DashboardShell(): ReactElement {
                 {lic.uyariSeviyesi === 'PASIF'
                   ? 'Büro erişimi pasif durumda. Woontegra ile iletişime geçin.'
                   : lic.lisansDurumu === 'SURESI_DOLDU' || lic.uyariSeviyesi === 'BITTI'
-                    ? 'Lisans süreniz sona erdi. Görüntüleme yapabilirsiniz; yeni kayıt ve düzenleme kısıtlanabilir. Yenileme için Woontegra ile iletişime geçin.'
+                    ? 'Lisans süreniz sona ermiştir. Yeni kayıt ve düzenleme işlemleri kapatılmıştır.'
                     : 'Lisans uyarısı: lütfen ayarlar sayfasından kontrol edin.'}
               </p>
               <Link

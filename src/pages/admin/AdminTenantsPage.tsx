@@ -92,7 +92,7 @@ export function AdminTenantsPage(): ReactElement {
               value={qInput}
               onChange={(e) => setQInput(e.target.value)}
               className="min-w-0 flex-1 lg:max-w-md"
-              placeholder="Büro, sahip, e-posta, lisans anahtarı…"
+              placeholder="Büro, sahip, e-posta, müşteri no, lisans anahtarı…"
             />
             <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-end lg:w-auto">
               <div className="min-w-[10rem] flex-1 sm:flex-initial">
@@ -171,6 +171,7 @@ export function AdminTenantsPage(): ReactElement {
                 <THead>
                   <TR className="bg-slate-50/80">
                     <TH>Büro adı</TH>
+                    <TH>Müşteri No</TH>
                     <TH>Sahip kullanıcı</TH>
                     <TH>E-posta</TH>
                     <TH>Telefon</TH>
@@ -198,6 +199,7 @@ export function AdminTenantsPage(): ReactElement {
                             {t.buroAdi}
                           </Link>
                         </TD>
+                        <TD className="whitespace-nowrap font-mono text-xs text-slate-700">{t.musteriNo ?? '—'}</TD>
                         <TD className="text-sm">
                           <div className="font-medium text-slate-900">{t.sahipAdSoyad ?? '—'}</div>
                           {t.sahipKullaniciAdi ? (

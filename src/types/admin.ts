@@ -38,6 +38,7 @@ export type AdminTenantListItem = {
   demoMu: boolean
   demoBitisTarihi: string | null
   lisansAnahtari: string | null
+  musteriNo: string | null
   sahipAdSoyad: string | null
   sahipKullaniciAdi: string | null
   kalanGun: number | null
@@ -143,6 +144,7 @@ export type AdminTenantDetailTenantDto = {
   yillikUcret: string | null
   lisansNotlari: string | null
   lisansAnahtari: string | null
+  musteriNo: string | null
   createdAt: string
   updatedAt: string
 }

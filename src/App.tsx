@@ -14,8 +14,10 @@ import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
 import { MuvekkilDetailPage } from './pages/MuvekkilDetailPage'
 import { OfisKasasiPage } from './pages/OfisKasasiPage'
+import { IcraTahsilatPage } from './pages/IcraTahsilatPage'
 import { KullanicilarPage } from './pages/KullanicilarPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
+import { PrimlerPage } from './pages/PrimlerPage'
+import { ReportsPage } from './pages/ReportsPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { YeniMuvekkilPage } from './pages/YeniMuvekkilPage'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
@@ -27,6 +29,7 @@ import { AdminSuperAdminsPage } from './pages/admin/AdminSuperAdminsPage'
 import { AdminTenantDetailPage } from './pages/admin/AdminTenantDetailPage'
 import { AdminCreateTenantPage } from './pages/admin/AdminCreateTenantPage'
 import { AdminTenantsPage } from './pages/admin/AdminTenantsPage'
+import { RoleRoute } from './components/auth/RoleRoute'
 
 export default function App(): ReactElement {
   return (
@@ -65,7 +68,23 @@ export default function App(): ReactElement {
         <Route path="muvekkil/:id/dosya/:dosyaId" element={<DosyaDetailPage />} />
         <Route path="muvekkil/:id" element={<MuvekkilDetailPage />} />
         <Route path="ofis-kasasi" element={<OfisKasasiPage />} />
-        <Route path="raporlar" element={<PlaceholderPage title="Raporlar" description="Hesap özeti ve ofis kasası raporları (yazdırma)." />} />
+        <Route
+          path="icra-tahsilat"
+          element={
+            <RoleRoute allow={['BURO_SAHIBI']}>
+              <IcraTahsilatPage />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="primler"
+          element={
+            <RoleRoute allow={['BURO_SAHIBI']}>
+              <PrimlerPage />
+            </RoleRoute>
+          }
+        />
+        <Route path="raporlar" element={<ReportsPage />} />
         <Route path="kullanicilar" element={<KullanicilarPage />} />
         <Route path="ayarlar/masaustu-ice-aktar" element={<MasaustuIceAktarPage />} />
         <Route path="ayarlar" element={<AyarlarPage />} />

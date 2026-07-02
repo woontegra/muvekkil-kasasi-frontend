@@ -182,6 +182,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
             {ownerName}
             {ownerEmail ? ` · ${ownerEmail}` : ''}
           </p>
+          <p className="text-xs font-semibold text-slate-500">Müşteri No: {t.musteriNo ?? '—'}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <Badge variant={t.aktifMi ? 'success' : 'warning'} className="!normal-case">
               {t.aktifMi ? 'Aktif' : 'Pasif'}
@@ -308,6 +309,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
           <CardBody>
             <dl>
               <InfoRow label="Büro adı" value={t.buroAdi} />
+              <InfoRow label="Müşteri No" value={<span className="font-mono text-xs">{t.musteriNo ?? '—'}</span>} />
               <InfoRow label="Sahip kullanıcı" value={ownerName} />
               <InfoRow label="E-posta" value={t.eposta ?? ownerEmail ?? '—'} />
               <InfoRow label="Telefon" value={t.telefon ?? '—'} />
