@@ -14,7 +14,7 @@ export type NavItem = {
 export const SIDEBAR_NAV: NavItem[] = [
   { to: APP_BASE, label: HOME_PAGE_LABEL },
   { to: `${APP_BASE}/ofis-kasasi`, label: 'Ofis Kasası' },
-  { to: `${APP_BASE}/icra-tahsilat`, label: 'İcra Tahsilat', roles: ['BURO_SAHIBI'] },
+  { to: `${APP_BASE}/icra-tahsilat`, label: 'İcra Tahsilat' },
   { to: `${APP_BASE}/primler`, label: 'Primler', roles: ['BURO_SAHIBI'] },
   { to: `${APP_BASE}/raporlar`, label: 'Raporlar' },
   {
@@ -25,9 +25,8 @@ export const SIDEBAR_NAV: NavItem[] = [
   { to: `${APP_BASE}/ayarlar`, label: 'Ayarlar' }
 ]
 
-/** İcra Tahsilat ve Primler yalnızca büro sahibine açıktır (menü + route guard). */
+/** Primler yalnızca büro sahibine açıktır (menü + route guard). İcra Tahsilat tüm rollere açıktır. */
 export const BURO_SAHIBI_ONLY_PATHS: string[] = [
-  `${APP_BASE}/icra-tahsilat`,
   `${APP_BASE}/primler`
 ]
 

@@ -68,14 +68,7 @@ export default function App(): ReactElement {
         <Route path="muvekkil/:id/dosya/:dosyaId" element={<DosyaDetailPage />} />
         <Route path="muvekkil/:id" element={<MuvekkilDetailPage />} />
         <Route path="ofis-kasasi" element={<OfisKasasiPage />} />
-        <Route
-          path="icra-tahsilat"
-          element={
-            <RoleRoute allow={['BURO_SAHIBI']}>
-              <IcraTahsilatPage />
-            </RoleRoute>
-          }
-        />
+        <Route path="icra-tahsilat" element={<IcraTahsilatPage />} />
         <Route
           path="primler"
           element={
