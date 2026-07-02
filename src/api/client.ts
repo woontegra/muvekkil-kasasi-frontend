@@ -42,6 +42,9 @@ export function friendlyLoginErrorMessage(err: unknown): string {
     if (err.status === 401) {
       return LOGIN_ERROR_MESSAGE
     }
+    if (err.status === 400 && err.code === 'AMBIGUOUS_EMAIL') {
+      return 'Bu e-posta birden fazla büroda kayıtlı. Lütfen size iletilen e-posta adresinizi kullanarak giriş yapın; sorun devam ederse destek ile iletişime geçin.'
+    }
     if (/endpoint|API/i.test(err.message)) {
       return LOGIN_ERROR_MESSAGE
     }

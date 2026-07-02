@@ -27,7 +27,7 @@ export function LoginPage(): ReactElement {
     setError(null)
     setSubmitting(true)
     try {
-      await login({ identifier: normalizeLoginIdentifier(identifier), sifre })
+      await login({ identifier: normalizeLoginIdentifier(identifier), sifre: sifre.trim() })
       navigate(APP_BASE, { replace: true })
     } catch (err) {
       setError(friendlyLoginErrorMessage(err))
@@ -67,9 +67,10 @@ export function LoginPage(): ReactElement {
 
       <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>
         <Input
-          label="Kullanıcı adı veya e-posta"
+          label="E-posta adresiniz"
           name="identifier"
           autoComplete="username"
+          type="email"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           onBlur={() => {
