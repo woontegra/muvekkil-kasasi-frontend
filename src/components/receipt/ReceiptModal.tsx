@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { Button } from '../ui'
+import './receiptDocument.css'
 
 type ReceiptModalProps = {
   title: string
@@ -25,21 +26,25 @@ export function ReceiptModal(props: ReceiptModalProps): ReactElement {
             left: 0 !important;
             top: 0 !important;
             width: 100% !important;
-            margin: 0 !important;
-            padding: 8mm !important;
+            margin: 0 auto !important;
+            padding: 10mm 12mm !important;
             background: white !important;
             color: #111 !important;
             box-shadow: none !important;
           }
+          #${printRootId} .receipt-print {
+            max-width: 190mm !important;
+            margin: 0 auto !important;
+          }
           .no-print { display: none !important; }
         }
-        @page { size: portrait; margin: 10mm; }
+        @page { size: A4 portrait; margin: 10mm; }
       `}</style>
       <div
         id={printRootId}
-        className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-white shadow-xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none"
+        className="max-h-[90vh] w-full max-w-[860px] overflow-y-auto rounded-lg border border-border bg-white shadow-xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
-        <div className="no-print flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+        <div className="no-print flex items-center justify-between gap-2 border-b border-border bg-surface-muted/40 px-4 py-3">
           <h2 className="text-sm font-bold text-ink">{title}</h2>
           <div className="flex gap-2">
             <Button type="button" size="sm" onClick={() => window.print()}>
@@ -50,7 +55,7 @@ export function ReceiptModal(props: ReceiptModalProps): ReactElement {
             </Button>
           </div>
         </div>
-        <div className="p-4 text-sm text-black print:p-0">{children}</div>
+        <div className="p-4 print:p-0">{children}</div>
       </div>
     </div>
   )

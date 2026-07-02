@@ -5,7 +5,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { createMuvekkil } from '../api/muvekkiller'
 import { invalidateDashboardSummary } from '../api/dashboard'
 import { ApiError } from '../api/client'
-import { APP_BASE } from '../config/appPaths'
+import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import type { CreateMuvekkilPayload, MuvekkilTurApi } from '../types/muvekkil'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, Select } from '../components/ui'
 
@@ -115,7 +115,7 @@ export function YeniMuvekkilPage(): ReactElement {
     <div className="w-full space-y-5">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Link to={APP_BASE} className="font-semibold text-primary hover:underline">
-          ← Ana Sayfa
+          ← {HOME_PAGE_LABEL}
         </Link>
         <span className="text-ink-subtle">/</span>
         <span className="font-medium text-ink">Yeni müvekkil</span>

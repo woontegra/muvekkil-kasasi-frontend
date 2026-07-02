@@ -48,6 +48,8 @@ export type KasaHareketiDto = {
   orijinalHareketId: string | null
   orijinalBelgeNo: string | null
   otomatikOnayMi: boolean
+  tahsilatiYapanUserId: string | null
+  tahsilatiYapanPersonelId: string | null
   createdById: string
   updatedById: string | null
   createdAt: string
@@ -91,6 +93,9 @@ export type CreateKasaHareketiPayload = {
   masrafiYapanKisi?: string | null
   /** İsteğe bağlı; eski formlar için. */
   odemeYontemi?: OdemeYontemiApi | null
+  /** Yalnızca AVANS_GIRISI — prim hesabı. */
+  tahsilatiYapanUserId?: string | null
+  tahsilatiYapanPersonelId?: string | null
 }
 
 export type CreateDuzeltmePayload = {

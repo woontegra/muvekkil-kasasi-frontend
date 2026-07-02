@@ -11,6 +11,8 @@ export const OFIS_KASA_GELIR_KATEGORILERI = [
   'Vekalet ücreti dışı gelir',
   'Danışmanlık geliri',
   'İade alınan ödeme',
+  'Karşı Taraf Vekalet Ücreti',
+  'İcra Vekalet Ücreti',
   'Diğer gelir'
 ] as const
 
@@ -52,6 +54,8 @@ export type OfisKasaHareketiDto = {
   orijinalHareketId: string | null
   orijinalBelgeNo: string | null
   otomatikOnayMi: boolean
+  tahsilatiYapanUserId: string | null
+  tahsilatiYapanPersonelId: string | null
   createdById: string
   updatedById: string | null
   createdAt: string
@@ -105,6 +109,9 @@ export type CreateOfisKasaHareketiPayload = {
   aciklama?: string | null
   tutar: number
   odemeYontemi: OfisKasaOdemeYontemiApi
+  /** Yalnızca GELIR — prim hesabı. */
+  tahsilatiYapanUserId?: string | null
+  tahsilatiYapanPersonelId?: string | null
 }
 
 export type CreateOfisKasaDuzeltmePayload = {

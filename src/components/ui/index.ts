@@ -1,3 +1,4 @@
+export { ModalScrim } from './ModalScrim'
 export { AlertBox } from './AlertBox'
 export { Badge } from './Badge'
 export { Button } from './Button'

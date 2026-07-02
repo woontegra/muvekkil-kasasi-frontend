@@ -5,7 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { createDosya } from '../api/dosyalar'
 import { invalidateDashboardSummary } from '../api/dashboard'
 import { ApiError } from '../api/client'
-import { APP_BASE } from '../config/appPaths'
+import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import type { DosyaDurumuApi, DosyaTuruApi } from '../types/dosya'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, Select } from '../components/ui'
 import { cn } from '../lib/cn'
@@ -50,7 +50,7 @@ export function YeniDosyaPage(): ReactElement {
     return (
       <div className="w-full">
         <Link to={APP_BASE} className="text-sm font-semibold text-primary hover:underline">
-          ← Ana Sayfa
+          ← {HOME_PAGE_LABEL}
         </Link>
       </div>
     )
@@ -95,7 +95,7 @@ export function YeniDosyaPage(): ReactElement {
     <div className="w-full space-y-5">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <Link to={APP_BASE} className="font-semibold text-primary hover:underline">
-          ← Ana Sayfa
+          ← {HOME_PAGE_LABEL}
         </Link>
         <span className="text-ink-subtle">/</span>
         <Link to={`${APP_BASE}/muvekkil/${muvekkilIdResolved}`} className="font-semibold text-primary hover:underline">

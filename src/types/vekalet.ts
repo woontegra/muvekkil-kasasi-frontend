@@ -61,6 +61,9 @@ export type VekaletTaksitOdemeDto = {
   makbuzNo: string
   smmKesildiMi: boolean
   kasaHareketId: string | null
+  ofisKasaHareketId: string | null
+  tahsilatiYapanUserId: string | null
+  tahsilatiYapanPersonelId: string | null
   createdById: string
   createdAt: string
   updatedAt: string
@@ -137,5 +140,21 @@ export type CreateVekaletTaksitOdemePayload = {
   odemeTarihi?: string
   odemeYontemi: import('./kasa').OdemeYontemiApi
   aciklama?: string | null
-  smmKesildiMi?: boolean
+  tahsilatiYapanUserId?: string | null
+  tahsilatiYapanPersonelId?: string | null
+}
+
+export type CreateVekaletPesinOdemePayload = CreateVekaletTaksitOdemePayload
+
+export type CreateVekaletTaksitPlaniPayload = {
+  taksitSayisi: number
+  ilkVadeTarihi: string
+  taksitTutari: number
+  aciklama?: string | null
+}
+
+export type CreateTekVekaletTaksitiPayload = {
+  vadeTarihi: string
+  tutar?: number
+  aciklama?: string | null
 }

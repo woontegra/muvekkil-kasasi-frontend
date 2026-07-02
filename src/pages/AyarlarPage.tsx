@@ -60,7 +60,7 @@ function licenseLeadText(lic: TenantLicenseCurrent, role?: AuthUserDto['role']):
     case 'KRITIK':
       return `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı. Yenileme için Woontegra ile iletişime geçin.`
     case 'BITTI':
-      return 'Lisans süreniz sona erdi. Yeni kayıt oluşturma işlemleri kısıtlanabilir.'
+      return 'Lisans süreniz sona ermiştir. Yeni kayıt ve düzenleme işlemleri kapatılmıştır.'
     case 'PASIF':
       return 'Büro erişimi pasif durumda.'
     case 'BILGI_EKSIK':

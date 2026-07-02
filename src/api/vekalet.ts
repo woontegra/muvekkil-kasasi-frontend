@@ -1,7 +1,10 @@
 import { apiFetch } from './client'
 import type {
+  CreateVekaletPesinOdemePayload,
   CreateVekaletTaksitOdemePayload,
   CreateVekaletTaksitPayload,
+  CreateVekaletTaksitPlaniPayload,
+  CreateTekVekaletTaksitiPayload,
   DosyaVekaletResponse,
   MarkTaksitPaidPayload,
   MarkTaksitSmmPayload,
@@ -94,7 +97,37 @@ export async function markTaksitSmmKesildi(
   })
 }
 
-export async function cancelVekaletTaksiti(id: string): Promise<{ ok: true; taksit: VekaletTaksitiDto }> {
+export async function createTekVekaletTaksiti(
+  dosyaId: string,
+  payload: CreateTekVekaletTaksitiPayload
+): Promise<{ ok: true; taksit: VekaletTaksitiDto }> {
+  return apiFetch(`/api/v1/dosyalar/${encodeURIComponent(dosyaId)}/vekalet/tek-taksit`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function createVekaletTaksitPlani(
+  dosyaId: string,
+  payload: CreateVekaletTaksitPlaniPayload
+): Promise<{ ok: true; taksitler: VekaletTaksitiDto[]; ozet: import('../types/vekalet').DosyaVekaletOzetDto }> {
+  return apiFetch(`/api/v1/dosyalar/${encodeURIComponent(dosyaId)}/vekalet/taksit-plani`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function createVekaletPesinOdeme(
+  dosyaId: string,
+  payload: CreateVekaletPesinOdemePayload
+): Promise<{ ok: true; odemeIds: string[]; ozet: import('../types/vekalet').DosyaVekaletOzetDto; taksitler: VekaletTaksitiDto[] }> {
+  return apiFetch(`/api/v1/dosyalar/${encodeURIComponent(dosyaId)}/vekalet/pesin-odeme`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function deleteVekaletTaksiti(id: string): Promise<{ ok: true }> {
   return apiFetch(`/api/v1/vekalet-taksitleri/${encodeURIComponent(id)}`, {
     method: 'DELETE'
   })

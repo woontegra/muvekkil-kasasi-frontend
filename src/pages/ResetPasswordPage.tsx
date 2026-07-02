@@ -1,8 +1,8 @@
 import type { FormEvent, ReactElement } from 'react'
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { APP_BASE } from '../config/appPaths'
-import { apiFetch, friendlyClientErrorMessage } from '../api/client'
+import { ApiError, apiFetch, friendlyClientErrorMessage } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
 import { PasswordGenerator } from '../components/auth/PasswordGenerator'
 import { AuthFormCard } from '../components/auth/AuthFormCard'
@@ -11,21 +11,39 @@ import { AlertBox, Button, Input } from '../components/ui'
 
 type ResetResponse = { ok: boolean; message: string }
 
+const RESET_LINK_INVALID_MSG =
+  'Şifre sıfırlama bağlantısı geçersiz veya süresi dolmuş. Lütfen yeniden şifre sıfırlama talebi oluşturun.'
+
+function readTokenFromUrl(): string {
+  if (typeof window === 'undefined') return ''
+  return new URLSearchParams(window.location.search).get('token')?.trim() ?? ''
+}
+
+function resetPasswordErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.code === 'PASSWORD_RESET_INVALID' || err.status === 400) {
+      return RESET_LINK_INVALID_MSG
+    }
+    return err.message
+  }
+  return friendlyClientErrorMessage(err, 'Şifre güncellenemedi.')
+}
+
 export function ResetPasswordPage(): ReactElement {
   const { session, loading } = useAuth()
   const navigate = useNavigate()
-  const [params] = useSearchParams()
-  const tokenFromUrl = params.get('token')?.trim() ?? ''
+  const [resetToken] = useState(readTokenFromUrl)
 
-  const [token, setToken] = useState(tokenFromUrl)
   const [yeniSifre, setYeniSifre] = useState('')
   const [yeniSifreTekrar, setYeniSifreTekrar] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    setToken(tokenFromUrl)
-  }, [tokenFromUrl])
+    if (resetToken && window.location.search.includes('token=')) {
+      navigate('/reset-password', { replace: true })
+    }
+  }, [resetToken, navigate])
 
   useEffect(() => {
     if (!loading && session) navigate(APP_BASE, { replace: true })
@@ -42,52 +60,63 @@ export function ResetPasswordPage(): ReactElement {
       setError('Şifreler eşleşmiyor.')
       return
     }
-    if (!token.trim()) {
-      setError('Geçersiz sıfırlama bağlantısı.')
-      return
-    }
     setSubmitting(true)
     try {
       await apiFetch<ResetResponse>('/api/v1/auth/reset-password', {
         method: 'POST',
         body: JSON.stringify({
-          token: token.trim(),
+          token: resetToken,
           yeniSifre,
           yeniSifreTekrar
         })
       })
       navigate('/login', { replace: true, state: { resetOk: true } })
     } catch (err) {
-      setError(friendlyClientErrorMessage(err, 'Şifre güncellenemedi.'))
+      setError(resetPasswordErrorMessage(err))
     } finally {
       setSubmitting(false)
     }
   }
 
   const bootstrapping = loading
+  const hasToken = resetToken.length > 0
+
+  const footer = (
+    <p className="text-center text-sm text-ink-muted">
+      <Link to="/login" className="font-semibold text-primary hover:underline">
+        Girişe dön
+      </Link>
+    </p>
+  )
+
+  if (!bootstrapping && !hasToken) {
+    return (
+      <AuthFormCard title="Yeni Şifre Belirle" subtitle="" icon="key" footer={footer}>
+        <AlertBox variant="warning" title="Bağlantı geçersiz">
+          Şifre sıfırlama bağlantısı geçersiz veya eksik.
+        </AlertBox>
+        <p className="text-sm leading-relaxed text-ink-muted">Lütfen yeniden şifre sıfırlama talebi oluşturun.</p>
+        <Link
+          to="/forgot-password"
+          className="inline-flex h-10 w-full items-center justify-center rounded-md border border-primary bg-primary px-4 text-[0.95rem] font-semibold text-primary-fg shadow-sm transition hover:bg-primary-hover"
+        >
+          Şifremi unuttum sayfasına git
+        </Link>
+      </AuthFormCard>
+    )
+  }
 
   return (
     <AuthFormCard
-      title="Yeni şifre belirle"
-      subtitle="E-postadaki bağlantıdaki anahtar otomatik doldurulur."
+      title="Yeni Şifre Belirle"
+      subtitle="Yeni şifrenizi belirleyerek hesabınıza tekrar erişebilirsiniz."
       icon="key"
       className="max-h-[min(88vh,860px)] overflow-y-auto"
-      footer={
-        <p className="text-center text-sm text-ink-muted">
-          <Link to="/login" className="font-semibold text-primary hover:underline">
-            Girişe dön
-          </Link>
-        </p>
-      }
+      footer={footer}
     >
       {bootstrapping ? (
         <AlertBox variant="info" title="Oturum kontrol ediliyor">
           Kaydınız doğrulanıyor; lütfen bekleyin.
-        </AlertBox>
-      ) : null}
-      {!tokenFromUrl ? (
-        <AlertBox variant="warning" title="Bağlantı eksik">
-          Geçerli bir sıfırlama bağlantısı kullanın. Geliştirme ortamında link backend konsolunda görünür.
         </AlertBox>
       ) : null}
 
@@ -98,15 +127,6 @@ export function ResetPasswordPage(): ReactElement {
       ) : null}
 
       <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>
-        <Input
-          label="Sıfırlama anahtarı (token)"
-          name="token"
-          autoComplete="off"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          disabled={submitting || bootstrapping}
-          className="font-mono text-xs"
-        />
         <Input
           label="Yeni şifre"
           name="yeniSifre"
@@ -132,7 +152,7 @@ export function ResetPasswordPage(): ReactElement {
             setYeniSifreTekrar(pwd)
           }}
         />
-        <Button type="submit" className="h-10 w-full text-[0.95rem]" disabled={submitting || bootstrapping || !token.trim()}>
+        <Button type="submit" className="h-10 w-full text-[0.95rem]" disabled={submitting || bootstrapping}>
           {submitting ? 'Kaydediliyor…' : 'Şifreyi güncelle'}
         </Button>
       </form>

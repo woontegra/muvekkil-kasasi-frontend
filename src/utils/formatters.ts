@@ -36,5 +36,5 @@ export function formatCurrencyTR(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(amount)
-  return `${s} TL`
+  return `${s} ₺`
 }

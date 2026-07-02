@@ -11,6 +11,7 @@ import {
   listOfisKasaHareketleri,
   rejectOfisKasaHareketi
 } from '../api/ofisKasasi'
+import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import { useAuth } from '../contexts/AuthContext'
 import {
   AlertBox,
@@ -532,6 +533,7 @@ function CreateOfisHareketModal(props: {
   const [aciklama, setAciklama] = useState('')
   const [tutar, setTutar] = useState('')
   const [odeme, setOdeme] = useState<OfisKasaOdemeYontemiApi>('NAKIT')
+  const [tahsilatiYapanPersonelId, setTahsilatiYapanPersonelId] = useState('')
   const [localErr, setLocalErr] = useState<string | null>(null)
 
   const kategoriList = islemTipi === 'GELIR' ? OFIS_KASA_GELIR_KATEGORILERI : OFIS_KASA_GIDER_KATEGORILERI
@@ -556,7 +558,8 @@ function CreateOfisHareketModal(props: {
       ozelKategoriAdi: digerGelir || digerGider ? ozel.trim() : null,
       aciklama: aciklama.trim() || null,
       tutar: n,
-      odemeYontemi: odeme
+      odemeYontemi: odeme,
+      ...(islemTipi === 'GELIR' ? { tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null } : {})
     })
   }
 
@@ -615,6 +618,9 @@ function CreateOfisHareketModal(props: {
             ))}
           </select>
         </div>
+        {islemTipi === 'GELIR' ? (
+          <TahsilatiYapanPersonelSelect value={tahsilatiYapanPersonelId} onChange={setTahsilatiYapanPersonelId} />
+        ) : null}
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
             Vazgeç

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { commitDesktopImport, previewDesktopImport } from '../api/desktopImport'
 import { ApiError } from '../api/client'
-import { APP_BASE } from '../config/appPaths'
+import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
 import { humanizeImportWarning } from '../lib/importWarnings'
 import {
@@ -164,7 +164,7 @@ export function MasaustuIceAktarPage(): ReactElement {
                 to={APP_BASE}
                 className="inline-flex h-9 items-center justify-center rounded-md border border-border-strong bg-white px-4 text-sm font-semibold text-ink shadow-sm hover:bg-surface-muted dark:bg-surface-elevated"
               >
-                Ana sayfaya git
+                {HOME_PAGE_LABEL}&apos;na git
               </Link>
               <Link
                 to={APP_BASE}

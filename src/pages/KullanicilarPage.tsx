@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, ReactElement, ReactNode } from 'react'
 import { useCallback, useMemo, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Link, Navigate } from 'react-router-dom'
 import { createUser, deactivateUser, listUsers, resetUserPassword, updateUser } from '../api/users'
 import { ApiError } from '../api/client'
-import { APP_BASE } from '../config/appPaths'
+import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
 import { generateStrongPassword } from '../lib/generatePassword'
+import { isValidKullaniciAdi, normalizeKullaniciAdi } from '../lib/normalizeKullaniciAdi'
 import { roleLabel } from '../lib/roleLabel'
 import {
   AlertBox,
@@ -17,6 +17,7 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  ModalScrim,
   PageHeader,
   Select,
   Table,
@@ -52,24 +53,6 @@ type AktifFilter = 'all' | 'active' | 'inactive'
 /** Kullanıcı oluştur / düzenle — ortalanmış geniş modal */
 const USER_MODAL_CARD =
   'mx-auto flex w-full max-w-[min(720px,calc(100vw-2rem))] max-h-[min(90dvh,calc(100dvh-2rem))] flex-col overflow-hidden shadow-card'
-
-function ModalScrim({ children, onClose }: { children: ReactNode; onClose: () => void }): ReactElement {
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[100] flex min-h-full items-center justify-center overflow-y-auto bg-black/35 p-4 backdrop-blur-[1px]"
-      role="presentation"
-      onClick={onClose}
-    >
-      <div
-        className="my-auto flex w-full min-w-0 max-w-full justify-center px-0 py-4 sm:px-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>,
-    document.body
-  )
-}
 
 type CreateUserFieldKey = 'adSoyad' | 'kullaniciAdi' | 'eposta' | 'sifre' | 'sifreTekrar'
 
@@ -118,15 +101,17 @@ function CreateUserModal({ onClose, onDone }: { onClose: () => void; onDone: () 
   )
 
   const mu = useMutation({
-    mutationFn: () =>
-      createUser({
+    mutationFn: () => {
+      const normalizedKullaniciAdi = normalizeKullaniciAdi(kullaniciAdi)
+      return createUser({
         adSoyad: adSoyad.trim(),
-        kullaniciAdi: kullaniciAdi.trim().toLowerCase(),
+        kullaniciAdi: normalizedKullaniciAdi,
         eposta: eposta.trim() ? eposta.trim().toLowerCase() : null,
         telefon: telefon.trim() || null,
         rol,
         sifre
-      }),
+      })
+    },
     onSuccess: () => {
       setApiError(null)
       setFieldErrors({})
@@ -144,10 +129,11 @@ function CreateUserModal({ onClose, onDone }: { onClose: () => void; onDone: () 
     if (adSoyad.trim().length < 2) {
       errs.adSoyad = 'En az 2 karakter girin.'
     }
-    if (kullaniciAdi.trim().length < 3) {
-      errs.kullaniciAdi = 'En az 3 karakter girin.'
-    } else if (!/^[a-z0-9._-]+$/.test(kullaniciAdi.trim())) {
-      errs.kullaniciAdi = 'Yalnızca küçük harf, rakam, . _ - kullanın.'
+    const normalizedKullaniciAdi = normalizeKullaniciAdi(kullaniciAdi)
+    if (!normalizedKullaniciAdi) {
+      errs.kullaniciAdi = 'Kullanıcı adı girin.'
+    } else if (!isValidKullaniciAdi(normalizedKullaniciAdi)) {
+      errs.kullaniciAdi = 'Kullanıcı adı en az 3 karakter olmalıdır.'
     }
     if (!isValidOptionalEmail(eposta)) {
       errs.eposta = 'Geçerli bir e-posta girin veya alanı boş bırakın.'
@@ -205,9 +191,10 @@ function CreateUserModal({ onClose, onDone }: { onClose: () => void; onDone: () 
                 <Input
                   label="Kullanıcı adı"
                   value={kullaniciAdi}
-                  onChange={(e) => patchField('kullaniciAdi', setKullaniciAdi, e.target.value.toLowerCase())}
+                  onChange={(e) => patchField('kullaniciAdi', setKullaniciAdi, normalizeKullaniciAdi(e.target.value))}
+                  onBlur={() => setKullaniciAdi((v) => normalizeKullaniciAdi(v))}
                   autoComplete="off"
-                  hint="Küçük harf, rakam, nokta, alt çizgi, tire."
+                  hint="Kullanıcı adı giriş için kullanılır. Türkçe karakterler otomatik dönüştürülür. Örnek: Balım48 → balim48"
                   error={fieldErrors.kullaniciAdi}
                 />
               </div>
@@ -690,7 +677,7 @@ export function KullanicilarPage(): ReactElement {
           Bu sayfayı görüntülemek için yetkiniz yok. Yalnızca büro sahibi ve avukat/yönetici rolleri kullanıcı listesine erişebilir.
         </AlertBox>
         <Link to={APP_BASE} className="text-sm font-semibold text-primary hover:underline">
-          Ana sayfaya dön
+          {HOME_PAGE_LABEL}&apos;na dön
         </Link>
       </div>
     )

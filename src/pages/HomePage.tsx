@@ -2,13 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, ReactElement } from 'react'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { getDashboardSummary, invalidateDashboardSummary } from '../api/dashboard'
+import { getDashboardSummary, getTaksitUyarilari, invalidateDashboardSummary, TAKSIT_UYARILARI_QUERY_KEY } from '../api/dashboard'
 import { apiFetch } from '../api/client'
 import { listMuvekkiller } from '../api/muvekkiller'
 import { listSmmBekleyenler, SMM_BEKLEYEN_QUERY_KEY } from '../api/smm'
 import { markOdemeSmmKesildi } from '../api/vekalet'
 import { SmmBekleyenHomePanel } from '../components/dashboard/SmmBekleyenHomePanel'
-import { APP_BASE } from '../config/appPaths'
+import { TaksitUyarilariSection } from '../components/dashboard/TaksitUyarilariSection'
+import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { cn } from '../lib/cn'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, EmptyState, Input, StatCard, Table, TBody, TD, TH, THead, TR } from '../components/ui'
 import type { MuvekkilDto } from '../types/muvekkil'
@@ -43,6 +44,13 @@ export function HomePage(): ReactElement {
   const dashboardQuery = useQuery({
     queryKey: ['dashboard-summary'],
     queryFn: getDashboardSummary,
+    staleTime: 30_000,
+    retry: 1
+  })
+
+  const taksitUyariQuery = useQuery({
+    queryKey: TAKSIT_UYARILARI_QUERY_KEY,
+    queryFn: getTaksitUyarilari,
     staleTime: 30_000,
     retry: 1
   })
@@ -117,7 +125,7 @@ export function HomePage(): ReactElement {
   return (
     <div className="w-full space-y-5">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-ink md:text-2xl">Ana Sayfa</h1>
+        <h1 className="text-xl font-bold tracking-tight text-ink md:text-2xl">{HOME_PAGE_LABEL}</h1>
         <p className="mt-1 text-sm text-ink-muted">
           Programın giriş kapısı: müvekkil arayın veya listeden seçin. Dosya kasası ve taksit işlemleri dosya detayındadır.
         </p>
@@ -354,6 +362,13 @@ export function HomePage(): ReactElement {
           </CardBody>
         </Card>
       ) : null}
+
+      <TaksitUyarilariSection
+        loading={taksitUyariQuery.isPending && !taksitUyariQuery.data}
+        error={taksitUyariQuery.isError}
+        data={taksitUyariQuery.data}
+        onOpenSmm={openSmmPanel}
+      />
     </div>
   )
 }
