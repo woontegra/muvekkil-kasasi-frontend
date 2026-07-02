@@ -69,10 +69,10 @@ export function LoginPage(): ReactElement {
 
       <form className="space-y-3" onSubmit={(e) => void onSubmit(e)}>
         <Input
-          label="E-posta adresiniz"
+          label="E-posta veya kullanıcı adı"
           name="identifier"
           autoComplete="username"
-          type="email"
+          type="text"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
           onBlur={() => {
