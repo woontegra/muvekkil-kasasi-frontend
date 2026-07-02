@@ -14,6 +14,7 @@ export function setAdminAccessToken(token: string | null): void {
 }
 
 import { joinApiUrl } from './apiBase'
+import { friendlyClientErrorMessage } from './client'
 
 const PUBLIC_ADMIN_PATHS = new Set(['/api/v1/admin/auth/login', '/api/v1/admin/auth/logout'])
 
@@ -51,7 +52,19 @@ export async function adminApiFetch<T>(path: string, init?: RequestInit): Promis
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const res = await fetch(joinApiUrl(path), { ...init, headers })
+  let res: Response
+  try {
+    res = await fetch(joinApiUrl(path), { ...init, headers })
+  } catch (err) {
+    throw new AdminApiError(
+      friendlyClientErrorMessage(
+        err,
+        'Sunucuya ulaşılamadı. Lütfen bağlantınızı kontrol edin veya daha sonra tekrar deneyin.'
+      ),
+      0,
+      'NETWORK_ERROR'
+    )
+  }
   if (!res.ok) {
     let message = res.statusText
     let code: string | undefined

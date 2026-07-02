@@ -1,8 +1,13 @@
-/** API kök URL — VITE_API_BASE_URL öncelikli, yoksa VITE_API_URL. Boşsa Vite proxy kullanılır. */
+/** API kök URL — VITE_API_BASE_URL öncelikli, yoksa VITE_API_URL. Boşsa same-origin / Vite proxy kullanılır. */
 function isLocalFrontend(): boolean {
   if (typeof window === 'undefined') return false
   const host = window.location.hostname
   return host === 'localhost' || host === '127.0.0.1'
+}
+
+function isPublicHostedFrontend(): boolean {
+  if (typeof window === 'undefined') return false
+  return !isLocalFrontend()
 }
 
 function readConfiguredApiUrl(): string {
@@ -14,20 +19,21 @@ function readConfiguredApiUrl(): string {
   return ''
 }
 
-/** Canlı build'de VITE_API_BASE_URL unutulursa istekler SPA origin'e gider ve 404 olur. */
-const PRODUCTION_API_FALLBACK = 'https://muvekkil-kasasi-backend-production.up.railway.app'
-
 export function getApiBaseUrl(): string {
+  const forceRemote = import.meta.env.VITE_FORCE_REMOTE_API === 'true'
   const configured = readConfiguredApiUrl()
 
   // Yerel geliştirme: localhost arayüzü → Vite proxy (VITE_DEV_API_PROXY / backend PORT)
-  // Uzak API testi için: VITE_FORCE_REMOTE_API=true
-  if (import.meta.env.DEV && isLocalFrontend() && import.meta.env.VITE_FORCE_REMOTE_API !== 'true') {
+  if (import.meta.env.DEV && isLocalFrontend() && !forceRemote) {
+    return ''
+  }
+
+  // Canlı frontend (muvekkil.woontegra.com): aynı origin /api → Vercel proxy (Railway DNS sorunlarını önler)
+  if (import.meta.env.PROD && isPublicHostedFrontend() && !forceRemote) {
     return ''
   }
 
   if (configured) return configured
-  if (import.meta.env.PROD) return PRODUCTION_API_FALLBACK
   return ''
 }
 
@@ -39,7 +45,9 @@ export function joinApiUrl(path: string): string {
 
 export function apiBaseLabel(): string {
   const base = getApiBaseUrl()
-  return base || '(vite proxy → yerel backend)'
+  if (base) return base
+  if (import.meta.env.PROD) return '(same-origin /api proxy)'
+  return '(vite proxy → yerel backend)'
 }
 
 let localRemoteWarned = false
