@@ -11,18 +11,21 @@ import { SmmBekleyenHomePanel } from '../components/dashboard/SmmBekleyenHomePan
 import { TaksitUyarilariSection } from '../components/dashboard/TaksitUyarilariSection'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { cn } from '../lib/cn'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, EmptyState, Input, StatCard, Table, TBody, TD, TH, THead, TR } from '../components/ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, EmptyState, Input, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
 import type { MuvekkilDto } from '../types/muvekkil'
 import type { SmmBekleyenDto } from '../types/smm'
 import { formatCurrencyTR } from '../utils/formatters'
 
 type HealthResponse = { ok: boolean; db?: string }
 
+const MUVEKKIL_PAGE_SIZE = 10
+
 export function HomePage(): ReactElement {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
+  const [page, setPage] = useState(1)
   const [smmPanelOpen, setSmmPanelOpen] = useState(false)
   const [smmModalRow, setSmmModalRow] = useState<SmmBekleyenDto | null>(null)
 
@@ -31,14 +34,18 @@ export function HomePage(): ReactElement {
     return () => window.clearTimeout(t)
   }, [q])
 
+  useEffect(() => {
+    setPage(1)
+  }, [debouncedQ])
+
   const health = useQuery({
     queryKey: ['health'],
     queryFn: () => apiFetch<HealthResponse>('/health')
   })
 
   const muvekkilQuery = useQuery({
-    queryKey: ['muvekkiller', debouncedQ],
-    queryFn: () => listMuvekkiller({ q: debouncedQ || undefined, page: 1, limit: 100 })
+    queryKey: ['muvekkiller', debouncedQ, page],
+    queryFn: () => listMuvekkiller({ q: debouncedQ || undefined, page, limit: MUVEKKIL_PAGE_SIZE })
   })
 
   const dashboardQuery = useQuery({
@@ -96,6 +103,8 @@ export function HomePage(): ReactElement {
     uyariParcalari.push({ key: 'onay', text: 'Onay bekleyen kasa kaydı var' })
   }
   const rows: MuvekkilDto[] = muvekkilQuery.data?.items ?? []
+  const total = muvekkilQuery.data?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / MUVEKKIL_PAGE_SIZE))
   const sonBakilan: MuvekkilDto[] = rows.slice(0, 2)
 
   const statVal = (n: number | undefined, loading: boolean): string => {
@@ -245,7 +254,7 @@ export function HomePage(): ReactElement {
             <p className="mt-1 text-xs text-ink-muted">
               {muvekkilQuery.isSuccess ? (
                 <>
-                  Kayıtlı <strong>{muvekkilQuery.data.total}</strong> müvekkil (sayfa başına {muvekkilQuery.data.limit}). Satıra veya
+                  Kayıtlı <strong>{total}</strong> müvekkil · sayfa başına {MUVEKKIL_PAGE_SIZE}. Satıra veya
                   &quot;Detay&quot;a tıklayınca içeri girilir.
                 </>
               ) : (
@@ -285,60 +294,81 @@ export function HomePage(): ReactElement {
               <EmptyState title="Müvekkil yok" description="Arama kriterinize uygun kayıt bulunamadı veya henüz müvekkil eklenmedi." />
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Görünen ad</TH>
-                    <TH>Tür</TH>
-                    <TH>Telefon</TH>
-                    <TH>E-posta</TH>
-                    <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {rows.map((m) => {
-                    const detailTo = `${APP_BASE}/muvekkil/${m.id}`
-                    return (
-                      <TR
-                        key={m.id}
-                        interactive
-                        onClick={() => navigate(detailTo)}
-                      >
-                        <TD>
-                          <span className="font-semibold text-primary decoration-primary/35 underline-offset-2 transition group-hover/row:text-primary group-hover/row:underline">
-                            {m.gorunenAd}
-                          </span>
-                        </TD>
-                        <TD>
-                          {m.tur === 'TUZEL' ? (
-                            <Badge variant="accent" className="!normal-case">
-                              Tüzel
-                            </Badge>
-                          ) : (
-                            <Badge variant="primary" className="!normal-case">
-                              Gerçek
-                            </Badge>
-                          )}
-                        </TD>
-                        <TD className="text-ink-muted">{m.telefon ?? '—'}</TD>
-                        <TD className="text-ink-muted">{m.eposta ?? '—'}</TD>
-                        <TD className="text-right">
-                          <Link
-                            to={detailTo}
-                            onClick={(e) => e.stopPropagation()}
-                            className="inline-flex rounded-md px-2 py-1 text-xs font-semibold text-primary underline-offset-2 outline-none ring-primary/25 hover:bg-primary-soft/50 hover:underline focus-visible:ring-2"
-                            aria-label={`${m.gorunenAd}: müvekkil detayı`}
-                          >
-                            Detay
-                          </Link>
-                        </TD>
-                      </TR>
-                    )
-                  })}
-                </TBody>
-              </Table>
-            </div>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Görünen ad</TH>
+                      <TH>Tür</TH>
+                      <TH>Telefon</TH>
+                      <TH>E-posta</TH>
+                      <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {rows.map((m) => {
+                      const detailTo = `${APP_BASE}/muvekkil/${m.id}`
+                      return (
+                        <TR
+                          key={m.id}
+                          interactive
+                          onClick={() => navigate(detailTo)}
+                        >
+                          <TD>
+                            <span className="font-semibold text-primary decoration-primary/35 underline-offset-2 transition group-hover/row:text-primary group-hover/row:underline">
+                              {m.gorunenAd}
+                            </span>
+                          </TD>
+                          <TD>
+                            {m.tur === 'TUZEL' ? (
+                              <Badge variant="accent" className="!normal-case">
+                                Tüzel
+                              </Badge>
+                            ) : (
+                              <Badge variant="primary" className="!normal-case">
+                                Gerçek
+                              </Badge>
+                            )}
+                          </TD>
+                          <TD className="text-ink-muted">{m.telefon ?? '—'}</TD>
+                          <TD className="text-ink-muted">{m.eposta ?? '—'}</TD>
+                          <TD className="text-right">
+                            <Link
+                              to={detailTo}
+                              onClick={(e) => e.stopPropagation()}
+                              className={tableActionLinkAccentClass}
+                              aria-label={`${m.gorunenAd}: müvekkil detayı`}
+                            >
+                              Detay
+                            </Link>
+                          </TD>
+                        </TR>
+                      )
+                    })}
+                  </TBody>
+                </Table>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3 text-sm text-ink-muted">
+                <span>
+                  Toplam <strong>{total}</strong> kayıt · sayfa {page}/{totalPages}
+                </span>
+                <div className="flex gap-2">
+                  <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                    Önceki
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={page >= totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Sonraki
+                  </Button>
+                </div>
+              </div>
+            </>
           )}
         </CardBody>
       </Card>

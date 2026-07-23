@@ -364,8 +364,195 @@
   .receipt-section__row--highlight .receipt-section__value,
   .receipt-data-table thead tr,
   .receipt-data-table tbody tr:nth-child(even),
-  .receipt-signature {
+  .receipt-signature,
+  .receipt-print__sonuc,
+  .receipt-print__sign-box {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+}
+
+/* —— Hesap özeti: A4 tek sayfa kompakt düzen —— */
+.receipt-print--compact {
+  font-size: 9pt;
+  line-height: 1.3;
+}
+
+.receipt-print--compact .receipt-print__frame {
+  padding: 8px 10px 6px;
+}
+
+.receipt-print--compact .receipt-print__header {
+  gap: 10px;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+}
+
+.receipt-print--compact .receipt-print__logo {
+  max-height: 32px;
+  margin-bottom: 4px;
+}
+
+.receipt-print--compact .receipt-print__buro {
+  font-size: 12pt;
+}
+
+.receipt-print--compact .receipt-print__contact {
+  margin-top: 3px;
+}
+
+.receipt-print--compact .receipt-print__contact-line {
+  font-size: 7.5pt;
+  margin-bottom: 1px;
+  line-height: 1.25;
+}
+
+.receipt-print--compact .receipt-print__meta-box {
+  max-width: 200px;
+}
+
+.receipt-print--compact .receipt-print__meta-table {
+  font-size: 7.5pt;
+}
+
+.receipt-print--compact .receipt-print__meta-label,
+.receipt-print--compact .receipt-print__meta-value {
+  padding: 3px 6px;
+}
+
+.receipt-print--compact .receipt-print__meta-label {
+  font-size: 6.5pt;
+}
+
+.receipt-print--compact .receipt-print__body {
+  gap: 6px;
+}
+
+.receipt-print--compact .receipt-section__head {
+  padding: 3px 6px;
+  font-size: 7pt;
+  letter-spacing: 0.06em;
+}
+
+.receipt-print--compact .receipt-section__table {
+  font-size: 8pt;
+}
+
+.receipt-print--compact .receipt-section__label,
+.receipt-print--compact .receipt-section__value {
+  padding: 3px 6px;
+}
+
+.receipt-print--compact .receipt-section__label {
+  width: 42%;
+}
+
+.receipt-print--compact .receipt-section__row--highlight .receipt-section__value {
+  font-size: 8.5pt;
+}
+
+.receipt-print--compact .receipt-data-table {
+  font-size: 7.5pt;
+}
+
+.receipt-print--compact .receipt-data-table th,
+.receipt-print--compact .receipt-data-table td {
+  padding: 2px 5px;
+}
+
+.receipt-print--compact .receipt-data-table th {
+  font-size: 6.5pt;
+}
+
+.receipt-print--compact .receipt-section__empty {
+  padding: 4px 6px;
+  font-size: 7.5pt;
+}
+
+.receipt-print--compact .receipt-print__note {
+  margin: 4px 0 0;
+  padding: 4px 6px;
+  font-size: 7pt;
+  line-height: 1.3;
+}
+
+.receipt-print--compact .receipt-print__footer {
+  margin-top: 6px;
+  padding-top: 4px;
+}
+
+.receipt-print--compact .receipt-print__footer-main {
+  font-size: 7pt;
+  gap: 1px;
+}
+
+.receipt-print__grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  align-items: start;
+}
+
+@media screen and (max-width: 640px) {
+  .receipt-print__grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  .receipt-print__sign-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.receipt-print__sonuc {
+  margin-top: 2px;
+  padding: 5px 8px 4px;
+  border: 1px solid #111;
+  background: #fafafa;
+}
+
+.receipt-print__sonuc-line {
+  margin: 0 0 3px;
+  font-size: 8.5pt;
+}
+
+.receipt-print__sonuc-line:last-child {
+  margin-bottom: 0;
+}
+
+.receipt-print__sign-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.receipt-print__sign-box {
+  border: 1px dashed #666;
+  padding: 5px 8px 6px;
+}
+
+.receipt-print__sign-lbl {
+  font-size: 7.5pt;
+  font-weight: 600;
+}
+
+.receipt-print__sign-line {
+  margin-top: 18px;
+  border-bottom: 1px solid #111;
+}
+
+.receipt-print__sign-sub {
+  margin-top: 2px;
+  font-size: 6.5pt;
+  color: #555;
+}
+
+@media print {
+  .receipt-print__grid-2,
+  .receipt-print__sonuc,
+  .receipt-print__sign-row,
+  .receipt-print--compact .receipt-section {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 }

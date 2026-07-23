@@ -146,12 +146,18 @@ export type CreateVekaletTaksitOdemePayload = {
 
 export type CreateVekaletPesinOdemePayload = CreateVekaletTaksitOdemePayload
 
-export type CreateVekaletTaksitPlaniPayload = {
-  taksitSayisi: number
-  ilkVadeTarihi: string
-  taksitTutari: number
-  aciklama?: string | null
-}
+export type CreateVekaletTaksitPlaniPayload =
+  | {
+      tip?: 'ESIT'
+      taksitSayisi: number
+      ilkVadeTarihi: string
+      taksitTutari: number
+      aciklama?: string | null
+    }
+  | {
+      tip: 'OZEL'
+      satirlar: { tutar: number; vadeTarihi: string; aciklama?: string | null }[]
+    }
 
 export type CreateTekVekaletTaksitiPayload = {
   vadeTarihi: string

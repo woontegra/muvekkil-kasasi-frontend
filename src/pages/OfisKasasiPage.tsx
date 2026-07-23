@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  MoneyInput,
   StatCard,
   Table,
   TableEmptyRow,
@@ -45,7 +46,7 @@ import {
   OFIS_KASA_GIDER_KATEGORILERI,
   type CreateOfisKasaHareketiPayload
 } from '../types/ofisKasasi'
-import { formatCurrencyTR, formatDateTR } from '../utils/formatters'
+import { formatCurrencyTR, formatDateTR, parseCurrencyInputTR, parsePosTutar } from '../utils/formatters'
 
 const ODEME_OPTIONS: { value: OfisKasaOdemeYontemiApi; label: string }[] = [
   { value: 'NAKIT', label: 'Nakit' },
@@ -546,8 +547,8 @@ function CreateOfisHareketModal(props: {
       setLocalErr('Diğer gelir/gider için özel kategori adı zorunludur.')
       return
     }
-    const n = Number(tutar.replace(',', '.'))
-    if (!Number.isFinite(n) || n <= 0) {
+    const n = parsePosTutar(tutar)
+    if (n == null) {
       setLocalErr('Tutar pozitif sayı olmalıdır.')
       return
     }
@@ -603,7 +604,7 @@ function CreateOfisHareketModal(props: {
           <Input label="Özel kategori adı" value={ozel} onChange={(e) => setOzel(e.target.value)} />
         ) : null}
         <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
-        <Input label="Tutar (TL)" value={tutar} onChange={(e) => setTutar(e.target.value)} placeholder="0,00" inputMode="decimal" />
+        <MoneyInput label="Tutar (TL)" value={tutar} onChange={setTutar} />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
           <select
@@ -677,8 +678,8 @@ function DuzeltOfisModal(props: {
 
   const submit = (): void => {
     setLocalErr(null)
-    const n = Number(tutar.replace(',', '.'))
-    if (!Number.isFinite(n) || n === 0) {
+    const n = parseCurrencyInputTR(tutar)
+    if (n == null || n === 0) {
       setLocalErr('Düzeltme tutarı sıfır olamaz; pozitif veya negatif girin.')
       return
     }
@@ -701,12 +702,12 @@ function DuzeltOfisModal(props: {
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
         <p className="text-xs text-ink-muted">Orijinal kayıt değişmez; yeni düzeltme satırı onay bekler.</p>
         <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
-        <Input
+        <MoneyInput
           label="Tutar (pozitif veya negatif)"
           value={tutar}
-          onChange={(e) => setTutar(e.target.value)}
-          placeholder="-100,00 veya 50"
-          inputMode="decimal"
+          onChange={setTutar}
+          allowNegative
+          placeholder="-100,00 veya 50,00"
         />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama</label>

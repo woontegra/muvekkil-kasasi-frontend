@@ -3,9 +3,10 @@ import type { ReactElement } from 'react'
 import { useState } from 'react'
 import { createPrimKurali, listPrimKurallari, pasifPrimKurali, updatePrimKurali } from '../../api/prim'
 import { listAktifPrimPersonel } from '../../api/primPersonel'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, ModalScrim } from '../ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, ModalScrim, MoneyInput } from '../ui'
 import { kapsamLabel, hesaplamaTipiLabel } from './primLabels'
 import type { CreatePrimKuralPayload, PrimHesaplamaTipiApi, PrimKuralDto, PrimKuralKapsamApi } from '../../types/prim'
+import { moneyInputFromAmount, parseCurrencyInputTR } from '../../utils/formatters'
 
 type Props = {
   onClose: () => void
@@ -117,7 +118,11 @@ function PrimKuralFormModal(props: {
   const [icra, setIcra] = useState(initial?.icraTahsilatMi ?? false)
   const [kademeler, setKademeler] = useState<KademeForm[]>(
     initial?.kademeler.length
-      ? initial.kademeler.map((k) => ({ minTutar: k.minTutar, maxTutar: k.maxTutar ?? '', oranYuzde: k.oranYuzde }))
+      ? initial.kademeler.map((k) => ({
+          minTutar: moneyInputFromAmount(k.minTutar) || '0,00',
+          maxTutar: k.maxTutar != null && k.maxTutar !== '' ? moneyInputFromAmount(k.maxTutar) : '',
+          oranYuzde: k.oranYuzde
+        }))
       : []
   )
   const [err, setErr] = useState<string | null>(null)
@@ -156,12 +161,12 @@ function PrimKuralFormModal(props: {
     }
     try {
       const parsed = kademeler.map((k, i) => {
-        const min = Number(k.minTutar.replace(',', '.'))
+        const min = parseCurrencyInputTR(k.minTutar)
         const maxRaw = k.maxTutar.trim()
-        const max = maxRaw ? Number(maxRaw.replace(',', '.')) : null
+        const max = maxRaw ? parseCurrencyInputTR(maxRaw) : null
         const oran = Number(k.oranYuzde.replace(',', '.'))
-        if (!Number.isFinite(min) || min < 0) throw new Error(`Kademe ${i + 1}: geçersiz başlangıç tutarı.`)
-        if (max != null && (!Number.isFinite(max) || max <= min)) {
+        if (min == null || min < 0) throw new Error(`Kademe ${i + 1}: geçersiz başlangıç tutarı.`)
+        if (maxRaw && (max == null || max <= min)) {
           throw new Error(`Kademe ${i + 1}: bitiş tutarı başlangıçtan büyük olmalıdır.`)
         }
         if (!Number.isFinite(oran) || oran < 0 || oran > 100) {
@@ -244,19 +249,19 @@ function PrimKuralFormModal(props: {
             {kademeler.map((k, idx) => (
               <div key={idx} className="grid grid-cols-12 gap-2 items-end">
                 <div className="col-span-3">
-                  <Input
+                  <MoneyInput
                     label="Başlangıç"
-                    placeholder="100000"
                     value={k.minTutar}
-                    onChange={(e) => setKademeler((rows) => rows.map((r, i) => (i === idx ? { ...r, minTutar: e.target.value } : r)))}
+                    allowZero
+                    onChange={(v) => setKademeler((rows) => rows.map((r, i) => (i === idx ? { ...r, minTutar: v } : r)))}
                   />
                 </div>
                 <div className="col-span-3">
-                  <Input
+                  <MoneyInput
                     label="Bitiş"
-                    placeholder="200000"
                     value={k.maxTutar}
-                    onChange={(e) => setKademeler((rows) => rows.map((r, i) => (i === idx ? { ...r, maxTutar: e.target.value } : r)))}
+                    allowZero
+                    onChange={(v) => setKademeler((rows) => rows.map((r, i) => (i === idx ? { ...r, maxTutar: v } : r)))}
                   />
                 </div>
                 <div className="col-span-3">

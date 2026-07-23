@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
   Input,
+  MoneyInput,
   ModalScrim,
   StatCard,
   Table,
@@ -47,7 +48,7 @@ import type {
 } from '../types/icraTahsilat'
 import { ICRA_ALACAK_DURUM_LABEL, ICRA_ALACAK_TURU_LABEL } from '../types/icraTahsilat'
 import type { OfisKasaOdemeYontemiApi } from '../types/ofisKasasi'
-import { formatCurrencyTR, formatDateTR } from '../utils/formatters'
+import { formatCurrencyTR, formatDateTR, moneyInputFromAmount, parsePosTutar } from '../utils/formatters'
 
 const ODEME_OPTIONS: { value: OfisKasaOdemeYontemiApi; label: string }[] = [
   { value: 'NAKIT', label: 'Nakit' },
@@ -334,8 +335,8 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
   function submit(e: FormEvent): void {
     e.preventDefault()
     setErr(null)
-    const toplam = Number(toplamTutar.replace(',', '.'))
-    if (!Number.isFinite(toplam) || toplam <= 0) {
+    const toplam = parsePosTutar(toplamTutar)
+    if (toplam == null) {
       setErr('Geçerli toplam tutar girin.')
       return
     }
@@ -344,8 +345,8 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
       return
     }
     if (pesinatMod) {
-      const pesinat = Number(pesinatTutar.replace(',', '.'))
-      if (!Number.isFinite(pesinat) || pesinat <= 0) {
+      const pesinat = parsePosTutar(pesinatTutar)
+      if (pesinat == null) {
         setErr('Peşinat tutarı zorunludur.')
         return
       }
@@ -367,7 +368,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
       toplamTutar: toplam,
       tahsilatTipi,
       pesinatVar: pesinatMod,
-      pesinatTutar: pesinatMod ? Number(pesinatTutar.replace(',', '.')) : 0,
+      pesinatTutar: pesinatMod ? parsePosTutar(pesinatTutar)! : 0,
       taksitSayisi: taksit,
       ilkVadeTarihi: pesinMod ? undefined : dateInputToIso(ilkVade),
       tahsilatTarihi: personelZorunlu ? dateInputToIso(tahsilatTarihi) : undefined,
@@ -423,7 +424,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
                 ))}
               </select>
             </div>
-            <Input label="Toplam alacak tutarı" value={toplamTutar} onChange={(e) => setToplamTutar(e.target.value)} placeholder="30000" />
+            <MoneyInput label="Toplam alacak tutarı" value={toplamTutar} onChange={setToplamTutar} />
             {!pesinMod ? (
               <>
                 <Input label="Taksit sayısı" type="number" min={1} value={taksitSayisi} onChange={(e) => setTaksitSayisi(e.target.value)} />
@@ -431,7 +432,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
               </>
             ) : null}
             {pesinatMod ? (
-              <Input label="Peşinat tutarı" value={pesinatTutar} onChange={(e) => setPesinatTutar(e.target.value)} />
+              <MoneyInput label="Peşinat tutarı" value={pesinatTutar} onChange={setPesinatTutar} />
             ) : null}
             {personelZorunlu ? (
               <Input label="Tahsilat tarihi" type="date" value={tahsilatTarihi} onChange={(e) => setTahsilatTarihi(e.target.value)} />
@@ -631,7 +632,7 @@ function TaksitSilBtn(props: { taksitId: string; onDone: () => void }): ReactEle
 function OdemeModal(props: { alacak: IcraTahsilatDetayDto; taksit: IcraTahsilatTaksitDto; onClose: () => void; onSaved: () => void }): ReactElement {
   const { session } = useAuth()
   const yonetici = isYonetici(session?.user.role)
-  const [tutar, setTutar] = useState(props.taksit.kalanTutar)
+  const [tutar, setTutar] = useState(moneyInputFromAmount(props.taksit.kalanTutar))
   const [tarih, setTarih] = useState(todayInputDate())
   const [odemeYontemi, setOdemeYontemi] = useState<OfisKasaOdemeYontemiApi>(props.alacak.varsayilanOdemeYontemi)
   const [personelId, setPersonelId] = useState('')
@@ -649,14 +650,17 @@ function OdemeModal(props: { alacak: IcraTahsilatDetayDto; taksit: IcraTahsilatT
   }, [bagliQ.data, personelId])
 
   const saveMu = useMutation({
-    mutationFn: () =>
-      createIcraTaksitOdeme(props.alacak.id, props.taksit.id, {
-        tutar: Number(tutar.replace(',', '.')),
+    mutationFn: () => {
+      const n = parsePosTutar(tutar)
+      if (n == null) throw new Error('Geçerli tutar girin.')
+      return createIcraTaksitOdeme(props.alacak.id, props.taksit.id, {
+        tutar: n,
         odemeTarihi: dateInputToIso(tarih),
         odemeYontemi,
         tahsilatiYapanPersonelId: personelId || null,
         aciklama: aciklama.trim() || null
-      }),
+      })
+    },
     onSuccess: props.onSaved,
     onError: (e) => setErr(e instanceof Error ? e.message : 'Hata')
   })
@@ -667,7 +671,7 @@ function OdemeModal(props: { alacak: IcraTahsilatDetayDto; taksit: IcraTahsilatT
         <CardHeader><CardTitle>Taksit ödemesi al — Taksit {props.taksit.taksitNo}</CardTitle></CardHeader>
         <CardBody className="space-y-3">
           {err ? <p className="text-sm text-danger">{err}</p> : null}
-          <Input label="Tutar" value={tutar} onChange={(e) => setTutar(e.target.value)} />
+          <MoneyInput label="Tutar" value={tutar} onChange={setTutar} maxValue={Number(props.taksit.kalanTutar)} />
           <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
@@ -692,17 +696,20 @@ function OdemeModal(props: { alacak: IcraTahsilatDetayDto; taksit: IcraTahsilatT
 
 function TaksitDuzenleModal(props: { taksit: IcraTahsilatTaksitDto; onClose: () => void; onSaved: () => void }): ReactElement {
   const [vade, setVade] = useState(props.taksit.vadeTarihi.slice(0, 10))
-  const [tutar, setTutar] = useState(props.taksit.tutar)
+  const [tutar, setTutar] = useState(moneyInputFromAmount(props.taksit.tutar))
   const [aciklama, setAciklama] = useState(props.taksit.aciklama ?? '')
   const [err, setErr] = useState<string | null>(null)
 
   const saveMu = useMutation({
-    mutationFn: () =>
-      patchIcraTaksit(props.taksit.id, {
+    mutationFn: () => {
+      const n = parsePosTutar(tutar)
+      if (n == null) throw new Error('Geçerli tutar girin.')
+      return patchIcraTaksit(props.taksit.id, {
         vadeTarihi: dateInputToIso(vade),
-        tutar: Number(tutar.replace(',', '.')),
+        tutar: n,
         aciklama: aciklama.trim() || null
-      }),
+      })
+    },
     onSuccess: props.onSaved,
     onError: (e) => setErr(e instanceof Error ? e.message : 'Hata')
   })
@@ -716,7 +723,7 @@ function TaksitDuzenleModal(props: { taksit: IcraTahsilatTaksitDto; onClose: () 
         <CardBody className="space-y-3">
           {err ? <p className="text-sm text-danger">{err}</p> : null}
           <Input label="Vade tarihi" type="date" value={vade} onChange={(e) => setVade(e.target.value)} />
-          <Input label="Taksit tutarı" value={tutar} onChange={(e) => setTutar(e.target.value)} disabled={tamOdendi} />
+          <MoneyInput label="Taksit tutarı" value={tutar} onChange={setTutar} disabled={tamOdendi} />
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama</label>
             <textarea className="min-h-[60px] w-full rounded-md border border-border px-3 py-2 text-sm" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />

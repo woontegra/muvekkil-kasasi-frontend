@@ -30,6 +30,7 @@ import {
   upsertDosyaVekalet
 } from '../api/vekalet'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
+import { VekaletTaksitPlaniModal } from '../components/vekalet/VekaletTaksitPlaniModal'
 import { ApiError, resolveOdemeApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
@@ -44,6 +45,7 @@ import {
   CardTitle,
   EmptyState,
   Input,
+  MoneyInput,
   Table,
   TableEmptyRow,
   TBody,
@@ -56,8 +58,13 @@ import {
 } from '../components/ui'
 import { cn } from '../lib/cn'
 import { resolveSmmBekleyenOdemeId, resolveTaksitRow } from '../lib/vekaletTaksitOzet'
-import { formatCurrencyTR, formatDateTR } from '../utils/formatters'
-import { MASRAF_TURU_OPTIONS, type KasaHareketiDto, type OdemeYontemiApi } from '../types/kasa'
+import { formatCurrencyTR, formatDateTR, moneyInputFromAmount, parseCurrencyInputTR, parsePosTutar } from '../utils/formatters'
+import {
+  DIGER_MASRAF_ETIKETI,
+  MASRAF_TURU_OPTIONS,
+  type KasaHareketiDto,
+  type OdemeYontemiApi
+} from '../types/kasa'
 import type {
   CreateVekaletPesinOdemePayload,
   CreateVekaletTaksitOdemePayload,
@@ -565,15 +572,9 @@ export function DosyaDetailPage(): ReactElement {
     return Math.max(0, Number(vekaletData.ozet.kalanVekalet))
   }, [vekaletData])
 
-  const acikTaksitVar = useMemo(() => {
-    if (!vekaletData?.taksitler.length) return false
-    return vekaletData.taksitler.some(
-      (t) => t.odemeDurumu !== 'IPTAL' && t.odemeDurumu !== 'ODENDI'
-    )
-  }, [vekaletData])
-
-  const taksitPlaniYapilabilir = kalanTaksitlendirme > 0.0001 && !acikTaksitVar
-  const tekTaksitYapilabilir = kalanTaksitlendirme > 0.0001 && kalanVekaletNum > 0.0001 && !acikTaksitVar
+  // Masaüstüyle aynı: açık taksit olsa bile kalan tutar > 0 ise yeni taksit / plan eklenebilir.
+  const taksitPlaniYapilabilir = kalanTaksitlendirme > 0.0001
+  const tekTaksitYapilabilir = kalanTaksitlendirme > 0.0001 && kalanVekaletNum > 0.0001
 
   const taksitToplamUyumsuz = useMemo(() => {
     if (!vekaletData?.vekaletUcreti) return false
@@ -1115,7 +1116,7 @@ export function DosyaDetailPage(): ReactElement {
                   <div className="flex flex-wrap items-center gap-2">
                     {canVekaletDuzenle ? (
                       <Button type="button" size="sm" onClick={() => setVekModal({ type: 'vekalet-upsert' })}>
-                        Düzenle
+                        {vekaletData.vekaletUcreti ? 'Düzenle' : 'Vekalet ücreti ekle'}
                       </Button>
                     ) : null}
                     {canTaksitOdendi && vekaletData.vekaletUcreti && Number(vekaletData.ozet.kalanVekalet) > 0 ? (
@@ -1130,21 +1131,19 @@ export function DosyaDetailPage(): ReactElement {
                         variant="outline"
                         disabled={!tekTaksitYapilabilir}
                         title={
-                          acikTaksitVar
-                            ? 'Açık taksitler var. Önce mevcut açık taksitleri silin veya düzenleyin.'
-                            : kalanTaksitlendirme <= 0
-                              ? 'Taksitlendirilebilir kalan tutar yok.'
+                          kalanTaksitlendirme <= 0
+                            ? 'Taksitlendirilebilir kalan tutar yok.'
+                            : kalanVekaletNum <= 0
+                              ? 'Kalan vekalet tutarı yok.'
                               : undefined
                         }
                         onClick={() => {
-                          if (acikTaksitVar) {
-                            window.alert(
-                              'Açık taksitler var. Tek taksit oluşturmak için önce mevcut açık taksitleri silin veya düzenleyin.'
-                            )
-                            return
-                          }
                           if (kalanTaksitlendirme <= 0) {
                             window.alert('Taksitlendirilebilir kalan tutar yok.')
+                            return
+                          }
+                          if (kalanVekaletNum <= 0) {
+                            window.alert('Kalan vekalet tutarı yok.')
                             return
                           }
                           setVekModal({ type: 'tek-taksit' })
@@ -1160,19 +1159,9 @@ export function DosyaDetailPage(): ReactElement {
                         variant="outline"
                         disabled={!taksitPlaniYapilabilir}
                         title={
-                          acikTaksitVar
-                            ? 'Açık taksitler var. Önce mevcut açık taksitleri silin veya düzenleyin.'
-                            : kalanTaksitlendirme <= 0
-                              ? 'Taksitlendirilebilir kalan tutar yok.'
-                              : undefined
+                          kalanTaksitlendirme <= 0 ? 'Taksitlendirilebilir kalan tutar yok.' : undefined
                         }
                         onClick={() => {
-                          if (acikTaksitVar) {
-                            window.alert(
-                              'Açık taksitler var. Taksit planı oluşturmak için önce mevcut açık taksitleri silin veya düzenleyin.'
-                            )
-                            return
-                          }
                           if (kalanTaksitlendirme <= 0) {
                             window.alert('Taksitlendirilebilir kalan tutar yok.')
                             return
@@ -1186,7 +1175,7 @@ export function DosyaDetailPage(): ReactElement {
                     {!vekaletData.vekaletUcreti ? (
                       <p className="text-xs text-ink-muted">
                         {canVekaletDuzenle
-                          ? 'Henüz vekalet ücreti tanımlanmadı. «Düzenle» ile ekleyebilirsiniz.'
+                          ? 'Henüz vekalet ücreti tanımlanmadı. «Vekalet ücreti ekle» ile başlayabilirsiniz.'
                           : 'Vekalet ücreti tanımlanmadı. Taksit eklemek için önce yönetici tanımlamalıdır.'}
                       </p>
                     ) : null}
@@ -1616,14 +1605,14 @@ function VekaletUpsertModal(props: {
   onSubmit: (body: UpsertVekaletPayload) => void
 }): ReactElement {
   const { onClose, loading, error, initialToplam, initialAciklama, onSubmit } = props
-  const [toplam, setToplam] = useState(initialToplam ? String(initialToplam).replace('.', ',') : '')
+  const [toplam, setToplam] = useState(moneyInputFromAmount(initialToplam))
   const [aciklama, setAciklama] = useState(initialAciklama ?? '')
   const [localErr, setLocalErr] = useState<string | null>(null)
 
   const submit = (): void => {
     setLocalErr(null)
-    const n = Number(String(toplam).replace(',', '.'))
-    if (!Number.isFinite(n) || n <= 0) {
+    const n = parsePosTutar(toplam)
+    if (n == null) {
       setLocalErr('Geçerli pozitif toplam tutar girin.')
       return
     }
@@ -1635,7 +1624,7 @@ function VekaletUpsertModal(props: {
       <div className="space-y-3">
         {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
-        <Input label="Toplam tutar (TL)" value={toplam} onChange={(e) => setToplam(e.target.value)} placeholder="0,00" inputMode="decimal" />
+        <MoneyInput label="Toplam tutar (TL)" value={toplam} onChange={setToplam} />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama</label>
           <textarea
@@ -1669,14 +1658,14 @@ function VekaletTekTaksitModal(props: {
   const { kalanTaksitlendirme, kalanVekalet, onClose, loading, error, onSubmit } = props
   const varsayilanTutar = Math.min(kalanTaksitlendirme, kalanVekalet)
   const [vade, setVade] = useState(todayInputDate())
-  const [tutar, setTutar] = useState(String(varsayilanTutar))
+  const [tutar, setTutar] = useState(moneyInputFromAmount(varsayilanTutar))
   const [aciklama, setAciklama] = useState('')
   const [localErr, setLocalErr] = useState<string | null>(null)
 
   const submit = (): void => {
     setLocalErr(null)
-    const amt = Number(String(tutar).replace(',', '.'))
-    if (!Number.isFinite(amt) || amt <= 0) {
+    const amt = parsePosTutar(tutar)
+    if (amt == null) {
       setLocalErr('Geçerli pozitif tutar girin.')
       return
     }
@@ -1703,94 +1692,17 @@ function VekaletTekTaksitModal(props: {
           Taksitlendirilebilir: <strong className="tabular-nums">{formatCurrencyTR(kalanTaksitlendirme)}</strong>
         </p>
         <Input label="Vade tarihi" type="date" value={vade} onChange={(e) => setVade(e.target.value)} />
-        <Input
+        <MoneyInput
           label="Taksit tutarı"
           value={tutar}
-          onChange={(e) => setTutar(e.target.value)}
-          placeholder="0,00"
-          inputMode="decimal"
+          onChange={setTutar}
+          maxValue={Math.min(kalanTaksitlendirme, kalanVekalet)}
           hint="Varsayılan: kalan vekalet tutarı."
         />
         <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Vazgeç</Button>
           <Button type="button" onClick={submit} disabled={loading}>{loading ? 'Kaydediliyor…' : 'Taksit oluştur'}</Button>
-        </div>
-      </div>
-    </ModalShell>
-  )
-}
-
-function VekaletTaksitPlaniModal(props: {
-  kalanTaksitlendirme: number
-  onClose: () => void
-  loading: boolean
-  error: string | null
-  onSubmit: (body: CreateVekaletTaksitPlaniPayload) => void
-}): ReactElement {
-  const { kalanTaksitlendirme, onClose, loading, error, onSubmit } = props
-  const [adet, setAdet] = useState('5')
-  const [ilkVade, setIlkVade] = useState(todayInputDate())
-  const [taksitTutari, setTaksitTutari] = useState('')
-  const [aciklama, setAciklama] = useState('')
-  const [localErr, setLocalErr] = useState<string | null>(null)
-
-  const planToplam = useMemo(() => {
-    const t = Number(String(taksitTutari).replace(',', '.'))
-    const a = Number(adet)
-    if (!Number.isFinite(t) || !Number.isFinite(a) || t <= 0 || a < 1) return null
-    return Math.round(t * a * 100) / 100
-  }, [taksitTutari, adet])
-
-  const submit = (): void => {
-    setLocalErr(null)
-    const a = Number(adet)
-    const t = Number(String(taksitTutari).replace(',', '.'))
-    if (!Number.isInteger(a) || a < 1) {
-      setLocalErr('Geçerli taksit sayısı girin.')
-      return
-    }
-    if (!Number.isFinite(t) || t <= 0) {
-      setLocalErr('Geçerli taksit tutarı girin.')
-      return
-    }
-    if (planToplam != null && planToplam > kalanTaksitlendirme + 0.005) {
-      setLocalErr('Plan toplamı kalan taksitlendirilebilir tutarı aşıyor.')
-      return
-    }
-    onSubmit({
-      taksitSayisi: a,
-      ilkVadeTarihi: `${ilkVade}T00:00:00.000Z`,
-      taksitTutari: t,
-      aciklama: aciklama.trim() || null
-    })
-  }
-
-  return (
-    <ModalShell title="Taksit planı oluştur" onClose={onClose} wide>
-      <div className="space-y-3">
-        {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
-        {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
-        <p className="text-xs text-ink-muted">
-          Kalan taksitlendirilebilir tutar: <strong className="tabular-nums">{formatCurrencyTR(kalanTaksitlendirme)}</strong>
-        </p>
-        <Input label="Taksit sayısı" value={adet} onChange={(e) => setAdet(e.target.value)} inputMode="numeric" />
-        <Input label="İlk vade tarihi" type="date" value={ilkVade} onChange={(e) => setIlkVade(e.target.value)} />
-        <p className="text-xs text-ink-muted">Taksit aralığı: aylık (vade tarihleri her ay ilerler)</p>
-        <Input
-          label="Taksit tutarı (aylık)"
-          value={taksitTutari}
-          onChange={(e) => setTaksitTutari(e.target.value)}
-          inputMode="decimal"
-          hint="Her taksit için sabit tutar. Toplam kalan taksitlendirilebilir tutarı aşamaz."
-        />
-        {planToplam != null ? (
-          <p className="text-xs text-ink-muted">Plan toplamı: <strong className="tabular-nums">{formatCurrencyTR(planToplam)}</strong></p>
-        ) : null}
-        <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Vazgeç</Button>
-          <Button type="button" onClick={submit} disabled={loading}>{loading ? 'Oluşturuluyor…' : 'Taksit planı oluştur'}</Button>
         </div>
       </div>
     </ModalShell>
@@ -1806,7 +1718,7 @@ function VekaletPesinOdemeModal(props: {
 }): ReactElement {
   const { kalanVekalet, onClose, loading, error, onSubmit } = props
   const kalanNum = Number(kalanVekalet)
-  const [tutar, setTutar] = useState(kalanVekalet)
+  const [tutar, setTutar] = useState(moneyInputFromAmount(kalanVekalet))
   const [odemeTarihi, setOdemeTarihi] = useState(todayInputDate())
   const [odeme, setOdeme] = useState<OdemeYontemiApi>('NAKIT')
   const [aciklama, setAciklama] = useState('')
@@ -1819,8 +1731,8 @@ function VekaletPesinOdemeModal(props: {
       setLocalErr('Tahsilatı yapan personel seçin.')
       return
     }
-    const n = Number(String(tutar).replace(',', '.'))
-    if (!Number.isFinite(n) || n <= 0) {
+    const n = parsePosTutar(tutar)
+    if (n == null) {
       setLocalErr('Tutar 0\'dan büyük olmalıdır.')
       return
     }
@@ -1845,7 +1757,7 @@ function VekaletPesinOdemeModal(props: {
         <p className="text-xs text-ink-muted">
           Kalan vekalet: <strong className="tabular-nums">{formatCurrencyTR(kalanNum)}</strong>
         </p>
-        <Input label="Tutar" value={tutar} onChange={(e) => setTutar(e.target.value)} inputMode="decimal" />
+        <MoneyInput label="Tutar" value={tutar} onChange={setTutar} maxValue={kalanNum} />
         <Input label="Tarih" type="date" value={odemeTarihi} onChange={(e) => setOdemeTarihi(e.target.value)} />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
@@ -1878,14 +1790,14 @@ function VekaletTaksitEditModal(props: {
   const odenen = Number(row.odenenToplam)
   const tamOdendi = taksit.odemeDurumu === 'ODENDI'
   const [vade, setVade] = useState(isoDateToInput(taksit.vadeTarihi))
-  const [tutar, setTutar] = useState(String(taksit.tutar))
+  const [tutar, setTutar] = useState(moneyInputFromAmount(taksit.tutar))
   const [aciklama, setAciklama] = useState(taksit.aciklama ?? '')
   const [localErr, setLocalErr] = useState<string | null>(null)
 
   const submit = (): void => {
     setLocalErr(null)
-    const amt = Number(String(tutar).replace(',', '.'))
-    if (!Number.isFinite(amt) || amt <= 0) {
+    const amt = parsePosTutar(tutar)
+    if (amt == null) {
       setLocalErr('Geçerli pozitif tutar girin.')
       return
     }
@@ -1913,7 +1825,7 @@ function VekaletTaksitEditModal(props: {
           <p className="text-xs text-ink-muted">Ödenen: <strong className="tabular-nums">{formatCurrencyTR(odenen)}</strong></p>
         ) : null}
         <Input label="Vade tarihi" type="date" value={vade} onChange={(e) => setVade(e.target.value)} />
-        <Input label="Taksit tutarı" value={tutar} onChange={(e) => setTutar(e.target.value)} inputMode="decimal" disabled={tamOdendi} />
+        <MoneyInput label="Taksit tutarı" value={tutar} onChange={setTutar} disabled={tamOdendi} />
         <Input label="Açıklama" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Vazgeç</Button>
@@ -1934,7 +1846,7 @@ function VekaletTaksitOdemeModal(props: {
   const { taksit, onClose, loading, error, onSubmit } = props
   const resolved = resolveTaksitRow(taksit)
   const kalanNum = Number(resolved.kalanTutar)
-  const [tutar, setTutar] = useState(resolved.kalanTutar)
+  const [tutar, setTutar] = useState(moneyInputFromAmount(resolved.kalanTutar))
   const [odemeTarihi, setOdemeTarihi] = useState(todayInputDate())
   const [odeme, setOdeme] = useState<OdemeYontemiApi>('NAKIT')
   const [aciklama, setAciklama] = useState('')
@@ -1947,13 +1859,8 @@ function VekaletTaksitOdemeModal(props: {
       setLocalErr('Tahsilatı yapan personel seçin.')
       return
     }
-    const trimmed = tutar.trim()
-    if (!trimmed) {
-      setLocalErr('Tutar boş olamaz.')
-      return
-    }
-    const n = Number(trimmed.replace(',', '.'))
-    if (!Number.isFinite(n) || n <= 0) {
+    const n = parsePosTutar(tutar)
+    if (n == null) {
       setLocalErr('Tutar 0\'dan büyük olmalıdır.')
       return
     }
@@ -1978,7 +1885,7 @@ function VekaletTaksitOdemeModal(props: {
         <p className="text-xs text-ink-muted">
           Taksit #{taksit.taksitNo} · Kalan: <strong className="tabular-nums">{formatCurrencyTR(kalanNum)}</strong>
         </p>
-        <Input label="Tutar" value={tutar} onChange={(e) => setTutar(e.target.value)} inputMode="decimal" />
+        <MoneyInput label="Tutar" value={tutar} onChange={setTutar} maxValue={kalanNum} />
         <Input label="Tarih" type="date" value={odemeTarihi} onChange={(e) => setOdemeTarihi(e.target.value)} />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
@@ -2085,8 +1992,8 @@ function AvansModal(props: {
 
   const submit = (): void => {
     setLocalErr(null)
-    const n = Number(tutar.replace(',', '.'))
-    if (!Number.isFinite(n) || n <= 0) {
+    const n = parsePosTutar(tutar)
+    if (n == null) {
       setLocalErr('Geçerli pozitif tutar girin.')
       return
     }
@@ -2106,7 +2013,7 @@ function AvansModal(props: {
         {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
         <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
-        <Input label="Tutar (TL)" value={tutar} onChange={(e) => setTutar(e.target.value)} placeholder="0,00" inputMode="decimal" />
+        <MoneyInput label="Tutar (TL)" value={tutar} onChange={setTutar} />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
           <select className={selectClassName()} value={odeme} onChange={(e) => setOdeme(e.target.value as OdemeYontemiApi)}>
@@ -2148,17 +2055,17 @@ function MasrafModal(props: {
   const [aciklama, setAciklama] = useState('')
   const [localErr, setLocalErr] = useState<string | null>(null)
 
-  const diger = masrafTuru === 'Diğer masraf'
+  const diger = masrafTuru === DIGER_MASRAF_ETIKETI
 
   const submit = (): void => {
     setLocalErr(null)
-    const n = Number(tutar.replace(',', '.'))
-    if (!Number.isFinite(n) || n <= 0) {
+    const n = parsePosTutar(tutar)
+    if (n == null) {
       setLocalErr('Geçerli pozitif tutar girin.')
       return
     }
     if (diger && ozelMasrafAdi.trim().length < 2) {
-      setLocalErr('Diğer masraf için özel ad zorunludur.')
+      setLocalErr('Diğer masraf adı zorunludur.')
       return
     }
     const myk = masrafiYapanKisi.trim()
@@ -2185,7 +2092,7 @@ function MasrafModal(props: {
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
         <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
         <div>
-          <label className="mb-1 block text-xs font-semibold text-ink-muted">Masraf türü</label>
+          <label className="mb-1 block text-xs font-semibold text-ink-muted">Masraf türü *</label>
           <select className={selectClassName()} value={masrafTuru} onChange={(e) => setMasrafTuru(e.target.value)}>
             {MASRAF_TURU_OPTIONS.map((o) => (
               <option key={o} value={o}>
@@ -2195,9 +2102,14 @@ function MasrafModal(props: {
           </select>
         </div>
         {diger ? (
-          <Input label="Özel masraf adı" value={ozelMasrafAdi} onChange={(e) => setOzelMasrafAdi(e.target.value)} required />
+          <Input
+            label="Diğer masraf adı *"
+            value={ozelMasrafAdi}
+            onChange={(e) => setOzelMasrafAdi(e.target.value)}
+            required
+          />
         ) : null}
-        <Input label="Tutar (TL)" value={tutar} onChange={(e) => setTutar(e.target.value)} placeholder="0,00" inputMode="decimal" />
+        <MoneyInput label="Tutar (TL)" value={tutar} onChange={setTutar} />
         <Input
           label="Masrafı yapan kişi"
           value={masrafiYapanKisi}
@@ -2279,8 +2191,8 @@ function DuzeltmeModal(props: {
 
   const submit = (): void => {
     setLocalErr(null)
-    const n = Number(tutar.replace(',', '.'))
-    if (!Number.isFinite(n) || n === 0) {
+    const n = parseCurrencyInputTR(tutar)
+    if (n == null || n === 0) {
       setLocalErr('Sıfır olmayan bir tutar girin (pozitif veya negatif).')
       return
     }
@@ -2300,12 +2212,13 @@ function DuzeltmeModal(props: {
         {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
         <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
-        <Input
+        <MoneyInput
           label="Tutar (pozitif veya negatif)"
           value={tutar}
-          onChange={(e) => setTutar(e.target.value)}
-          placeholder="-100 veya 100"
-          inputMode="decimal"
+          onChange={setTutar}
+          allowNegative
+          allowZero={false}
+          placeholder="-100,00 veya 100,00"
         />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama</label>

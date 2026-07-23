@@ -9,6 +9,7 @@ export type MuvekkilDto = {
   sirketUnvani: string | null
   telefon: string | null
   eposta: string | null
+  adres: string | null
   not: string | null
   yetkiliAdSoyad: string
   yetkiliTelefon: string
@@ -47,6 +48,7 @@ export type CreateMuvekkilPayload = {
   sirketUnvani: string | null
   telefon: string
   eposta: string | null
+  adres: string | null
   not: string | null
   yetkiliAdSoyad: string
   yetkiliTelefon: string

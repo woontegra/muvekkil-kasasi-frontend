@@ -1,24 +1,16 @@
-/** Masraf türleri — backend `MASRAF_TURU_VALUES` ile aynı sırada tutulmalıdır. */
+/** Masraf türleri — masaüstü `MASRAF_TURLERI` / backend `MASRAF_TURU_VALUES` ile aynı. */
 export const MASRAF_TURU_OPTIONS = [
-  'Gider avansı',
-  'Keşif harcı',
-  'Keşif avansı',
-  'Mahkeme harcı',
-  'Peşin harç',
-  'Karar harcı',
-  'İstinaf harcı',
-  'Temyiz harcı',
-  'Ofis içi kırtasiye',
-  'Yol masrafı',
-  'Yemek masrafı',
-  'Baro pulu',
-  'Vekalet harcı',
-  'İhtarname masrafı',
-  'Bilirkişi ücreti',
-  'Diğer masraf'
+  'Harç',
+  'Gider Avansı',
+  'Bilirkişi Ücreti',
+  'Keşif-İcra, Haciz vs.',
+  'Yol-Yemek vs.',
+  'Diğer'
 ] as const
 
 export type MasrafTuruOption = (typeof MASRAF_TURU_OPTIONS)[number]
+
+export const DIGER_MASRAF_ETIKETI = 'Diğer' as const
 
 export type KasaHareketTipiApi = 'AVANS_GIRISI' | 'MASRAF' | 'DUZELTME' | 'VEKALET_TAHSILAT'
 

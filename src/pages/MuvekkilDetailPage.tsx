@@ -8,7 +8,8 @@ import { ApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { dosyaDurumuBadgeVariant, dosyaDurumuLabel, dosyaTuruLabel, mahkemeIcraSatir } from '../lib/dosyaLabels'
 import { cn } from '../lib/cn'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR } from '../components/ui'
+import { MuvekkilEditModal } from '../components/muvekkil/MuvekkilEditModal'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
 
 function ProfileStatCard({ label, value, className }: { label: string; value: ReactNode; className?: string }): ReactElement {
   return (
@@ -29,6 +30,7 @@ export function MuvekkilDetailPage(): ReactElement {
   const navigate = useNavigate()
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
+  const [editOpen, setEditOpen] = useState(false)
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(q.trim()), 350)
@@ -129,14 +131,19 @@ export function MuvekkilDetailPage(): ReactElement {
               </p>
             ) : null}
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="shrink-0 shadow-sm"
-            onClick={() => navigate(`${APP_BASE}/muvekkil/${id}/dosyalar/yeni`)}
-          >
-            Yeni Dosya
-          </Button>
+          <div className="flex shrink-0 flex-wrap gap-2">
+            <Button type="button" variant="outline" className="shadow-sm" onClick={() => setEditOpen(true)}>
+              Düzenle
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="shadow-sm"
+              onClick={() => navigate(`${APP_BASE}/muvekkil/${id}/dosyalar/yeni`)}
+            >
+              Yeni Dosya
+            </Button>
+          </div>
         </CardHeader>
         <CardBody className="space-y-4 pt-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -151,6 +158,17 @@ export function MuvekkilDetailPage(): ReactElement {
                   '—'
                 ) : (
                   String(dosyaToplam ?? 0)
+                )
+              }
+            />
+            <ProfileStatCard
+              label="Adres"
+              className="sm:col-span-2 lg:col-span-3"
+              value={
+                m.adres?.trim() ? (
+                  <span className="whitespace-pre-wrap break-words font-medium text-ink">{m.adres.trim()}</span>
+                ) : (
+                  <span className="font-medium text-ink-muted">Adres girilmemiş</span>
                 )
               }
             />
@@ -248,7 +266,7 @@ export function MuvekkilDetailPage(): ReactElement {
                     <TH>Mahkeme / icra</TH>
                     <TH>Dosya no</TH>
                     <TH>Durum</TH>
-                    <TH>İşlem</TH>
+                    <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -261,10 +279,11 @@ export function MuvekkilDetailPage(): ReactElement {
                       <TD>
                         <Badge variant={dosyaDurumuBadgeVariant(d.durum)}>{dosyaDurumuLabel(d.durum)}</Badge>
                       </TD>
-                      <TD>
+                      <TD className="text-right">
                         <Link
                           to={`${APP_BASE}/muvekkil/${id}/dosya/${d.id}`}
-                          className="text-sm font-semibold text-primary hover:underline"
+                          className={tableActionLinkAccentClass}
+                          aria-label={`${d.konuBasligi}: dosyayı aç`}
                         >
                           Aç
                         </Link>
@@ -277,6 +296,8 @@ export function MuvekkilDetailPage(): ReactElement {
           )}
         </CardBody>
       </Card>
+
+      {editOpen ? <MuvekkilEditModal muvekkil={m} onClose={() => setEditOpen(false)} /> : null}
     </div>
   )
 }

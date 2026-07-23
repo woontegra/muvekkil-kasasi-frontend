@@ -19,6 +19,10 @@ type ReceiptPrintLayoutProps = {
   duzenlemeTarihi?: string | null
   printedAt: string
   showSignatures?: boolean
+  /** Hesap özeti gibi uzun belgeler için sıkı A4 düzeni. */
+  compact?: boolean
+  /** Üst meta kutusu varken tekrarlayan başlık bandını gizle. */
+  hideTitleBand?: boolean
   footnote?: string | null
   children: ReactNode
 }
@@ -40,6 +44,8 @@ export function ReceiptPrintLayout(props: ReceiptPrintLayoutProps): ReactElement
     duzenlemeTarihi,
     printedAt,
     showSignatures,
+    compact,
+    hideTitleBand,
     footnote,
     children
   } = props
@@ -49,7 +55,7 @@ export function ReceiptPrintLayout(props: ReceiptPrintLayoutProps): ReactElement
   const titleUpper = title.toUpperCase()
 
   return (
-    <div className="receipt-print">
+    <div className={compact ? 'receipt-print receipt-print--compact' : 'receipt-print'}>
       <div className="receipt-print__frame">
         <header className="receipt-print__header">
           <div className="receipt-print__header-left">
@@ -91,9 +97,11 @@ export function ReceiptPrintLayout(props: ReceiptPrintLayoutProps): ReactElement
           </div>
         </header>
 
-        <div className="receipt-print__title-band">
-          <h2 className="receipt-print__title">{titleUpper}</h2>
-        </div>
+        {hideTitleBand ? null : (
+          <div className="receipt-print__title-band">
+            <h2 className="receipt-print__title">{titleUpper}</h2>
+          </div>
+        )}
 
         <div className="receipt-print__body">{children}</div>
 

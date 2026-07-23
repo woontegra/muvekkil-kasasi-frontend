@@ -7,7 +7,7 @@ import { invalidateDashboardSummary } from '../api/dashboard'
 import { ApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import type { CreateMuvekkilPayload, MuvekkilTurApi } from '../types/muvekkil'
-import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, Select } from '../components/ui'
+import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, Select, Textarea } from '../components/ui'
 
 function isEmail(s: string): boolean {
   return /^\S+@\S+\.\S+$/.test(s.trim())
@@ -22,6 +22,7 @@ export function YeniMuvekkilPage(): ReactElement {
   const [gercekAdSoyad, setGercekAdSoyad] = useState('')
   const [gercekTelefon, setGercekTelefon] = useState('')
   const [gercekEposta, setGercekEposta] = useState('')
+  const [gercekAdres, setGercekAdres] = useState('')
   const [gercekNot, setGercekNot] = useState('')
 
   const [sirketUnvani, setSirketUnvani] = useState('')
@@ -32,6 +33,7 @@ export function YeniMuvekkilPage(): ReactElement {
   const [muhasebeAdSoyad, setMuhasebeAdSoyad] = useState('')
   const [muhasebeTelefon, setMuhasebeTelefon] = useState('')
   const [tuzelEposta, setTuzelEposta] = useState('')
+  const [tuzelAdres, setTuzelAdres] = useState('')
   const [tuzelNot, setTuzelNot] = useState('')
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -68,6 +70,7 @@ export function YeniMuvekkilPage(): ReactElement {
         sirketUnvani: null,
         telefon: gercekTelefon.trim(),
         eposta: gercekEposta.trim() || null,
+        adres: gercekAdres.trim() || null,
         not: gercekNot.trim() || null,
         yetkiliAdSoyad: '',
         yetkiliTelefon: '',
@@ -83,6 +86,7 @@ export function YeniMuvekkilPage(): ReactElement {
       sirketUnvani: sirketUnvani.trim(),
       telefon: yetkiliTelefon.trim(),
       eposta: tuzelEposta.trim() ? tuzelEposta.trim().toLowerCase() : null,
+      adres: tuzelAdres.trim() || null,
       not: tuzelNot.trim() || null,
       yetkiliAdSoyad: yetkiliAdSoyad.trim(),
       yetkiliTelefon: yetkiliTelefon.trim(),
@@ -173,6 +177,16 @@ export function YeniMuvekkilPage(): ReactElement {
                   className="sm:col-span-2"
                 />
                 <div className="sm:col-span-2">
+                  <Textarea
+                    label="Adres (isteğe bağlı)"
+                    name="gercekAdres"
+                    rows={2}
+                    value={gercekAdres}
+                    onChange={(ev) => setGercekAdres(ev.target.value)}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="sm:col-span-2">
                   <Input label="Not" name="gercekNot" value={gercekNot} onChange={(ev) => setGercekNot(ev.target.value)} disabled={submitting} />
                 </div>
               </div>
@@ -245,6 +259,16 @@ export function YeniMuvekkilPage(): ReactElement {
                     error={errors.tuzelEposta}
                     className="sm:col-span-2"
                   />
+                  <div className="sm:col-span-2">
+                    <Textarea
+                      label="Adres (isteğe bağlı)"
+                      name="tuzelAdres"
+                      rows={2}
+                      value={tuzelAdres}
+                      onChange={(ev) => setTuzelAdres(ev.target.value)}
+                      disabled={submitting}
+                    />
+                  </div>
                   <div className="sm:col-span-2">
                     <Input label="Not" name="tuzelNot" value={tuzelNot} onChange={(ev) => setTuzelNot(ev.target.value)} disabled={submitting} />
                   </div>
