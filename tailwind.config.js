@@ -61,6 +61,9 @@ export default {
       },
       animation: {
         authCardIn: 'authCardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both'
+      },
+      transitionTimingFunction: {
+        premium: 'cubic-bezier(0.22, 1, 0.36, 1)'
       }
     }
   },

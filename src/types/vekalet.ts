@@ -77,6 +77,9 @@ export type VekaletOdemeMakbuzDto = {
   dosyaNo: string | null
   taksitNo: number
   taksitTutari: string
+  taksitOdenenToplam?: string
+  taksitKalanTutar?: string
+  taksitDurum?: string | null
   odemeTarihi: string
   odemeYontemi: string
   tahsilatTutari: string
@@ -142,6 +145,13 @@ export type CreateVekaletTaksitOdemePayload = {
   aciklama?: string | null
   tahsilatiYapanUserId?: string | null
   tahsilatiYapanPersonelId?: string | null
+}
+
+export type UpdateVekaletTaksitOdemePayload = {
+  tutar?: number
+  odemeTarihi?: string
+  odemeYontemi?: import('./kasa').OdemeYontemiApi
+  aciklama?: string | null
 }
 
 export type CreateVekaletPesinOdemePayload = CreateVekaletTaksitOdemePayload

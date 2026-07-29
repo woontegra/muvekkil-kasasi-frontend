@@ -29,11 +29,11 @@ export function StatCard({
   footerHint
 }: StatCardProps): ReactElement {
   const shellClass = cn(
-    'rounded-xl border border-border bg-panel p-3.5 shadow-card',
-    'flex gap-3 text-left transition',
-    interactive && !disabled && 'cursor-pointer hover:border-primary/35 hover:bg-primary-soft/20 hover:shadow-md',
+    'motion-card-in rounded-xl border border-border bg-panel p-3.5 shadow-card',
+    'flex gap-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-150',
+    interactive && !disabled && 'cursor-pointer hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary-soft/20 hover:shadow-md motion-reduce:hover:translate-y-0',
     selected && 'border-primary/50 bg-primary-soft/25 ring-2 ring-primary/20',
-    disabled && interactive && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-panel hover:shadow-card'
+    disabled && interactive && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-panel hover:shadow-card hover:translate-y-0'
   )
 
   const body = (

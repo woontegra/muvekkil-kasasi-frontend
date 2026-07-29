@@ -15,6 +15,8 @@ export type DosyaDto = {
   durum: DosyaDurumuApi
   aciklama: string | null
   aktifMi: boolean
+  /** Dosya bazlı otomatik bildirim anahtarı (ileride UI). */
+  otomatikBildirimAktif?: boolean
   createdById: string
   updatedById: string | null
   createdAt: string

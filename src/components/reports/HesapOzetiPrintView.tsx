@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import type { DosyaHesapOzetiResponse } from '../../types/hesapOzeti'
 import { formatCurrencyTR, formatDateTR } from '../../utils/formatters'
 import { dosyaDurumuLabel, mahkemeIcraSatir } from '../../lib/dosyaLabels'
+import { resolveTaksitRow } from '../../lib/vekaletTaksitOzet'
 import { ReceiptPrintLayout } from '../receipt/ReceiptPrintLayout'
 import { ReceiptSectionTable } from '../receipt/ReceiptSectionTable'
 
@@ -17,6 +18,23 @@ function tipEtiket(tip: string): string {
   if (tip === 'MASRAF') return 'Masraf'
   if (tip === 'DUZELTME') return 'Düzeltme'
   return tip
+}
+
+function durumEtiket(d: string): string {
+  switch (d) {
+    case 'ODENMEDI':
+      return 'Ödenmedi'
+    case 'KISMI_ODENDI':
+      return 'Kısmi ödendi'
+    case 'ODENDI':
+      return 'Ödendi'
+    case 'GECIKTI':
+      return 'Gecikti'
+    case 'IPTAL':
+      return 'İptal'
+    default:
+      return d
+  }
 }
 
 /** Dosya hesap özeti — A4 tek sayfaya sığacak kompakt düzen. */
@@ -160,20 +178,27 @@ export function HesapOzetiPrintView(props: Props): ReactElement {
                 <th>No</th>
                 <th>Vade</th>
                 <th className="num">Tutar</th>
+                <th className="num">Ödenen</th>
+                <th className="num">Kalan</th>
                 <th>Durum</th>
                 <th>Makbuz no</th>
               </tr>
             </thead>
             <tbody>
-              {taksitler.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.taksitNo}</td>
-                  <td>{formatDateTR(t.vadeTarihi)}</td>
-                  <td className="num">{formatCurrencyTR(Number(t.tutar))}</td>
-                  <td>{t.odemeDurumu}</td>
-                  <td className="value--mono">{t.makbuzNo ?? '—'}</td>
-                </tr>
-              ))}
+              {taksitler.map((t) => {
+                const row = resolveTaksitRow(t)
+                return (
+                  <tr key={t.id}>
+                    <td>{t.taksitNo}</td>
+                    <td>{formatDateTR(t.vadeTarihi)}</td>
+                    <td className="num">{formatCurrencyTR(Number(row.taksitTutari))}</td>
+                    <td className="num">{formatCurrencyTR(Number(row.odenenToplam))}</td>
+                    <td className="num">{formatCurrencyTR(Number(row.kalanTutar))}</td>
+                    <td>{durumEtiket(row.durum)}</td>
+                    <td className="value--mono">{row.sonMakbuzNo ?? '—'}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}

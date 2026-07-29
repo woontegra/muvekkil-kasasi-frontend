@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { getDashboardSummary } from '../api/dashboard'
 import { getCurrentLicense } from '../api/license'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
@@ -11,6 +11,7 @@ import { roleLabel } from '../lib/roleLabel'
 import { cn } from '../lib/cn'
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, AlertBox } from '../components/ui'
 import { useSafeBackdropClose } from '../components/ui/useSafeBackdropClose'
+import { PageTransition } from '../motion'
 
 import type { AuthUserDto } from '../types/auth'
 
@@ -47,10 +48,10 @@ function mobilePageSubtitle(pathname: string, role: AuthUserDto['role'] | undefi
 
 function navClassName({ isActive }: { isActive: boolean }): string {
   return cn(
-    'flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition',
+    'flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition-[background-color,color,transform] duration-150 ease-out',
     isActive
       ? 'bg-primary-soft text-primary shadow-inner'
-      : 'text-ink-muted hover:bg-surface-muted hover:text-ink'
+      : 'text-ink-muted hover:translate-x-0.5 hover:bg-surface-muted hover:text-ink motion-reduce:hover:translate-x-0'
   )
 }
 
@@ -304,7 +305,7 @@ export function DashboardShell(): ReactElement {
               </AlertBox>
             </div>
           ) : null}
-          <Outlet />
+          <PageTransition />
         </main>
       </div>
     </div>

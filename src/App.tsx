@@ -15,6 +15,8 @@ import { LoginPage } from './pages/LoginPage'
 import { MuvekkilDetailPage } from './pages/MuvekkilDetailPage'
 import { OfisKasasiPage } from './pages/OfisKasasiPage'
 import { IcraTahsilatPage } from './pages/IcraTahsilatPage'
+import { BildirimMerkeziPage } from './pages/BildirimMerkeziPage'
+import { TahsilatMerkeziPage } from './pages/TahsilatMerkeziPage'
 import { KullanicilarPage } from './pages/KullanicilarPage'
 import { PrimlerPage } from './pages/PrimlerPage'
 import { ReportsPage } from './pages/ReportsPage'
@@ -69,6 +71,8 @@ export default function App(): ReactElement {
         <Route path="muvekkil/:id" element={<MuvekkilDetailPage />} />
         <Route path="ofis-kasasi" element={<OfisKasasiPage />} />
         <Route path="icra-tahsilat" element={<IcraTahsilatPage />} />
+        <Route path="tahsilat-merkezi" element={<TahsilatMerkeziPage />} />
+        <Route path="bildirim-merkezi" element={<BildirimMerkeziPage />} />
         <Route
           path="primler"
           element={

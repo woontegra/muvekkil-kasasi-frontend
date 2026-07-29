@@ -1,9 +1,10 @@
 import type { ReactElement } from 'react'
-import { NavLink, Outlet, useNavigate } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { WOONTEGRA_MARK_SRC } from '../branding'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { cn } from '../lib/cn'
 import { Button } from '../components/ui'
+import { PageTransition } from '../motion'
 
 function navCls({ isActive }: { isActive: boolean }): string {
   return cn(
@@ -83,7 +84,7 @@ export function AdminProtectedLayout(): ReactElement {
           </Button>
         </header>
         <main className="w-full flex-1 px-4 py-5 sm:px-6 lg:px-8">
-          <Outlet />
+          <PageTransition />
         </main>
       </div>
     </div>

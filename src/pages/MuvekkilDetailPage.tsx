@@ -9,6 +9,7 @@ import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { dosyaDurumuBadgeVariant, dosyaDurumuLabel, dosyaTuruLabel, mahkemeIcraSatir } from '../lib/dosyaLabels'
 import { cn } from '../lib/cn'
 import { MuvekkilEditModal } from '../components/muvekkil/MuvekkilEditModal'
+import { MuvekkilKarlilikTab } from '../components/mali/MuvekkilKarlilikTab'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
 
 function ProfileStatCard({ label, value, className }: { label: string; value: ReactNode; className?: string }): ReactElement {
@@ -294,6 +295,16 @@ export function MuvekkilDetailPage(): ReactElement {
               </Table>
             </div>
           )}
+        </CardBody>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader className="border-b border-border px-4 py-3">
+          <CardTitle className="text-base">Kârlılık Analizi</CardTitle>
+          <p className="mt-1 text-xs text-ink-muted">Müvekkile ait tüm dosyaların toplam mali özeti.</p>
+        </CardHeader>
+        <CardBody className="px-4 py-4">
+          <MuvekkilKarlilikTab muvekkilId={id} />
         </CardBody>
       </Card>
 

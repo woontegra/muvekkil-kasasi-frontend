@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ReactElement, ReactNode } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import {
   approveKasaHareketi,
@@ -22,14 +22,17 @@ import {
   createVekaletTaksitOdeme,
   createVekaletTaksitPlani,
   deleteVekaletTaksiti,
+  deleteVekaletTaksitOdeme,
   getDosyaVekalet,
   getVekaletOdemeMakbuz,
   listVekaletTaksitOdemeler,
   markOdemeSmmKesildi,
   updateVekaletTaksiti,
+  updateVekaletTaksitOdeme,
   upsertDosyaVekalet
 } from '../api/vekalet'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
+import { VekaletTaksitOdemeModal } from '../components/vekalet/VekaletTaksitOdemeModal'
 import { VekaletTaksitPlaniModal } from '../components/vekalet/VekaletTaksitPlaniModal'
 import { ApiError, resolveOdemeApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
@@ -54,11 +57,13 @@ import {
   THead,
   TR,
   tableActionButtonShrinkClass,
-  tableActionsFlexRow
+  tableActionsFlexRow,
+  useConfirm
 } from '../components/ui'
+import { useToast } from '../toast'
 import { cn } from '../lib/cn'
 import { resolveSmmBekleyenOdemeId, resolveTaksitRow } from '../lib/vekaletTaksitOzet'
-import { formatCurrencyTR, formatDateTR, moneyInputFromAmount, parseCurrencyInputTR, parsePosTutar } from '../utils/formatters'
+import { formatCurrencyTR, formatDateTR, formatCurrencyInputTR, moneyInputFromAmount, parseCurrencyInputTR, parsePosTutar } from '../utils/formatters'
 import {
   DIGER_MASRAF_ETIKETI,
   MASRAF_TURU_OPTIONS,
@@ -72,6 +77,7 @@ import type {
   CreateTekVekaletTaksitiPayload,
   TaksitComputedDurumApi,
   TaksitSmmDurumApi,
+  UpdateVekaletTaksitOdemePayload,
   UpdateVekaletTaksitPayload,
   UpsertVekaletPayload,
   VekaletOdemeMakbuzDto,
@@ -84,6 +90,11 @@ import { ReceiptModal } from '../components/receipt/ReceiptModal'
 import { VekaletOdemeReceipt } from '../components/receipt/VekaletOdemeReceipt'
 import { VekaletReceipt } from '../components/receipt/VekaletReceipt'
 import { HesapOzetiPrintView } from '../components/reports/HesapOzetiPrintView'
+import { DosyaMaliOzetTab } from '../components/mali/DosyaMaliOzetTab'
+import { MuvekkilEkstreTab } from '../components/ekstre/MuvekkilEkstreTab'
+import { useDosyaDetailDeepLink } from '../hooks/useDosyaDetailDeepLink'
+import { dosyaFocusElementId, DOSYA_FOCUS_HIGHLIGHT_CLASS } from '../lib/maliKontrolNavigation'
+import { useMotionSettings } from '../motion/MotionProvider'
 import type { VekaletMakbuzListeDto } from '../types/makbuz'
 
 type ReceiptModalState =
@@ -93,7 +104,7 @@ type ReceiptModalState =
   | { kind: 'vekalet-odeme'; makbuz: VekaletOdemeMakbuzDto; printRootId: string; printedAt: string }
   | { kind: 'hesap'; printRootId: string; printedAt: string }
 
-type TabKey = 'kasa' | 'vekalet' | 'smm' | 'makbuz' | 'hesap'
+type TabKey = 'kasa' | 'vekalet' | 'smm' | 'makbuz' | 'hesap' | 'mali' | 'ekstre'
 
 type KasaListeFiltre = 'tum' | 'avans' | 'masraf' | 'onaysiz' | 'onayli' | 'reddedildi'
 
@@ -106,6 +117,7 @@ type VekModalState =
   | { type: 'taksit-edit'; t: VekaletTaksitiDto }
   | { type: 'taksit-odeme'; t: VekaletTaksitiDto }
   | { type: 'odeme-gecmisi'; t: VekaletTaksitiDto }
+  | { type: 'odeme-edit'; t: VekaletTaksitiDto; odeme: VekaletTaksitOdemeDto }
 
 const vekaletIconBtnClass =
   'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-white text-sm hover:bg-surface-muted disabled:opacity-50'
@@ -115,7 +127,9 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'vekalet', label: 'Anlaşılan vekalet ücreti ve taksitler' },
   { key: 'smm', label: 'SMM Takibi' },
   { key: 'makbuz', label: 'Makbuzlar' },
-  { key: 'hesap', label: 'Hesap Özeti' }
+  { key: 'mali', label: 'Mali Özet' },
+  { key: 'hesap', label: 'Hesap Özeti' },
+  { key: 'ekstre', label: 'Müvekkil Ekstresi' }
 ]
 
 const ODEME_OPTIONS: { value: OdemeYontemiApi; label: string }[] = [
@@ -356,6 +370,8 @@ export function DosyaDetailPage(): ReactElement {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const { session } = useAuth()
+  const toast = useToast()
+  const { confirm } = useConfirm()
   const [tab, setTab] = useState<TabKey>('kasa')
 
   useEffect(() => {
@@ -435,6 +451,28 @@ export function DosyaDetailPage(): ReactElement {
     enabled: vekaletFetchEnabled
   })
 
+  const { reducedMotion } = useMotionSettings()
+  const handleFocusNotFound = useCallback(() => {
+    toast.warning('İlgili kayıt bulunamadı veya artık erişilebilir değil.')
+  }, [toast])
+
+  const { isRowHighlighted } = useDosyaDetailDeepLink({
+    setTab,
+    setKasaFilter,
+    kasaFilter,
+    tabReady: {
+      kasa: kasaListQuery.isSuccess && !kasaListQuery.isFetching,
+      vekalet: vekaletQuery.isSuccess && !vekaletQuery.isFetching,
+      smm: vekaletQuery.isSuccess && !vekaletQuery.isFetching,
+      makbuz: makbuzQuery.isSuccess && hesapOzetiQuery.isSuccess && !makbuzQuery.isFetching,
+      mali: true,
+      hesap: hesapOzetiQuery.isSuccess && !hesapOzetiQuery.isFetching,
+      ekstre: true
+    },
+    onFocusNotFound: handleFocusNotFound,
+    reducedMotion
+  })
+
   const invalidateKasa = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['kasa-hareketleri', dosyaId] })
     void queryClient.invalidateQueries({ queryKey: ['kasa-ozet', dosyaId] })
@@ -445,24 +483,32 @@ export function DosyaDetailPage(): ReactElement {
 
   const approveMu = useMutation({
     mutationFn: (id: string) => approveKasaHareketi(id),
-    onSuccess: invalidateKasa
+    onSuccess: () => {
+      invalidateKasa()
+      toast.success('Kayıt onaylandı.')
+    }
   })
   const rejectMu = useMutation({
     mutationFn: ({ id, redSebebi }: { id: string; redSebebi: string }) => rejectKasaHareketi(id, redSebebi),
     onSuccess: () => {
       invalidateKasa()
       setModal(null)
+      toast.warning('Kayıt reddedildi.')
     }
   })
   const deleteMu = useMutation({
     mutationFn: (id: string) => deleteKasaHareketi(id),
-    onSuccess: invalidateKasa
+    onSuccess: () => {
+      invalidateKasa()
+      toast.success('Kayıt silindi.')
+    }
   })
   const createMu = useMutation({
     mutationFn: (payload: Parameters<typeof createKasaHareketi>[1]) => createKasaHareketi(dosyaId!, payload),
     onSuccess: () => {
       invalidateKasa()
       setModal(null)
+      toast.success('Kasa hareketi kaydedildi.')
     }
   })
   const duzeltmeMu = useMutation({
@@ -471,6 +517,7 @@ export function DosyaDetailPage(): ReactElement {
     onSuccess: () => {
       invalidateKasa()
       setModal(null)
+      toast.success('Düzeltme talebi oluşturuldu.')
     }
   })
 
@@ -512,6 +559,10 @@ export function DosyaDetailPage(): ReactElement {
       invalidateVekalet()
       invalidateSmmBekleyen(queryClient)
       setVekModal(null)
+      toast.success('Peşin ödeme kaydedildi.')
+    },
+    onError: () => {
+      toast.error('Peşin ödeme kaydedilemedi.')
     }
   })
   const updateTaksitMu = useMutation({
@@ -519,6 +570,7 @@ export function DosyaDetailPage(): ReactElement {
     onSuccess: () => {
       invalidateVekalet()
       setVekModal(null)
+      toast.success('Taksit güncellendi.')
     }
   })
   const odemeTaksitMu = useMutation({
@@ -527,7 +579,38 @@ export function DosyaDetailPage(): ReactElement {
     onSuccess: () => {
       invalidateVekalet()
       invalidateSmmBekleyen(queryClient)
+      void queryClient.invalidateQueries({ queryKey: ['taksit-odemeler'] })
       setVekModal(null)
+      toast.success('Tahsilat kaydedildi.')
+    },
+    onError: () => {
+      toast.error('Tahsilat kaydedilemedi.')
+    }
+  })
+  const updateOdemeMu = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: UpdateVekaletTaksitOdemePayload }) =>
+      updateVekaletTaksitOdeme(id, body),
+    onSuccess: () => {
+      invalidateVekalet()
+      invalidateSmmBekleyen(queryClient)
+      void queryClient.invalidateQueries({ queryKey: ['taksit-odemeler'] })
+      setVekModal((prev) => (prev?.type === 'odeme-edit' ? { type: 'odeme-gecmisi', t: prev.t } : null))
+      toast.success('Tahsilat güncellendi.')
+    },
+    onError: () => {
+      toast.error('Tahsilat güncellenemedi.')
+    }
+  })
+  const deleteOdemeMu = useMutation({
+    mutationFn: (id: string) => deleteVekaletTaksitOdeme(id),
+    onSuccess: () => {
+      invalidateVekalet()
+      invalidateSmmBekleyen(queryClient)
+      void queryClient.invalidateQueries({ queryKey: ['taksit-odemeler'] })
+      toast.success('Tahsilat silindi.')
+    },
+    onError: (err) => {
+      toast.error(resolveOdemeApiError(err) ?? 'Tahsilat silinemedi.')
     }
   })
   const smmOdemeMu = useMutation({
@@ -537,9 +620,11 @@ export function DosyaDetailPage(): ReactElement {
       invalidateSmmBekleyen(queryClient)
       void queryClient.invalidateQueries({ queryKey: ['taksit-odemeler'] })
       setSmmNotice({ variant: 'success', text: 'SMM kesildi olarak işaretlendi.' })
+      toast.success('SMM kesildi olarak işaretlendi.')
     },
     onError: () => {
       setSmmNotice({ variant: 'danger', text: 'SMM durumu güncellenemedi.' })
+      toast.error('SMM durumu güncellenemedi.')
     }
   })
   const deleteTaksitMu = useMutation({
@@ -547,6 +632,7 @@ export function DosyaDetailPage(): ReactElement {
     onSuccess: () => {
       invalidateVekalet()
       setVekModal(null)
+      toast.success('Taksit silindi.')
     }
   })
 
@@ -748,7 +834,43 @@ export function DosyaDetailPage(): ReactElement {
       {vekModal?.type === 'odeme-gecmisi' ? (
         <VekaletOdemeGecmisiModal
           taksit={vekModal.t}
+          canEdit={canTaksitOdendi}
+          deletingId={deleteOdemeMu.isPending ? deleteOdemeMu.variables ?? null : null}
           onClose={() => setVekModal(null)}
+          onEdit={(odeme) => {
+            updateOdemeMu.reset()
+            setVekModal({ type: 'odeme-edit', t: vekModal.t, odeme })
+          }}
+          onDelete={(odeme) => {
+            void confirm({
+              title: 'Tahsilat silinsin mi?',
+              message: `${formatCurrencyTR(Number(odeme.tutar))} tutarındaki ödeme kaydı silinecek. Taksit bakiyesi yeniden hesaplanır.`,
+              confirmLabel: 'Sil',
+              danger: true
+            }).then((ok) => {
+              if (ok) deleteOdemeMu.mutate(odeme.id)
+            })
+          }}
+          onMakbuz={async (odeme) => {
+            const res = await getVekaletOdemeMakbuz(odeme.id)
+            setReceiptModal({
+              kind: 'vekalet-odeme',
+              makbuz: res.makbuz,
+              printRootId: `vek-odeme-${odeme.id}-${Date.now()}`,
+              printedAt: new Date().toISOString()
+            })
+          }}
+        />
+      ) : null}
+      {vekModal?.type === 'odeme-edit' ? (
+        <VekaletOdemeEditModal
+          key={vekModal.odeme.id}
+          taksit={vekModal.t}
+          odeme={vekModal.odeme}
+          onClose={() => setVekModal({ type: 'odeme-gecmisi', t: vekModal.t })}
+          loading={updateOdemeMu.isPending}
+          error={resolveOdemeApiError(updateOdemeMu.error)}
+          onSubmit={(body) => updateOdemeMu.mutate({ id: vekModal.odeme.id, body })}
         />
       ) : null}
 
@@ -975,12 +1097,15 @@ export function DosyaDetailPage(): ReactElement {
                             const onaysiz = h.onayDurumu === 'ONAYSIZ'
                             const onayli = h.onayDurumu === 'ONAYLI'
                             const reddedildi = h.onayDurumu === 'REDDEDILDI'
+                            const kasaRowId = dosyaFocusElementId('kasa', h.id)
                             return (
                               <TR
                                 key={h.id}
+                                id={kasaRowId}
                                 className={cn(
                                   isDuz && 'border-l-4 border-l-amber-500 bg-amber-50/40 dark:bg-amber-950/20',
-                                  onaysiz && !isDuz && 'bg-warning-soft/30'
+                                  onaysiz && !isDuz && 'bg-warning-soft/30',
+                                  isRowHighlighted(kasaRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
                                 )}
                               >
                                 <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
@@ -1051,9 +1176,14 @@ export function DosyaDetailPage(): ReactElement {
                                           className="h-7 px-2 text-[11px]"
                                           disabled={deleteMu.isPending}
                                           onClick={() => {
-                                            if (window.confirm('Bu onaysız kaydı silmek istediğinize emin misiniz?')) {
-                                              deleteMu.mutate(h.id)
-                                            }
+                                            void confirm({
+                                              title: 'Kayıt silinsin mi?',
+                                              message: 'Bu onaysız kaydı silmek istediğinize emin misiniz?',
+                                              confirmLabel: 'Sil',
+                                              danger: true
+                                            }).then((ok) => {
+                                              if (ok) deleteMu.mutate(h.id)
+                                            })
                                           }}
                                         >
                                           Sil
@@ -1139,11 +1269,11 @@ export function DosyaDetailPage(): ReactElement {
                         }
                         onClick={() => {
                           if (kalanTaksitlendirme <= 0) {
-                            window.alert('Taksitlendirilebilir kalan tutar yok.')
+                            toast.warning('Taksitlendirilebilir kalan tutar yok.')
                             return
                           }
                           if (kalanVekaletNum <= 0) {
-                            window.alert('Kalan vekalet tutarı yok.')
+                            toast.warning('Kalan vekalet tutarı yok.')
                             return
                           }
                           setVekModal({ type: 'tek-taksit' })
@@ -1163,7 +1293,7 @@ export function DosyaDetailPage(): ReactElement {
                         }
                         onClick={() => {
                           if (kalanTaksitlendirme <= 0) {
-                            window.alert('Taksitlendirilebilir kalan tutar yok.')
+                            toast.warning('Taksitlendirilebilir kalan tutar yok.')
                             return
                           }
                           setVekModal({ type: 'taksit-plani' })
@@ -1205,8 +1335,16 @@ export function DosyaDetailPage(): ReactElement {
                             const iptal = t.odemeDurumu === 'IPTAL'
                             const odenebilir = !iptal && Number(row.kalanTutar) > 0
                             const silinebilir = !iptal && Number(row.odenenToplam) === 0
+                            const taksitRowId = dosyaFocusElementId('taksit', t.id)
                             return (
-                              <TR key={t.id} className={cn(iptal && 'opacity-60')}>
+                              <TR
+                                key={t.id}
+                                id={taksitRowId}
+                                className={cn(
+                                  iptal && 'opacity-60',
+                                  isRowHighlighted(taksitRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
+                                )}
+                              >
                                 <TD className="tabular-nums font-medium !py-1.5">{t.taksitNo}</TD>
                                 <TD className="whitespace-nowrap text-ink-muted !py-1.5">{formatDateTR(t.vadeTarihi)}</TD>
                                 <TD className="text-right font-medium tabular-nums !py-1.5">{formatCurrencyTR(Number(row.taksitTutari))}</TD>
@@ -1297,9 +1435,14 @@ export function DosyaDetailPage(): ReactElement {
                                         title="Sil"
                                         disabled={deleteTaksitMu.isPending}
                                         onClick={() => {
-                                          if (window.confirm('Bu taksiti silmek istediğinize emin misiniz?')) {
-                                            deleteTaksitMu.mutate(t.id)
-                                          }
+                                          void confirm({
+                                            title: 'Taksit silinsin mi?',
+                                            message: 'Bu taksiti silmek istediğinize emin misiniz?',
+                                            confirmLabel: 'Sil',
+                                            danger: true
+                                          }).then((ok) => {
+                                            if (ok) deleteTaksitMu.mutate(t.id)
+                                          })
                                         }}
                                       >
                                         🗑
@@ -1348,8 +1491,13 @@ export function DosyaDetailPage(): ReactElement {
                     <TBody>
                       {vekaletData.smmBekleyen.map((row) => {
                         const r = row as { id: string; odemeTarihi?: string; tutar?: string; makbuzNo?: string }
+                        const odemeRowId = dosyaFocusElementId('odeme', r.id)
                         return (
-                          <TR key={r.id}>
+                          <TR
+                            key={r.id}
+                            id={odemeRowId}
+                            className={cn(isRowHighlighted(odemeRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS)}
+                          >
                             <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(r.odemeTarihi)}</TD>
                             <TD className="text-right font-medium tabular-nums">{formatCurrencyTR(Number(r.tutar ?? 0))}</TD>
                             <TD className="font-mono text-xs">{r.makbuzNo ?? '—'}</TD>
@@ -1491,8 +1639,15 @@ export function DosyaDetailPage(): ReactElement {
                             {vekaletMakbuzListe.length === 0 ? (
                               <TableEmptyRow colSpan={6}>Ödenmiş vekalet taksiti yok.</TableEmptyRow>
                             ) : (
-                              vekaletMakbuzListe.map((row) => (
-                                <TR key={row.id}>
+                              vekaletMakbuzListe.map((row) => {
+                                const odemeId = row.odemeId ?? row.id
+                                const makbuzRowId = dosyaFocusElementId('odeme', odemeId)
+                                return (
+                                <TR
+                                  key={row.id}
+                                  id={makbuzRowId}
+                                  className={cn(isRowHighlighted(makbuzRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS)}
+                                >
                                   <TD className="font-medium tabular-nums">{row.taksitNo}</TD>
                                   <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(row.odemeTarihi ?? undefined)}</TD>
                                   <TD className="font-mono text-xs">{row.makbuzNo ?? '—'}</TD>
@@ -1506,7 +1661,6 @@ export function DosyaDetailPage(): ReactElement {
                                         variant="outline"
                                         className="h-7 px-2 text-[11px]"
                                         onClick={async () => {
-                                          const odemeId = row.odemeId ?? row.id
                                           const res = await getVekaletOdemeMakbuz(odemeId)
                                           setReceiptModal({
                                             kind: 'vekalet-odeme',
@@ -1523,7 +1677,6 @@ export function DosyaDetailPage(): ReactElement {
                                         size="sm"
                                         className="h-7 px-2 text-[11px]"
                                         onClick={async () => {
-                                          const odemeId = row.odemeId ?? row.id
                                           const res = await getVekaletOdemeMakbuz(odemeId)
                                           const printedAt = new Date().toISOString()
                                           setReceiptModal({
@@ -1540,7 +1693,7 @@ export function DosyaDetailPage(): ReactElement {
                                     </div>
                                   </TD>
                                 </TR>
-                              ))
+                              )})
                             )}
                           </TBody>
                         </Table>
@@ -1552,6 +1705,10 @@ export function DosyaDetailPage(): ReactElement {
                 <p className="text-sm text-ink-muted">Makbuz listesi yüklenemedi.</p>
               )}
             </div>
+          ) : null}
+
+          {tab === 'mali' ? (
+            <DosyaMaliOzetTab dosyaId={dosyaId!} />
           ) : null}
 
           {tab === 'hesap' ? (
@@ -1590,6 +1747,8 @@ export function DosyaDetailPage(): ReactElement {
               )}
             </div>
           ) : null}
+
+          {tab === 'ekstre' && dosyaId ? <MuvekkilEkstreTab dosyaId={dosyaId} /> : null}
         </CardBody>
       </Card>
     </div>
@@ -1718,7 +1877,7 @@ function VekaletPesinOdemeModal(props: {
 }): ReactElement {
   const { kalanVekalet, onClose, loading, error, onSubmit } = props
   const kalanNum = Number(kalanVekalet)
-  const [tutar, setTutar] = useState(moneyInputFromAmount(kalanVekalet))
+  const [tutar, setTutar] = useState('')
   const [odemeTarihi, setOdemeTarihi] = useState(todayInputDate())
   const [odeme, setOdeme] = useState<OdemeYontemiApi>('NAKIT')
   const [aciklama, setAciklama] = useState('')
@@ -1727,10 +1886,6 @@ function VekaletPesinOdemeModal(props: {
 
   const submit = (): void => {
     setLocalErr(null)
-    if (!tahsilatiYapanPersonelId) {
-      setLocalErr('Tahsilatı yapan personel seçin.')
-      return
-    }
     const n = parsePosTutar(tutar)
     if (n == null) {
       setLocalErr('Tutar 0\'dan büyük olmalıdır.')
@@ -1754,10 +1909,23 @@ function VekaletPesinOdemeModal(props: {
       <div className="space-y-3">
         {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
-        <p className="text-xs text-ink-muted">
-          Kalan vekalet: <strong className="tabular-nums">{formatCurrencyTR(kalanNum)}</strong>
-        </p>
-        <MoneyInput label="Tutar" value={tutar} onChange={setTutar} maxValue={kalanNum} />
+        <div className="rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-ink-muted">
+          <p>
+            Kalan vekalet borcu:{' '}
+            <strong className="tabular-nums text-ink">{formatCurrencyTR(kalanNum)}</strong>
+          </p>
+          <p className="mt-1">İstediğiniz tutarda (kısmi veya tam) tahsilat girebilirsiniz.</p>
+        </div>
+        <MoneyInput label="Tahsil edilecek tutar" value={tutar} onChange={setTutar} maxValue={kalanNum} />
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          disabled={kalanNum <= 0}
+          onClick={() => setTutar(formatCurrencyInputTR(kalanNum))}
+        >
+          Kalanın tamamını al
+        </Button>
         <Input label="Tarih" type="date" value={odemeTarihi} onChange={(e) => setOdemeTarihi(e.target.value)} />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
@@ -1836,70 +2004,72 @@ function VekaletTaksitEditModal(props: {
   )
 }
 
-function VekaletTaksitOdemeModal(props: {
+function VekaletOdemeEditModal(props: {
   taksit: VekaletTaksitiDto
+  odeme: VekaletTaksitOdemeDto
   onClose: () => void
   loading: boolean
   error: string | null
-  onSubmit: (body: CreateVekaletTaksitOdemePayload) => void
+  onSubmit: (body: UpdateVekaletTaksitOdemePayload) => void
 }): ReactElement {
-  const { taksit, onClose, loading, error, onSubmit } = props
+  const { taksit, odeme, onClose, loading, error, onSubmit } = props
   const resolved = resolveTaksitRow(taksit)
-  const kalanNum = Number(resolved.kalanTutar)
-  const [tutar, setTutar] = useState(moneyInputFromAmount(resolved.kalanTutar))
-  const [odemeTarihi, setOdemeTarihi] = useState(todayInputDate())
-  const [odeme, setOdeme] = useState<OdemeYontemiApi>('NAKIT')
-  const [aciklama, setAciklama] = useState('')
-  const [tahsilatiYapanPersonelId, setTahsilatiYapanPersonelId] = useState('')
+  const maxAllowed = Number(resolved.kalanTutar) + Number(odeme.tutar)
+  const [tutar, setTutar] = useState(moneyInputFromAmount(odeme.tutar))
+  const [odemeTarihi, setOdemeTarihi] = useState(isoDateToInput(odeme.odemeTarihi))
+  const [odemeYontemi, setOdemeYontemi] = useState<OdemeYontemiApi>(odeme.odemeYontemi)
+  const [aciklama, setAciklama] = useState(odeme.aciklama ?? '')
   const [localErr, setLocalErr] = useState<string | null>(null)
 
   const submit = (): void => {
     setLocalErr(null)
-    if (!tahsilatiYapanPersonelId) {
-      setLocalErr('Tahsilatı yapan personel seçin.')
-      return
-    }
     const n = parsePosTutar(tutar)
     if (n == null) {
       setLocalErr('Tutar 0\'dan büyük olmalıdır.')
       return
     }
-    if (n > kalanNum + 0.0001) {
+    if (n > maxAllowed + 0.0001) {
       setLocalErr('Tutar taksit kalanını aşamaz.')
       return
     }
     onSubmit({
       tutar: n,
       odemeTarihi: `${odemeTarihi}T12:00:00.000Z`,
-      odemeYontemi: odeme,
-      aciklama: aciklama.trim() || null,
-      tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null
+      odemeYontemi,
+      aciklama: aciklama.trim() || null
     })
   }
 
   return (
-    <ModalShell title="Taksit ödemesi al" onClose={onClose} wide>
+    <ModalShell title="Tahsilatı düzenle" onClose={onClose} wide>
       <div className="space-y-3">
         {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
         <p className="text-xs text-ink-muted">
-          Taksit #{taksit.taksitNo} · Kalan: <strong className="tabular-nums">{formatCurrencyTR(kalanNum)}</strong>
+          Taksit #{taksit.taksitNo} · Makbuz: <span className="font-mono">{odeme.makbuzNo}</span>
+          <br />
+          Bu kayıt için üst sınır:{' '}
+          <strong className="tabular-nums">{formatCurrencyTR(maxAllowed)}</strong>
+          {' '}(diğer ödemeler düşülmüş kalan + bu tutar)
         </p>
-        <MoneyInput label="Tutar" value={tutar} onChange={setTutar} maxValue={kalanNum} />
+        <MoneyInput label="Tahsil edilen tutar" value={tutar} onChange={setTutar} maxValue={maxAllowed} />
         <Input label="Tarih" type="date" value={odemeTarihi} onChange={(e) => setOdemeTarihi(e.target.value)} />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
-          <select className={selectClassName()} value={odeme} onChange={(e) => setOdeme(e.target.value as OdemeYontemiApi)}>
+          <select
+            className={selectClassName()}
+            value={odemeYontemi}
+            onChange={(e) => setOdemeYontemi(e.target.value as OdemeYontemiApi)}
+          >
             {ODEME_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>{o.label}</option>
             ))}
           </select>
         </div>
-        <TahsilatiYapanPersonelSelect value={tahsilatiYapanPersonelId} onChange={setTahsilatiYapanPersonelId} />
         <Input label="Açıklama / not" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>Vazgeç</Button>
-          <Button type="button" onClick={submit} disabled={loading}>{loading ? 'Kaydediliyor…' : 'Ödemeyi Kaydet'}</Button>
+          <Button type="button" onClick={submit} disabled={loading}>{loading ? 'Kaydediliyor…' : 'Güncelle'}</Button>
         </div>
       </div>
     </ModalShell>
@@ -1908,17 +2078,45 @@ function VekaletTaksitOdemeModal(props: {
 
 function VekaletOdemeGecmisiModal(props: {
   taksit: VekaletTaksitiDto
+  canEdit: boolean
+  deletingId: string | null
   onClose: () => void
+  onEdit: (odeme: VekaletTaksitOdemeDto) => void
+  onDelete: (odeme: VekaletTaksitOdemeDto) => void
+  onMakbuz: (odeme: VekaletTaksitOdemeDto) => void | Promise<void>
 }): ReactElement {
-  const { taksit, onClose } = props
+  const { taksit, canEdit, deletingId, onClose, onEdit, onDelete, onMakbuz } = props
+  const resolved = resolveTaksitRow(taksit)
   const q = useQuery({
     queryKey: ['taksit-odemeler', taksit.id],
     queryFn: () => listVekaletTaksitOdemeler(taksit.id)
   })
 
   return (
-    <ModalShell title={`Ödeme geçmişi — taksit #${taksit.taksitNo}`} onClose={onClose}>
+    <ModalShell title={`Ödeme geçmişi — taksit #${taksit.taksitNo}`} onClose={onClose} wide>
       <div className="space-y-3">
+        <div className="rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-ink-muted">
+          <div className="grid gap-1 sm:grid-cols-3">
+            <p>
+              Taksit:{' '}
+              <strong className="tabular-nums text-ink">{formatCurrencyTR(Number(resolved.taksitTutari))}</strong>
+            </p>
+            <p>
+              Ödenen:{' '}
+              <strong className="tabular-nums text-ink">{formatCurrencyTR(Number(resolved.odenenToplam))}</strong>
+            </p>
+            <p>
+              Kalan:{' '}
+              <strong className="tabular-nums text-ink">{formatCurrencyTR(Number(resolved.kalanTutar))}</strong>
+            </p>
+          </div>
+          <p className="mt-1">
+            Durum:{' '}
+            <Badge variant={taksitDurumBadge(resolved.durum)} className="!normal-case">
+              {taksitDurumLabel(resolved.durum)}
+            </Badge>
+          </p>
+        </div>
         {q.isLoading ? <p className="text-sm text-ink-muted">Yükleniyor…</p> : null}
         {q.isError ? <AlertBox variant="danger" title="Hata">{(q.error as Error).message}</AlertBox> : null}
         {q.data && q.data.items.length === 0 ? (
@@ -1933,8 +2131,10 @@ function VekaletOdemeGecmisiModal(props: {
                   <TH className="text-right">Tutar</TH>
                   <TH>Ödeme yöntemi</TH>
                   <TH>Açıklama</TH>
-                  <TH>SMM durumu</TH>
+                  <TH>Makbuz</TH>
+                  <TH>SMM</TH>
                   <TH>Ofis kasası</TH>
+                  <TH className="text-right">İşlem</TH>
                 </TR>
               </THead>
               <TBody>
@@ -1943,7 +2143,8 @@ function VekaletOdemeGecmisiModal(props: {
                     <TD className="whitespace-nowrap">{formatDateTR(o.odemeTarihi)}</TD>
                     <TD className="text-right tabular-nums">{formatCurrencyTR(Number(o.tutar))}</TD>
                     <TD>{odemeLabel(o.odemeYontemi)}</TD>
-                    <TD className="max-w-[160px] truncate">{o.aciklama?.trim() ? o.aciklama : '—'}</TD>
+                    <TD className="max-w-[140px] truncate">{o.aciklama?.trim() ? o.aciklama : '—'}</TD>
+                    <TD className="font-mono text-[11px]">{o.makbuzNo}</TD>
                     <TD>
                       {o.smmKesildiMi ? (
                         <Badge variant="success" className="!normal-case">SMM kesildi</Badge>
@@ -1953,6 +2154,39 @@ function VekaletOdemeGecmisiModal(props: {
                     </TD>
                     <TD className="text-xs text-ink-muted">
                       {o.ofisKasaHareketId ? 'Ofis kasasına yazıldı' : o.kasaHareketId ? 'Eski dosya kasası kaydı' : '—'}
+                    </TD>
+                    <TD>
+                      <div className={tableActionsFlexRow}>
+                        <button
+                          type="button"
+                          className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
+                          title="Makbuz"
+                          onClick={() => void onMakbuz(o)}
+                        >
+                          🧾
+                        </button>
+                        {canEdit ? (
+                          <>
+                            <button
+                              type="button"
+                              className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
+                              title="Düzenle"
+                              onClick={() => onEdit(o)}
+                            >
+                              ✎
+                            </button>
+                            <button
+                              type="button"
+                              className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass, 'text-danger')}
+                              title="Sil"
+                              disabled={deletingId === o.id}
+                              onClick={() => onDelete(o)}
+                            >
+                              ✕
+                            </button>
+                          </>
+                        ) : null}
+                      </div>
                     </TD>
                   </TR>
                 ))}
@@ -2046,11 +2280,13 @@ function MasrafModal(props: {
   onSubmit: (body: import('../types/kasa').CreateKasaHareketiPayload) => void
 }): ReactElement {
   const { onClose, loading, error, onSubmit } = props
+  const { session } = useAuth()
+  const oturumAd = session?.user.adSoyad?.trim() || session?.user.kullaniciAdi || ''
   const [tarih, setTarih] = useState(todayInputDate())
   const [masrafTuru, setMasrafTuru] = useState<string>(MASRAF_TURU_OPTIONS[0])
   const [ozelMasrafAdi, setOzelMasrafAdi] = useState('')
   const [tutar, setTutar] = useState('')
-  const [masrafiYapanKisi, setMasrafiYapanKisi] = useState('')
+  const [masrafiYapanKisi] = useState(oturumAd)
   const [odeme, setOdeme] = useState<OdemeYontemiApi>('NAKIT')
   const [aciklama, setAciklama] = useState('')
   const [localErr, setLocalErr] = useState<string | null>(null)
@@ -2068,7 +2304,7 @@ function MasrafModal(props: {
       setLocalErr('Diğer masraf adı zorunludur.')
       return
     }
-    const myk = masrafiYapanKisi.trim()
+    const myk = masrafiYapanKisi.trim() || oturumAd
     if (myk.length < 2) {
       setLocalErr('Masrafı yapan kişi zorunludur.')
       return
@@ -2112,10 +2348,10 @@ function MasrafModal(props: {
         <MoneyInput label="Tutar (TL)" value={tutar} onChange={setTutar} />
         <Input
           label="Masrafı yapan kişi"
-          value={masrafiYapanKisi}
-          onChange={(e) => setMasrafiYapanKisi(e.target.value)}
-          placeholder="Zorunlu"
-          required
+          value={masrafiYapanKisi || oturumAd}
+          readOnly
+          disabled
+          className="bg-surface-muted text-ink-muted"
         />
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>

@@ -341,11 +341,28 @@
   color: #666;
 }
 
+.receipt-print__page-num {
+  display: none;
+}
+
 /* —— Yazdırma —— */
 @media print {
   .receipt-print {
     max-width: none;
     margin: 0;
+  }
+
+  .receipt-print__page-num {
+    display: block;
+    position: fixed;
+    right: 10mm;
+    bottom: 6mm;
+    font-size: 8pt;
+    color: #555;
+  }
+
+  .receipt-print__page-num::after {
+    content: 'Sayfa ' counter(page);
   }
 
   .receipt-print__frame {
@@ -554,5 +571,77 @@
   .receipt-print--compact .receipt-section {
     break-inside: avoid;
     page-break-inside: avoid;
+  }
+
+  .receipt-data-table thead {
+    display: table-header-group;
+  }
+
+  .receipt-data-table tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .receipt-ekstre-taksit-block {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /**
+   * Müvekkil ekstresi baskısı: ekran önizlemesi kompakt kalır;
+   * yalnızca yazdırmada A4’ü daha okunabilir doldurur.
+   */
+  .receipt-ekstre-print .receipt-print--compact {
+    font-size: 10.5pt;
+    line-height: 1.38;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-print__frame {
+    padding: 2mm 1mm 3mm;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-print__buro {
+    font-size: 14pt;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-print__contact-line {
+    font-size: 8.5pt;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-print__meta-table {
+    font-size: 8.5pt;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-print__meta-box {
+    max-width: 220px;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-section__head {
+    font-size: 9.5pt;
+    padding: 4px 7px;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-section__label,
+  .receipt-ekstre-print .receipt-print--compact .receipt-section__value {
+    font-size: 9pt;
+    padding: 3px 6px;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-data-table {
+    font-size: 8.5pt;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-data-table th,
+  .receipt-ekstre-print .receipt-print--compact .receipt-data-table td {
+    padding: 3px 5px;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-print__note {
+    font-size: 8pt;
+    margin-top: 8px;
+  }
+
+  .receipt-ekstre-print .receipt-print--compact .receipt-print__footer-main {
+    font-size: 7.5pt;
   }
 }

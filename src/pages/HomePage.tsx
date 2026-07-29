@@ -1,17 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, ReactElement } from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { getDashboardSummary, getTaksitUyarilari, invalidateDashboardSummary, TAKSIT_UYARILARI_QUERY_KEY } from '../api/dashboard'
+import { getHesapDonemiOzet, HESAP_DONEMI_OZET_QUERY_KEY } from '../api/hesapDonemi'
 import { apiFetch } from '../api/client'
 import { listMuvekkiller } from '../api/muvekkiller'
 import { listSmmBekleyenler, SMM_BEKLEYEN_QUERY_KEY } from '../api/smm'
 import { markOdemeSmmKesildi } from '../api/vekalet'
 import { SmmBekleyenHomePanel } from '../components/dashboard/SmmBekleyenHomePanel'
 import { TaksitUyarilariSection } from '../components/dashboard/TaksitUyarilariSection'
+import { HesapDonemiCard } from '../components/dashboard/HesapDonemiCard'
+import { HesapDonemiModal } from '../components/dashboard/HesapDonemiModal'
+import { MaliKontrolKart } from '../components/dashboard/MaliKontrolKart'
+import { OtomatikBildirimlerCard } from '../components/dashboard/OtomatikBildirimlerCard'
+import { TahsilatBekleyenlerCard } from '../components/dashboard/TahsilatBekleyenlerCard'
+import { MaliKontrolMerkeziModal } from '../components/dashboard/MaliKontrolMerkeziModal'
+import { getPreviousAccountingPeriod, getNextAccountingPeriod } from '../lib/accountingPeriod'
+import { getMaliKontrolUyarilari, MALI_KONTROL_QUERY_KEY } from '../api/maliKontrol'
+import { getTahsilatMerkeziOzet, TAKSILAT_MERKEZI_QUERY_KEY } from '../api/tahsilatMerkezi'
+import { useAuth } from '../contexts/AuthContext'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { cn } from '../lib/cn'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, EmptyState, Input, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, EmptyState, Input, PageLoading, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { AnimatedNumber, Stagger, StaggerItem } from '../motion'
+import { useToast } from '../toast'
 import type { MuvekkilDto } from '../types/muvekkil'
 import type { SmmBekleyenDto } from '../types/smm'
 import { formatCurrencyTR } from '../utils/formatters'
@@ -23,11 +36,66 @@ const MUVEKKIL_PAGE_SIZE = 10
 export function HomePage(): ReactElement {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const toast = useToast()
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [page, setPage] = useState(1)
   const [smmPanelOpen, setSmmPanelOpen] = useState(false)
   const [smmModalRow, setSmmModalRow] = useState<SmmBekleyenDto | null>(null)
+  const [donemRefDate, setDonemRefDate] = useState<string | null>(null)
+  const [donemModalOpen, setDonemModalOpen] = useState(false)
+  const [maliKontrolOpen, setMaliKontrolOpen] = useState(false)
+  const { session } = useAuth()
+  const isMaliKontrolYetkili = session?.user.role === 'BURO_SAHIBI' || session?.user.role === 'AVUKAT_YONETICI'
+
+  const maliKontrolQuery = useQuery({
+    queryKey: MALI_KONTROL_QUERY_KEY,
+    queryFn: getMaliKontrolUyarilari,
+    staleTime: 60_000,
+    retry: 1,
+    enabled: isMaliKontrolYetkili
+  })
+
+  const tahsilatMerkeziOzetQuery = useQuery({
+    queryKey: [...TAKSILAT_MERKEZI_QUERY_KEY, 'ozet'],
+    queryFn: () => getTahsilatMerkeziOzet(),
+    staleTime: 60_000,
+    retry: 1
+  })
+
+  const donemQuery = useQuery({
+    queryKey: [...HESAP_DONEMI_OZET_QUERY_KEY, donemRefDate],
+    queryFn: () => getHesapDonemiOzet(donemRefDate),
+    staleTime: 30_000,
+    retry: 1
+  })
+  const donemData = donemQuery.data
+
+  const handleDonemNavigate = useCallback((ref: string | null) => {
+    setDonemRefDate(ref)
+  }, [])
+
+  const handleDonemPrev = useCallback(() => {
+    if (!donemData) return
+    const prev = getPreviousAccountingPeriod({
+      mode: donemData.mode,
+      bas: donemData.period.bas,
+      bit: donemData.period.bit,
+      etiket: donemData.period.etiket
+    })
+    setDonemRefDate(prev.bas)
+  }, [donemData])
+
+  const handleDonemNext = useCallback(() => {
+    if (!donemData?.canGoNext) return
+    const next = getNextAccountingPeriod({
+      mode: donemData.mode,
+      bas: donemData.period.bas,
+      bit: donemData.period.bit,
+      etiket: donemData.period.etiket
+    })
+    if (next) setDonemRefDate(next.bas)
+  }, [donemData])
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(q.trim()), 350)
@@ -75,6 +143,10 @@ export function HomePage(): ReactElement {
       invalidateDashboardSummary(queryClient)
       void queryClient.invalidateQueries({ queryKey: SMM_BEKLEYEN_QUERY_KEY })
       setSmmModalRow(null)
+      toast.success('SMM kesildi olarak işaretlendi.')
+    },
+    onError: () => {
+      toast.error('SMM durumu güncellenemedi.')
     }
   })
 
@@ -124,12 +196,18 @@ export function HomePage(): ReactElement {
     setSmmPanelOpen(true)
   }
 
+  const ofisBakiyeNum =
+    dashboardQuery.isSuccess && dash && Number.isFinite(Number(dash.ofisKasaBakiyesi))
+      ? Number(dash.ofisKasaBakiyesi)
+      : null
   const ofisBakiyeVal =
-    dashboardQuery.isSuccess && dash
-      ? formatCurrencyTR(Number(dash.ofisKasaBakiyesi))
-      : dashboardQuery.isLoading
-        ? '…'
-        : '—'
+    ofisBakiyeNum != null ? (
+      <AnimatedNumber value={ofisBakiyeNum} format={formatCurrencyTR} />
+    ) : dashboardQuery.isLoading ? (
+      '…'
+    ) : (
+      '—'
+    )
 
   return (
     <div className="w-full space-y-5">
@@ -146,34 +224,72 @@ export function HomePage(): ReactElement {
         </AlertBox>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <StatCard
-          label="Vadesi geçmiş taksit"
-          value={statVal(dash?.vadesiGecmisTaksit, dashboardQuery.isLoading)}
-          sub="Ödenmemiş, vadesi geçmiş taksitler"
-        />
-        <StatCard
-          label="SMM bekleyen"
-          value={smmStatValue}
-          sub="SMM kesilmemiş tahsilatlar"
-          interactive
-          selected={smmPanelOpen}
-          onClick={openSmmPanel}
-          footerHint="Detayları gör"
-        />
-        <StatCard
-          label="Onay bekleyen"
-          value={statVal(dash?.onayBekleyenToplam, dashboardQuery.isLoading)}
-          sub="Onay bekleyen kasa hareketleri"
-        />
-        <StatCard label="Ofis kasa bakiyesi" value={ofisBakiyeVal} sub="Onaylanmış kasa hareketlerine göre" />
-        <StatCard
-          label="Aktif müvekkil"
-          value={statVal(dash?.toplamMuvekkil, dashboardQuery.isLoading)}
-          sub="Kayıtlı aktif müvekkiller"
-        />
-        <StatCard label="Aktif dosya" value={statVal(dash?.aktifDosya, dashboardQuery.isLoading)} sub="Takibi devam eden dosyalar" />
-      </div>
+      <Stagger className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <StaggerItem>
+          <StatCard
+            label="Vadesi geçmiş taksit"
+            value={statVal(dash?.vadesiGecmisTaksit, dashboardQuery.isLoading)}
+            sub="Ödenmemiş, vadesi geçmiş taksitler"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <TahsilatBekleyenlerCard
+            ozet={tahsilatMerkeziOzetQuery.data?.ozet}
+            loading={tahsilatMerkeziOzetQuery.isLoading}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <OtomatikBildirimlerCard />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="SMM bekleyen"
+            value={smmStatValue}
+            sub="SMM kesilmemiş tahsilatlar"
+            interactive
+            selected={smmPanelOpen}
+            onClick={openSmmPanel}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="Onay bekleyen"
+            value={statVal(dash?.onayBekleyenToplam, dashboardQuery.isLoading)}
+            sub="Onay bekleyen kasa hareketleri"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard label="Ofis kasa bakiyesi" value={ofisBakiyeVal} sub="Onaylanmış kasa hareketlerine göre" />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            label="Aktif müvekkil"
+            value={statVal(dash?.toplamMuvekkil, dashboardQuery.isLoading)}
+            sub="Kayıtlı aktif müvekkiller"
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard label="Aktif dosya" value={statVal(dash?.aktifDosya, dashboardQuery.isLoading)} sub="Takibi devam eden dosyalar" />
+        </StaggerItem>
+        <StaggerItem>
+          <HesapDonemiCard
+            data={donemData}
+            loading={donemQuery.isLoading}
+            onPrev={handleDonemPrev}
+            onNext={handleDonemNext}
+            onClick={() => setDonemModalOpen(true)}
+          />
+        </StaggerItem>
+        {isMaliKontrolYetkili ? (
+          <StaggerItem>
+            <MaliKontrolKart
+              data={maliKontrolQuery.data}
+              loading={maliKontrolQuery.isLoading}
+              onClick={() => setMaliKontrolOpen(true)}
+            />
+          </StaggerItem>
+        ) : null}
+      </Stagger>
 
       {dashboardQuery.isError ? (
         <AlertBox variant="warning" title="Özet yüklenemedi">
@@ -282,7 +398,9 @@ export function HomePage(): ReactElement {
         </CardHeader>
         <CardBody className="p-0">
           {muvekkilQuery.isLoading ? (
-            <p className="px-4 py-10 text-center text-sm text-ink-muted">Yükleniyor…</p>
+            <div className="px-4 py-6">
+              <PageLoading label="Müvekkiller yükleniyor…" />
+            </div>
           ) : muvekkilQuery.isError ? (
             <div className="px-4 py-6">
               <AlertBox variant="danger" title="Liste alınamadı">
@@ -398,6 +516,20 @@ export function HomePage(): ReactElement {
         error={taksitUyariQuery.isError}
         data={taksitUyariQuery.data}
         onOpenSmm={openSmmPanel}
+      />
+
+      <HesapDonemiModal
+        open={donemModalOpen}
+        onClose={() => setDonemModalOpen(false)}
+        data={donemData ?? null}
+        onNavigate={handleDonemNavigate}
+      />
+
+      <MaliKontrolMerkeziModal
+        open={maliKontrolOpen}
+        onClose={() => setMaliKontrolOpen(false)}
+        data={maliKontrolQuery.data}
+        loading={maliKontrolQuery.isLoading}
       />
     </div>
   )

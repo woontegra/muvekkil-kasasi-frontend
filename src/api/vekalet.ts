@@ -8,6 +8,7 @@ import type {
   DosyaVekaletResponse,
   MarkTaksitPaidPayload,
   MarkTaksitSmmPayload,
+  UpdateVekaletTaksitOdemePayload,
   UpdateVekaletTaksitPayload,
   UpsertVekaletPayload,
   VekaletOdemeMakbuzDto,
@@ -74,6 +75,22 @@ export async function listVekaletTaksitOdemeler(
   taksitId: string
 ): Promise<{ ok: true; items: VekaletTaksitOdemeDto[] }> {
   return apiFetch(`/api/v1/vekalet-taksitleri/${encodeURIComponent(taksitId)}/odemeler`)
+}
+
+export async function updateVekaletTaksitOdeme(
+  odemeId: string,
+  payload: UpdateVekaletTaksitOdemePayload
+): Promise<{ ok: true; odeme: VekaletTaksitOdemeDto }> {
+  return apiFetch(`/api/v1/vekalet-taksit-odemeleri/${encodeURIComponent(odemeId)}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function deleteVekaletTaksitOdeme(odemeId: string): Promise<{ ok: true; taksitId: string }> {
+  return apiFetch(`/api/v1/vekalet-taksit-odemeleri/${encodeURIComponent(odemeId)}`, {
+    method: 'DELETE'
+  })
 }
 
 export async function markOdemeSmmKesildi(odemeId: string): Promise<{ ok: true; odeme: VekaletTaksitOdemeDto }> {

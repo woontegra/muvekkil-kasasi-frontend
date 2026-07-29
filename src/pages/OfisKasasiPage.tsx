@@ -32,8 +32,10 @@ import {
   THead,
   TR,
   tableActionsFlexRow,
-  tableActionButtonShrinkClass
+  tableActionButtonShrinkClass,
+  useConfirm
 } from '../components/ui'
+import { useToast } from '../toast'
 import { cn } from '../lib/cn'
 import type {
   OfisKasaHareketiDto,
@@ -115,6 +117,8 @@ export function OfisKasasiPage(): ReactElement {
   const { session } = useAuth()
   const role = session?.user.role
   const queryClient = useQueryClient()
+  const toast = useToast()
+  const { confirm } = useConfirm()
   const yonetici = isYonetici(role)
   const olusturabilir = canCreateHareket(role)
 
@@ -159,24 +163,39 @@ export function OfisKasasiPage(): ReactElement {
 
   const approveMu = useMutation({
     mutationFn: (id: string) => approveOfisKasaHareketi(id),
-    onSuccess: invalidateAll
+    onSuccess: () => {
+      invalidateAll()
+      toast.success('Kayıt onaylandı.')
+    }
   })
   const rejectMu = useMutation({
     mutationFn: ({ id, redSebebi }: { id: string; redSebebi: string }) => rejectOfisKasaHareketi(id, redSebebi),
-    onSuccess: invalidateAll
+    onSuccess: () => {
+      invalidateAll()
+      toast.warning('Kayıt reddedildi.')
+    }
   })
   const deleteMu = useMutation({
     mutationFn: (id: string) => deleteOfisKasaHareketi(id),
-    onSuccess: invalidateAll
+    onSuccess: () => {
+      invalidateAll()
+      toast.success('Kayıt silindi.')
+    }
   })
   const duzeltmeMu = useMutation({
     mutationFn: ({ id, body }: { id: string; body: { tarih: string; tutar: number; aciklama: string; odemeYontemi: OfisKasaOdemeYontemiApi } }) =>
       createOfisKasaDuzeltme(id, body),
-    onSuccess: invalidateAll
+    onSuccess: () => {
+      invalidateAll()
+      toast.success('Düzeltme oluşturuldu.')
+    }
   })
   const createMu = useMutation({
     mutationFn: (body: CreateOfisKasaHareketiPayload) => createOfisKasaHareketi(body),
-    onSuccess: invalidateAll
+    onSuccess: () => {
+      invalidateAll()
+      toast.success('Ofis kasa hareketi kaydedildi.')
+    }
   })
 
   const [createOpen, setCreateOpen] = useState(false)
@@ -430,7 +449,14 @@ export function OfisKasasiPage(): ReactElement {
                                   className={cn('h-7 px-2 text-[11px] text-danger', tableActionButtonShrinkClass)}
                                   disabled={deleteMu.isPending}
                                   onClick={() => {
-                                    if (window.confirm('Bu onaysız kaydı silmek istiyor musunuz?')) deleteMu.mutate(h.id)
+                                    void confirm({
+                                      title: 'Kayıt silinsin mi?',
+                                      message: 'Bu onaysız kaydı silmek istiyor musunuz?',
+                                      confirmLabel: 'Sil',
+                                      danger: true
+                                    }).then((ok) => {
+                                      if (ok) deleteMu.mutate(h.id)
+                                    })
                                   }}
                                 >
                                   Sil

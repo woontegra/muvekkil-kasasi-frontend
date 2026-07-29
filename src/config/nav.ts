@@ -15,6 +15,8 @@ export const SIDEBAR_NAV: NavItem[] = [
   { to: APP_BASE, label: HOME_PAGE_LABEL },
   { to: `${APP_BASE}/ofis-kasasi`, label: 'Ofis Kasası' },
   { to: `${APP_BASE}/icra-tahsilat`, label: 'İcra Tahsilat' },
+  { to: `${APP_BASE}/tahsilat-merkezi`, label: 'Tahsilat Merkezi' },
+  { to: `${APP_BASE}/bildirim-merkezi`, label: 'Bildirim Merkezi' },
   { to: `${APP_BASE}/primler`, label: 'Primler', roles: ['BURO_SAHIBI'] },
   { to: `${APP_BASE}/raporlar`, label: 'Raporlar' },
   {

@@ -24,6 +24,7 @@ export type AuthTenantDto = {
   vergiNo: string | null
   vergiDairesi: string | null
   aktifMi: boolean
+  hesapDonemiModu?: 'MONTHLY' | 'YEARLY'
   lisansBaslangicTarihi?: string | null
   lisansBitisTarihi?: string | null
   lisansDurumu?: 'DEMO' | 'AKTIF' | 'SURESI_DOLDU' | 'PASIF'

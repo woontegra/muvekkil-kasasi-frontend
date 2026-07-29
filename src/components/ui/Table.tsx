@@ -37,9 +37,10 @@ export function TR({ className, interactive, ...rest }: TRProps): ReactElement {
   return (
     <tr
       className={cn(
+        'motion-row-in',
         interactive
-          ? 'group/row cursor-pointer border-l-[3px] border-l-transparent transition-[background-color,border-color,box-shadow] duration-150 hover:border-l-primary hover:bg-gradient-to-r hover:from-primary-soft/55 hover:to-accent-soft/40 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] focus-within:border-l-primary focus-within:bg-gradient-to-r focus-within:from-primary-soft/55 focus-within:to-accent-soft/40 focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
-          : 'hover:bg-surface-muted/60',
+          ? 'group/row cursor-pointer border-l-[3px] border-l-transparent transition-[background-color,border-color,box-shadow,transform] duration-150 hover:border-l-primary hover:bg-gradient-to-r hover:from-primary-soft/55 hover:to-accent-soft/40 hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.65)] focus-within:border-l-primary focus-within:bg-gradient-to-r focus-within:from-primary-soft/55 focus-within:to-accent-soft/40 focus-within:shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]'
+          : 'transition-colors duration-150 hover:bg-surface-muted/60',
         className
       )}
       {...rest}

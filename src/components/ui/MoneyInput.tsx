@@ -109,14 +109,21 @@ export function MoneyInput(props: Props): ReactElement {
         caret = Math.max(0, caretInRaw - removedBefore)
         nextRaw = cleaned
       }
+    } else if (nextRaw.includes('-')) {
+      // Eksi nerede yazılırsa yazılsın başa alınır (ör. 1500- → -1500)
+      const body = nextRaw.replace(/-/g, '')
+      const digitsBeforeCaret = moneySignificantCount(raw.replace(/-/g, ''), caretInRaw)
+      nextRaw = `-${body}`
+      caret = moneyCaretFromSignificant(nextRaw, digitsBeforeCaret + 1)
     }
 
     const significant = moneySignificantCount(nextRaw, caret)
     let formatted = formatMoneyTypingTR(nextRaw)
     const beforeClamp = formatted
     formatted = applyMax(formatted, maxValue)
-    const nextCaret =
+    let nextCaret =
       formatted === beforeClamp ? moneyCaretFromSignificant(formatted, significant) : formatted.length
+    if (formatted === '-' && nextCaret < 1) nextCaret = 1
 
     pendingCaretRef.current = nextCaret
     setDraft(formatted)
@@ -135,9 +142,17 @@ export function MoneyInput(props: Props): ReactElement {
     const end = e.currentTarget.selectionEnd ?? draft.length
     const merged = draft.slice(0, start) + pasted + draft.slice(end)
     const normalized = normalizeMoneyPasteTR(merged)
-    pendingCaretRef.current = normalized.length
-    setDraft(normalized)
-    onChange(normalized)
+    // normalizeMoneyPasteTR baştaki eksiye bakar; sonda/ortada eksi varsa düzelt
+    const wantsNeg = allowNegative && (merged.includes('-') || merged.includes('−'))
+    const withSign =
+      wantsNeg && normalized && !normalized.startsWith('-')
+        ? `-${normalized}`
+        : wantsNeg && !normalized
+          ? '-'
+          : !allowNegative
+            ? normalized.replace(/-/g, '')
+            : normalized
+    commitTyping(withSign, withSign.length)
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
@@ -210,7 +225,7 @@ export function MoneyInput(props: Props): ReactElement {
         id={inputId}
         name={name}
         type="text"
-        inputMode="decimal"
+        inputMode={allowNegative ? 'text' : 'decimal'}
         autoComplete="off"
         spellCheck={false}
         className={cn(

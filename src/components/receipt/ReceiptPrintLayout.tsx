@@ -116,6 +116,7 @@ export function ReceiptPrintLayout(props: ReceiptPrintLayoutProps): ReactElement
               Bu belge Woontegra Müvekkil Kasa sistemi üzerinden oluşturulmuştur.
             </span>
           </div>
+          <span className="receipt-print__page-num" aria-hidden />
         </footer>
       </div>
     </div>

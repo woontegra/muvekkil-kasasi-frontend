@@ -1,0 +1,40 @@
+import type { QueryClient } from '@tanstack/react-query'
+import { apiFetch } from './client'
+import type {
+  ListTahsilatMerkeziParams,
+  TahsilatMerkeziListResponse,
+  TahsilatMerkeziOzetResponse
+} from '../types/tahsilatMerkezi'
+
+export const TAKSILAT_MERKEZI_QUERY_KEY = ['tahsilat-merkezi'] as const
+
+function toQuery(params: ListTahsilatMerkeziParams): string {
+  const sp = new URLSearchParams()
+  if (params.gorunum) sp.set('gorunum', params.gorunum)
+  if (params.muvekkilId) sp.set('muvekkilId', params.muvekkilId)
+  if (params.dosyaId) sp.set('dosyaId', params.dosyaId)
+  if (params.vadeBas) sp.set('vadeBas', params.vadeBas)
+  if (params.vadeBit) sp.set('vadeBit', params.vadeBit)
+  if (params.durum) sp.set('durum', params.durum)
+  if (params.personelId) sp.set('personelId', params.personelId)
+  if (params.q) sp.set('q', params.q)
+  if (params.page) sp.set('page', String(params.page))
+  if (params.limit) sp.set('limit', String(params.limit))
+  const qs = sp.toString()
+  return qs ? `?${qs}` : ''
+}
+
+export async function getTahsilatMerkeziOzet(personelId?: string): Promise<TahsilatMerkeziOzetResponse> {
+  const qs = personelId ? `?personelId=${encodeURIComponent(personelId)}` : ''
+  return apiFetch<TahsilatMerkeziOzetResponse>(`/api/v1/tahsilat-merkezi/ozet${qs}`)
+}
+
+export async function listTahsilatMerkezi(
+  params: ListTahsilatMerkeziParams = {}
+): Promise<TahsilatMerkeziListResponse> {
+  return apiFetch<TahsilatMerkeziListResponse>(`/api/v1/tahsilat-merkezi/liste${toQuery(params)}`)
+}
+
+export function invalidateTahsilatMerkezi(queryClient: QueryClient): void {
+  void queryClient.invalidateQueries({ queryKey: TAKSILAT_MERKEZI_QUERY_KEY })
+}

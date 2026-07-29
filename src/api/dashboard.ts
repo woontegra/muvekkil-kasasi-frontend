@@ -19,4 +19,5 @@ export function invalidateDashboardSummary(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: DASHBOARD_SUMMARY_QUERY_KEY })
   void queryClient.invalidateQueries({ queryKey: TAKSIT_UYARILARI_QUERY_KEY })
   void queryClient.invalidateQueries({ queryKey: SMM_BEKLEYEN_QUERY_KEY })
+  void queryClient.invalidateQueries({ queryKey: ['tahsilat-merkezi'] })
 }

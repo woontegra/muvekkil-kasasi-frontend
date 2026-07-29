@@ -94,7 +94,8 @@ export function moneySignificantCount(s: string, caret: number): number {
   const end = Math.max(0, Math.min(caret, s.length))
   for (let i = 0; i < end; i++) {
     const c = s[i]
-    if ((c >= '0' && c <= '9') || c === ',') n += 1
+    // Baştaki eksi düzeltme tutarlarında caret hesabına dahil edilmeli
+    if ((c >= '0' && c <= '9') || c === ',' || (c === '-' && i === 0)) n += 1
   }
   return n
 }
@@ -104,7 +105,7 @@ export function moneyCaretFromSignificant(s: string, significant: number): numbe
   let seen = 0
   for (let i = 0; i < s.length; i++) {
     const c = s[i]
-    if ((c >= '0' && c <= '9') || c === ',') {
+    if ((c >= '0' && c <= '9') || c === ',' || (c === '-' && i === 0)) {
       seen += 1
       if (seen === significant) return i + 1
     }

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, ReactElement } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   adminSettingsChangePasswordRequest,
   adminSettingsProfileGet,
@@ -38,18 +38,26 @@ export function AdminSettingsPage(): ReactElement {
 
   const [adSoyad, setAdSoyad] = useState('')
   const [eposta, setEposta] = useState('')
+  const profileDirtyRef = useRef(false)
+  const hydratedProfileKeyRef = useRef<string | null>(null)
 
   useEffect(() => {
     const p = profileQ.data?.profile
-    if (p) {
-      setAdSoyad(p.adSoyad)
-      setEposta(p.eposta ?? '')
-    }
+    if (!p) return
+    const key = `${p.adSoyad}|${p.eposta ?? ''}`
+    if (profileDirtyRef.current && hydratedProfileKeyRef.current != null) return
+    if (hydratedProfileKeyRef.current === key) return
+    hydratedProfileKeyRef.current = key
+    profileDirtyRef.current = false
+    setAdSoyad(p.adSoyad)
+    setEposta(p.eposta ?? '')
   }, [profileQ.data?.profile])
 
   const saveProfileM = useMutation({
     mutationFn: () => adminSettingsProfilePut({ adSoyad: adSoyad.trim(), eposta: eposta.trim() || null }),
     onSuccess: () => {
+      profileDirtyRef.current = false
+      hydratedProfileKeyRef.current = null
       void qc.invalidateQueries({ queryKey: ['admin-settings-profile'] })
       void refreshMe()
     }
@@ -100,9 +108,25 @@ export function AdminSettingsPage(): ReactElement {
                   void saveProfileM.mutateAsync()
                 }}
               >
-                <Input label="Ad soyad" value={adSoyad} onChange={(e) => setAdSoyad(e.target.value)} required />
+                <Input
+                  label="Ad soyad"
+                  value={adSoyad}
+                  onChange={(e) => {
+                    profileDirtyRef.current = true
+                    setAdSoyad(e.target.value)
+                  }}
+                  required
+                />
                 <Input label="Kullanıcı adı" value={p.kullaniciAdi} readOnly className="bg-slate-50" />
-                <Input label="E-posta" type="email" value={eposta} onChange={(e) => setEposta(e.target.value)} />
+                <Input
+                  label="E-posta"
+                  type="email"
+                  value={eposta}
+                  onChange={(e) => {
+                    profileDirtyRef.current = true
+                    setEposta(e.target.value)
+                  }}
+                />
                 <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-sm">
                   <span className="text-ink-muted">Rol:</span> <span className="font-semibold text-ink">{p.rol}</span>
                   <br />

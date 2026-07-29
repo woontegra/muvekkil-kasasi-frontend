@@ -15,7 +15,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
 ): ReactElement {
   const inputId = id ?? rest.name
   return (
-    <div className="w-full">
+    <div className={cn('w-full', error && 'motion-field-error')}>
       {label ? (
         <label htmlFor={inputId} className="mb-1 block text-xs font-semibold text-ink-muted">
           {label}
@@ -24,6 +24,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       <input
         ref={ref}
         id={inputId}
+        aria-invalid={error ? true : undefined}
         className={cn(
           'h-9 w-full rounded-md border bg-white px-3 text-sm text-ink shadow-inner outline-none transition',
           'border-border placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/15',

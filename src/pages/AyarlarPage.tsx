@@ -1,13 +1,17 @@
 import type { ReactElement, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { getCurrentLicense } from '../api/license'
+import { updateHesapDonemiModu } from '../api/hesapDonemi'
+import { HESAP_DONEMI_OZET_QUERY_KEY } from '../api/hesapDonemi'
 import { APP_BASE } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
 import { cn } from '../lib/cn'
 import { roleLabel } from '../lib/roleLabel'
+import { OtomatikTahsilatBildirimAyarCard } from '../components/ayarlar/OtomatikTahsilatBildirimAyarCard'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, PageHeader } from '../components/ui'
+import { useToast } from '../toast'
 
 import type { AuthUserDto } from '../types/auth'
 import type { LicenseWarningLevel, TenantLicenseCurrent } from '../types/license'
@@ -160,10 +164,64 @@ function ModalShell(props: { title: string; onClose: () => void; children: React
   )
 }
 
+function HesapDonemiAyarCard(): ReactElement {
+  const { session, refreshMe } = useAuth()
+  const queryClient = useQueryClient()
+  const toast = useToast()
+  const currentMode = session?.tenant.hesapDonemiModu ?? 'MONTHLY'
+
+  const mutation = useMutation({
+    mutationFn: (modu: 'MONTHLY' | 'YEARLY') => updateHesapDonemiModu(modu),
+    onSuccess: async (_data, modu) => {
+      toast.success(`Hesap dönemi modu "${modu === 'MONTHLY' ? 'Aylık' : 'Yıllık'}" olarak güncellendi.`)
+      void queryClient.invalidateQueries({ queryKey: [...HESAP_DONEMI_OZET_QUERY_KEY] })
+      await refreshMe()
+    },
+    onError: () => {
+      toast.error('Hesap dönemi modu güncellenemedi.')
+    }
+  })
+
+  return (
+    <Card className="min-w-0">
+      <CardHeader className="border-b border-border">
+        <CardTitle className="text-base">Hesap dönemi</CardTitle>
+      </CardHeader>
+      <CardBody className="space-y-3 px-4 py-4 sm:px-5">
+        <p className="text-sm leading-relaxed text-ink-muted">
+          Ofis kasası özet kartında gösterilecek dönem tipi. Aylık veya yıllık olarak seçilebilir.
+        </p>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant={currentMode === 'MONTHLY' ? 'primary' : 'outline'}
+            size="sm"
+            disabled={mutation.isPending}
+            onClick={() => { if (currentMode !== 'MONTHLY') mutation.mutate('MONTHLY') }}
+          >
+            Aylık
+          </Button>
+          <Button
+            type="button"
+            variant={currentMode === 'YEARLY' ? 'primary' : 'outline'}
+            size="sm"
+            disabled={mutation.isPending}
+            onClick={() => { if (currentMode !== 'YEARLY') mutation.mutate('YEARLY') }}
+          >
+            Yıllık
+          </Button>
+        </div>
+        {mutation.isPending ? <p className="text-xs text-ink-muted">Kaydediliyor…</p> : null}
+      </CardBody>
+    </Card>
+  )
+}
+
 export function AyarlarPage(): ReactElement {
   const { session } = useAuth()
   const [officeModalOpen, setOfficeModalOpen] = useState(false)
   const isBuroSahibi = session?.user.role === 'BURO_SAHIBI'
+  const isYonetici = session?.user.role === 'BURO_SAHIBI' || session?.user.role === 'AVUKAT_YONETICI'
 
   const tenant = session?.tenant
   const user = session?.user
@@ -267,7 +325,11 @@ export function AyarlarPage(): ReactElement {
           </Card>
         ) : null}
 
-        <Card className={cn('min-w-0', !isBuroSahibi && 'lg:col-span-2')}>
+        {isYonetici ? <HesapDonemiAyarCard /> : null}
+
+        {isYonetici ? <OtomatikTahsilatBildirimAyarCard /> : null}
+
+        <Card className={cn('min-w-0', !isBuroSahibi && !isYonetici && 'lg:col-span-2')}>
           <CardHeader className="border-b border-border">
             <CardTitle className="text-base">Güvenlik ve denetim</CardTitle>
           </CardHeader>
