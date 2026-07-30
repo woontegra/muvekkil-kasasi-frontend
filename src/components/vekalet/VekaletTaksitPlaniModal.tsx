@@ -1,6 +1,6 @@
 import type { FormEvent, ReactElement } from 'react'
 import { useMemo, useState } from 'react'
-import { AlertBox, Button, Input, MoneyInput } from '../ui'
+import { AlertBox, Button, DraggablePanel, Input, MoneyInput } from '../ui'
 import {
   bolKalanTaksitlereEsit,
   hesaplaSabitTaksitPlani,
@@ -271,7 +271,7 @@ export function VekaletTaksitPlaniModal(props: Props): ReactElement {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/45 p-4 pt-[4vh] backdrop-blur-[1px]">
-      <div
+      <DraggablePanel
         role="dialog"
         aria-modal="true"
         className={cn(
@@ -279,7 +279,7 @@ export function VekaletTaksitPlaniModal(props: Props): ReactElement {
           planTipi === 'OZEL' ? 'max-w-4xl' : 'max-w-xl'
         )}
       >
-        <div className="flex items-start justify-between gap-2 border-b border-border px-5 py-4">
+        <div data-modal-drag-handle className="flex items-start justify-between gap-2 border-b border-border px-5 py-4">
           <h2 className="text-base font-bold text-ink">Taksit planı oluştur</h2>
           <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={onClose} disabled={loading}>
             ✕
@@ -489,7 +489,7 @@ export function VekaletTaksitPlaniModal(props: Props): ReactElement {
             </Button>
           </div>
         </form>
-      </div>
+      </DraggablePanel>
     </div>
   )
 }

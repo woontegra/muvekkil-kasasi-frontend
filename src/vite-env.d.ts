@@ -13,8 +13,8 @@ declare module 'pdfmake/build/pdfmake' {
   const pdfMake: {
     addVirtualFileSystem: (vfs: unknown) => void
     createPdf: (docDefinition: unknown, options?: unknown) => {
-      download: (defaultFileName?: string, cb?: () => void, options?: unknown) => void
-      getBlob: (cb: (blob: Blob) => void, options?: unknown) => void
+      download: (defaultFileName?: string) => Promise<void>
+      getBlob: () => Promise<Blob>
     }
   }
   export default pdfMake

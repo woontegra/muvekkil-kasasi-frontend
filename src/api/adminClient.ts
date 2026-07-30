@@ -1,22 +1,20 @@
-const ADMIN_TOKEN_KEY = 'mkd_admin_access_token'
-
-export const ADMIN_ACCESS_TOKEN_STORAGE_KEY = ADMIN_TOKEN_KEY
-
-export function getAdminAccessToken(): string | null {
-  if (typeof localStorage === 'undefined') return null
-  return localStorage.getItem(ADMIN_TOKEN_KEY)
-}
-
-export function setAdminAccessToken(token: string | null): void {
-  if (typeof localStorage === 'undefined') return
-  if (token) localStorage.setItem(ADMIN_TOKEN_KEY, token)
-  else localStorage.removeItem(ADMIN_TOKEN_KEY)
-}
-
 import { joinApiUrl } from './apiBase'
 import { friendlyClientErrorMessage } from './client'
+import {
+  getAdminAccessToken,
+  purgeLegacyAdminAccessTokenStorage,
+  setAdminAccessToken
+} from './adminAccessTokenMemory'
+import { refreshAdminAccessTokenOnce } from './refreshAdminAccess'
 
-const PUBLIC_ADMIN_PATHS = new Set(['/api/v1/admin/auth/login', '/api/v1/admin/auth/logout'])
+export { getAdminAccessToken, setAdminAccessToken, purgeLegacyAdminAccessTokenStorage }
+
+const PUBLIC_ADMIN_PATHS = new Set([
+  '/api/v1/admin/auth/login',
+  '/api/v1/admin/auth/logout',
+  '/api/v1/admin/auth/refresh',
+  '/api/v1/admin/auth/elevate-from-tenant'
+])
 
 export class AdminApiError extends Error {
   constructor(
@@ -34,7 +32,9 @@ function formatValidationDetails(details: unknown): string {
   const d = details as { fieldErrors?: Record<string, string[]>; formErrors?: string[] }
   const fe = d.fieldErrors
   if (fe && typeof fe === 'object') {
-    const lines = Object.entries(fe).flatMap(([field, msgs]) => (Array.isArray(msgs) ? msgs.map((m) => `${field}: ${m}`) : []))
+    const lines = Object.entries(fe).flatMap(([field, msgs]) =>
+      Array.isArray(msgs) ? msgs.map((m) => `${field}: ${m}`) : []
+    )
     if (lines.length) return lines.join(' ')
   }
   const form = d.formErrors
@@ -43,18 +43,20 @@ function formatValidationDetails(details: unknown): string {
 }
 
 export async function adminApiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAdminAccessToken()
-  const headers = new Headers(init?.headers)
-  if (!headers.has('Content-Type') && init?.body != null) {
-    headers.set('Content-Type', 'application/json')
-  }
-  if (!PUBLIC_ADMIN_PATHS.has(path) && token) {
-    headers.set('Authorization', `Bearer ${token}`)
+  const doFetch = async (token: string | null): Promise<Response> => {
+    const headers = new Headers(init?.headers)
+    if (!headers.has('Content-Type') && init?.body != null) {
+      headers.set('Content-Type', 'application/json')
+    }
+    if (!PUBLIC_ADMIN_PATHS.has(path) && token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+    return fetch(joinApiUrl(path), { ...init, headers, credentials: 'include' })
   }
 
   let res: Response
   try {
-    res = await fetch(joinApiUrl(path), { ...init, headers })
+    res = await doFetch(getAdminAccessToken())
   } catch (err) {
     throw new AdminApiError(
       friendlyClientErrorMessage(
@@ -65,6 +67,14 @@ export async function adminApiFetch<T>(path: string, init?: RequestInit): Promis
       'NETWORK_ERROR'
     )
   }
+
+  if (res.status === 401 && !PUBLIC_ADMIN_PATHS.has(path)) {
+    const next = await refreshAdminAccessTokenOnce()
+    if (next) {
+      res = await doFetch(next)
+    }
+  }
+
   if (!res.ok) {
     let message = res.statusText
     let code: string | undefined

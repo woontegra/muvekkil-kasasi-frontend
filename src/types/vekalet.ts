@@ -34,6 +34,8 @@ export type VekaletTaksitiDto = {
   smmKesimTarihi: string | null
   smmNo: string | null
   smmAciklama: string | null
+  /** Varsayılan true; kapatılınca yalnızca bu taksit sessize alınır. */
+  otomatikBildirimAktif?: boolean
   createdById: string
   updatedById: string | null
   createdAt: string

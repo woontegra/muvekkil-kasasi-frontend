@@ -1,19 +1,9 @@
 import { apiBaseLabel, getApiBaseUrl, joinApiUrl, warnIfLocalFrontendHitsRemoteApi } from './apiBase'
+import { getAccessToken, setAccessToken, purgeLegacyAccessTokenStorage } from './accessTokenMemory'
+import { refreshAccessTokenOnce } from './refreshAccess'
 
-const TOKEN_KEY = 'mkd_access_token'
-
-export const ACCESS_TOKEN_STORAGE_KEY = TOKEN_KEY
-
-export function getAccessToken(): string | null {
-  if (typeof localStorage === 'undefined') return null
-  return localStorage.getItem(TOKEN_KEY)
-}
-
-export function setAccessToken(token: string | null): void {
-  if (typeof localStorage === 'undefined') return
-  if (token) localStorage.setItem(TOKEN_KEY, token)
-  else localStorage.removeItem(TOKEN_KEY)
-}
+export { getAccessToken, setAccessToken }
+export { purgeLegacyAccessTokenStorage }
 
 export class ApiError extends Error {
   constructor(
@@ -148,12 +138,17 @@ export { getApiBaseUrl, joinApiUrl }
 const PUBLIC_AUTH_PATHS = new Set([
   '/api/v1/auth/login',
   '/api/v1/auth/logout',
+  '/api/v1/auth/refresh',
   '/api/v1/auth/forgot-password',
   '/api/v1/auth/reset-password'
 ])
 
 function isPublicAuthPath(path: string): boolean {
   return PUBLIC_AUTH_PATHS.has(path)
+}
+
+function isRefreshPath(path: string): boolean {
+  return path === '/api/v1/auth/refresh'
 }
 
 async function handleFailedResponse(
@@ -204,18 +199,20 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   const fullUrl = joinApiUrl(path)
   logApiRequest(method, path, fullUrl)
 
-  const token = getAccessToken()
-  const headers = new Headers(init?.headers)
-  if (!headers.has('Content-Type') && init?.body != null) {
-    headers.set('Content-Type', 'application/json')
-  }
-  if (!isPublicAuthPath(path) && token) {
-    headers.set('Authorization', `Bearer ${token}`)
+  const doFetch = async (token: string | null): Promise<Response> => {
+    const headers = new Headers(init?.headers)
+    if (!headers.has('Content-Type') && init?.body != null) {
+      headers.set('Content-Type', 'application/json')
+    }
+    if (!isPublicAuthPath(path) && token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+    return fetch(fullUrl, { ...init, headers, credentials: 'include' })
   }
 
   let res: Response
   try {
-    res = await fetch(fullUrl, { ...init, headers })
+    res = await doFetch(getAccessToken())
   } catch (err) {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
@@ -230,6 +227,17 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       })
     }
     throw err
+  }
+
+  if (res.status === 401 && !isPublicAuthPath(path) && !isRefreshPath(path)) {
+    const next = await refreshAccessTokenOnce()
+    if (next) {
+      try {
+        res = await doFetch(next)
+      } catch (err) {
+        throw err
+      }
+    }
   }
 
   if (!res.ok) {
@@ -246,15 +254,17 @@ export async function apiFetchMultipart<T>(path: string, formData: FormData): Pr
   const fullUrl = joinApiUrl(path)
   logApiRequest(method, path, fullUrl)
 
-  const token = getAccessToken()
-  const headers = new Headers()
-  if (!isPublicAuthPath(path) && token) {
-    headers.set('Authorization', `Bearer ${token}`)
+  const doFetch = async (token: string | null): Promise<Response> => {
+    const headers = new Headers()
+    if (!isPublicAuthPath(path) && token) {
+      headers.set('Authorization', `Bearer ${token}`)
+    }
+    return fetch(fullUrl, { method: 'POST', body: formData, headers, credentials: 'include' })
   }
 
   let res: Response
   try {
-    res = await fetch(fullUrl, { method: 'POST', body: formData, headers })
+    res = await doFetch(getAccessToken())
   } catch (err) {
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
@@ -269,6 +279,13 @@ export async function apiFetchMultipart<T>(path: string, formData: FormData): Pr
       })
     }
     throw err
+  }
+
+  if (res.status === 401 && !isPublicAuthPath(path)) {
+    const next = await refreshAccessTokenOnce()
+    if (next) {
+      res = await doFetch(next)
+    }
   }
 
   if (!res.ok) {

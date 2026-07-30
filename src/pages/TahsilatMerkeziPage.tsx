@@ -35,7 +35,6 @@ import {
   tableActionButtonShrinkClass,
   tableActionsFlexRow
 } from '../components/ui'
-import { useAuth } from '../contexts/AuthContext'
 import { buildMaliKontrolNavigateUrl } from '../lib/maliKontrolNavigation'
 import { AnimatedNumber, Stagger, StaggerItem } from '../motion'
 import { useToast } from '../toast'
@@ -88,11 +87,9 @@ function gunFarkiLabel(gun: number): string {
 }
 
 export function TahsilatMerkeziPage(): ReactElement {
-  const { session } = useAuth()
   const toast = useToast()
   const qc = useQueryClient()
   const navigate = useNavigate()
-  const buroAdi = session?.tenant.buroAdi ?? 'Büromuz'
 
   const [gorunum, setGorunum] = useState<TahsilatMerkeziGorunumFilter>('YAKLASANLAR')
   const [q, setQ] = useState('')
@@ -297,10 +294,21 @@ export function TahsilatMerkeziPage(): ReactElement {
                 ))}
               </select>
             </div>
-            <Input label="Vade başlangıç" type="date" value={vadeBas} onChange={(e) => setVadeBas(e.target.value)} />
-            <Input label="Vade bitiş" type="date" value={vadeBit} onChange={(e) => setVadeBit(e.target.value)} />
+            <Input
+              label="Vade başlangıç"
+              type="date"
+              value={vadeBas}
+              onChange={(e) => setVadeBas(e.target.value)}
+              placeholder="Tarih seçin"
+            />
+            <Input
+              label="Vade bitiş"
+              type="date"
+              value={vadeBit}
+              onChange={(e) => setVadeBit(e.target.value)}
+              placeholder="Tarih seçin"
+            />
             <div className="md:col-span-2">
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Tahsilatı yapan personel</label>
               <TahsilatiYapanPersonelSelect value={personelId} onChange={setPersonelId} />
             </div>
           </div>
@@ -417,9 +425,7 @@ export function TahsilatMerkeziPage(): ReactElement {
         />
       ) : null}
 
-      {whatsappRow ? (
-        <WhatsAppHatirlatModal row={whatsappRow} buroAdi={buroAdi} onClose={() => setWhatsappRow(null)} />
-      ) : null}
+      {whatsappRow ? <WhatsAppHatirlatModal row={whatsappRow} onClose={() => setWhatsappRow(null)} /> : null}
     </div>
   )
 }
@@ -493,7 +499,7 @@ function ListeSatir(props: {
             Ödeme Al
           </Button>
           <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onWhatsapp}>
-            WhatsApp Hatırlat
+            WhatsApp’tan Gönder
           </Button>
           <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onEkstreAc}>
             Ekstre Aç

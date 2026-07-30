@@ -5,8 +5,8 @@ import { formatCurrencyTR, formatDateTR } from '../utils/formatters'
 type PdfMakeBrowser = {
   addVirtualFileSystem: (vfs: unknown) => void
   createPdf: (doc: TDocumentDefinitions) => {
-    download: (filename: string, cb?: () => void) => void
-    getBlob: (cb: (blob: Blob) => void) => void
+    download: (filename?: string) => Promise<void>
+    getBlob: () => Promise<Blob>
   }
 }
 
@@ -376,29 +376,25 @@ export async function downloadMuvekkilEkstrePdf(ekstre: MuvekkilEkstreDto): Prom
   const filename = buildMuvekkilEkstrePdfFilename(ekstre)
   const def = buildMuvekkilEkstreDocDefinition(ekstre)
 
-  await new Promise<void>((resolve, reject) => {
-    try {
-      const pdf = pdfMake.createPdf(def)
-      pdf.getBlob((blob) => {
-        try {
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = filename
-          a.rel = 'noopener'
-          document.body.appendChild(a)
-          a.click()
-          a.remove()
-          window.setTimeout(() => URL.revokeObjectURL(url), 1500)
-          resolve()
-        } catch (err) {
-          reject(err instanceof Error ? err : new Error('PDF indirilemedi.'))
-        }
-      })
-    } catch (err) {
-      reject(err instanceof Error ? err : new Error('PDF oluşturulamadı.'))
+  try {
+    // pdfmake 0.3+: getBlob/download Promise tabanlı (callback yok)
+    const pdf = pdfMake.createPdf(def)
+    const blob = await pdf.getBlob()
+    if (!(blob instanceof Blob) || blob.size <= 0) {
+      throw new Error('PDF boş üretildi.')
     }
-  })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.rel = 'noopener'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500)
+  } catch (err) {
+    throw err instanceof Error ? err : new Error('PDF oluşturulamadı.')
+  }
 
   return filename
 }

@@ -11,6 +11,7 @@ import type {
 export type ListMuvekkillerParams = {
   q?: string
   tur?: MuvekkilTurApi
+  otomatikHatirlatma?: 'TUMU' | 'ACIK' | 'KAPALI'
   page?: number
   limit?: number
 }
@@ -19,6 +20,9 @@ function buildQuery(params: ListMuvekkillerParams): string {
   const sp = new URLSearchParams()
   if (params.q?.trim()) sp.set('q', params.q.trim())
   if (params.tur) sp.set('tur', params.tur)
+  if (params.otomatikHatirlatma && params.otomatikHatirlatma !== 'TUMU') {
+    sp.set('otomatikHatirlatma', params.otomatikHatirlatma)
+  }
   if (params.page != null) sp.set('page', String(params.page))
   if (params.limit != null) sp.set('limit', String(params.limit))
   const s = sp.toString()

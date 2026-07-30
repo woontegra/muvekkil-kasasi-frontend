@@ -33,7 +33,8 @@ import {
   TR,
   tableActionsFlexRow,
   tableActionButtonShrinkClass,
-  useConfirm
+  useConfirm,
+  DraggablePanel
 } from '../components/ui'
 import { useToast } from '../toast'
 import { cn } from '../lib/cn'
@@ -774,19 +775,19 @@ function ModalShell(props: { title: string; onClose: () => void; children: React
   const { title, onClose, children } = props
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]">
-      <div
+      <DraggablePanel
         role="dialog"
         aria-modal="true"
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-white p-5 shadow-xl dark:bg-surface-elevated"
       >
-        <div className="mb-4 flex items-start justify-between gap-2">
+        <div data-modal-drag-handle className="mb-4 flex items-start justify-between gap-2">
           <h2 className="text-base font-bold text-ink">{title}</h2>
           <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={onClose}>
             ✕
           </Button>
         </div>
         {children}
-      </div>
+      </DraggablePanel>
     </div>
   )
 }

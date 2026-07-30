@@ -1,14 +1,11 @@
 import { test, expect } from '@playwright/test'
 import { assertEditableTextField, assertMoneyField } from './helpers/inputMatrix'
+import { waitAppReady } from './helpers/waitAppReady'
+import { waitMuvekkilListResponse } from './helpers/waitMuvekkilSearch'
 
 const stamp = Date.now()
 const muvekkilAd = `E2E Müvekkil ${stamp}`
 const dosyaBaslik = `E2E Dosya ${stamp}`
-
-async function waitAppReady(page: import('@playwright/test').Page): Promise<void> {
-  await expect(page.getByText(/oturum doğrulanıyor/i)).toHaveCount(0, { timeout: 30_000 })
-  await expect(page).not.toHaveURL(/\/login/)
-}
 
 test.describe.serial('Temel kullanıcı akışları', () => {
   let muvekkilUrl = ''
@@ -56,14 +53,53 @@ test.describe.serial('Temel kullanıcı akışları', () => {
     test.skip(!muvekkilUrl, 'Müvekkil oluşmadı')
     await page.goto('/app')
     await waitAppReady(page)
-    const search = page.getByPlaceholder(/ara|müvekkil|dosya/i).first()
-    if (await search.isVisible().catch(() => false)) {
-      await assertEditableTextField(page, search, { turkish: true })
-      await search.fill(muvekkilAd.slice(0, 12))
-    }
+
+    const search = page.getByRole('textbox', { name: /müvekkil ara/i })
+    await expect(search).toBeVisible({ timeout: 15_000 })
+    await expect(search).toBeEditable()
+
+    // Türkçe karakter: input değeri korunur; debounce/refetch silmez
+    const pendingTr = waitMuvekkilListResponse(page, 'Ğüşiöç')
+    await search.fill('Ğüşiöç')
+    await expect(search).toHaveValue('Ğüşiöç')
+    await page.getByRole('button', { name: /^ara$/i }).click()
+    await pendingTr
+    await expect(search).toHaveValue('Ğüşiöç')
+
+    // Temizle → filtresiz liste isteği
+    const pendingEmpty = waitMuvekkilListResponse(page, '')
+    await search.fill('')
+    await expect(search).toHaveValue('')
+    await page.getByRole('button', { name: /^ara$/i }).click()
+    await pendingEmpty
+
+    // Benzersiz stamp ile ara (önceki E2E kayıtlarından bağımsız)
+    const query = String(stamp)
+    const pending = waitMuvekkilListResponse(page, query)
+    await search.fill(query)
+    await expect(search).toHaveValue(query)
+    // Ara butonu debounce beklemeden flush eder
+    await page.getByRole('button', { name: /^ara$/i }).click()
+    await pending
+    await expect(search).toHaveValue(query)
     await expect(page.getByText(muvekkilAd).first()).toBeVisible({ timeout: 15_000 })
+
+    // Temizle → sonuç kaybolabilir; input boş kalmalı
+    const pendingClear = waitMuvekkilListResponse(page, '')
+    await search.fill('')
+    await page.getByRole('button', { name: /^ara$/i }).click()
+    await pendingClear
+    await expect(search).toHaveValue('')
+
+    // Yenileme sonrası sticky arama yok; tekrar ara
     await page.reload()
     await waitAppReady(page)
+    const searchAfter = page.getByRole('textbox', { name: /müvekkil ara/i })
+    await expect(searchAfter).toHaveValue('')
+    const pendingReload = waitMuvekkilListResponse(page, query)
+    await searchAfter.fill(query)
+    await page.getByRole('button', { name: /^ara$/i }).click()
+    await pendingReload
     await expect(page.getByText(muvekkilAd).first()).toBeVisible({ timeout: 15_000 })
   })
 

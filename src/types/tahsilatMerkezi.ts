@@ -66,6 +66,20 @@ export type TahsilatMerkeziOzetResponse = {
   ozet: TahsilatMerkeziOzetDto
 }
 
+export type ManualWhatsAppPreviewResponse = {
+  ok: true
+  taksitId: string
+  muvekkilAdi: string
+  dosyaBilgisi: string
+  kalanTutar: string
+  telefonMaskeli: string | null
+  telefonGecerli: boolean
+  mesaj: string
+  kuralTuru: string
+  provider: 'MANUAL_WHATSAPP'
+  bilgi: string
+}
+
 export const TAKSILAT_MERKEZI_GORUNUM_LABEL: Record<TahsilatMerkeziGorunumFilter, string> = {
   GECIKENLER: 'Gecikenler',
   BUGUN: 'Bugün',

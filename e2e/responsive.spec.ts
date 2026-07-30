@@ -1,9 +1,5 @@
 import { test, expect } from '@playwright/test'
-
-async function waitAppReady(page: import('@playwright/test').Page): Promise<void> {
-  await expect(page.getByText(/oturum doğrulanıyor/i)).toHaveCount(0, { timeout: 30_000 })
-  await expect(page).not.toHaveURL(/\/login/)
-}
+import { waitAppReady } from './helpers/waitAppReady'
 
 test.describe('Responsive / modal taşma', () => {
   test('dar ekranda ana sayfa yatay taşmaz', async ({ page }) => {

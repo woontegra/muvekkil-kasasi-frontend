@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import { Button } from '../ui'
+import { Button, DraggablePanel } from '../ui'
 import './receiptDocument.css'
 
 type ReceiptModalProps = {
@@ -22,13 +22,16 @@ export function ReceiptModal(props: ReceiptModalProps): ReactElement {
   const { title, printRootId, onClose, children, hint, printButtonLabel = 'Yazdır', contentClassName } =
     props
 
+  // CSS seçici enjeksiyonuna karşı yalnızca güvenli kimliklere izin ver.
+  const safePrintRootId = /^[A-Za-z][\w-]*$/.test(printRootId) ? printRootId : 'receipt-print-root'
+
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4 print:static print:inset-auto print:bg-white print:p-0">
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #${printRootId}, #${printRootId} * { visibility: visible !important; }
-          #${printRootId} {
+          #${safePrintRootId}, #${safePrintRootId} * { visibility: visible !important; }
+          #${safePrintRootId} {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
@@ -44,7 +47,7 @@ export function ReceiptModal(props: ReceiptModalProps): ReactElement {
             max-height: none !important;
             overflow: visible !important;
           }
-          #${printRootId} .receipt-print {
+          #${safePrintRootId} .receipt-print {
             max-width: 100% !important;
             width: 100% !important;
             margin: 0 !important;
@@ -53,11 +56,11 @@ export function ReceiptModal(props: ReceiptModalProps): ReactElement {
         }
         @page { size: A4 portrait; margin: 10mm 12mm; }
       `}</style>
-      <div
-        id={printRootId}
-        className="max-h-[90vh] w-full max-w-[860px] overflow-y-auto rounded-lg border border-border bg-white shadow-xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none"
+      <DraggablePanel
+        id={safePrintRootId}
+        className="max-h-[90vh] w-full max-w-[860px] overflow-y-auto rounded-lg border border-border bg-white shadow-xl print:max-h-none print:max-w-none print:overflow-visible print:rounded-none print:border-0 print:p-0 print:shadow-none print:!transform-none"
       >
-        <div className="no-print border-b border-border bg-surface-muted/40 px-4 py-3">
+        <div data-modal-drag-handle className="no-print border-b border-border bg-surface-muted/40 px-4 py-3">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-bold text-ink">{title}</h2>
             <div className="flex gap-2">
@@ -74,7 +77,7 @@ export function ReceiptModal(props: ReceiptModalProps): ReactElement {
         <div className={contentClassName ? `p-4 print:p-0 ${contentClassName}` : 'p-4 print:p-0'}>
           {children}
         </div>
-      </div>
+      </DraggablePanel>
     </div>
   )
 }

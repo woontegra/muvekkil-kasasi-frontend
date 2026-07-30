@@ -1,7 +1,16 @@
 import type { ReactElement, ReactNode } from 'react'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { apiFetch, getAccessToken, setAccessToken } from '../api/client'
+import {
+  apiFetch,
+  getAccessToken,
+  purgeLegacyAccessTokenStorage,
+  setAccessToken
+} from '../api/client'
+import { refreshAccessTokenOnce } from '../api/refreshAccess'
+import { setAdminAccessToken } from '../api/adminAccessTokenMemory'
+import { emitAdminSessionApply, emitAdminSessionClear } from './adminSessionEvents'
 import type { AuthLoginResponse, AuthOnboardingState, AuthSession, MeResponse } from '../types/auth'
+import type { AdminUserDto } from '../types/admin'
 
 type AuthContextValue = {
   session: AuthSession | null
@@ -28,15 +37,10 @@ function extractOnboarding(payload: AuthOnboardingState): AuthOnboardingState {
   }
 }
 
-function applyAuthPayload(payload: AuthLoginResponse): void {
-  setAccessToken(payload.accessToken)
-}
-
 export function AuthProvider({ children }: { children: ReactNode }): ReactElement {
   const [session, setSession] = useState<AuthSession | null>(null)
   const [onboarding, setOnboarding] = useState<AuthOnboardingState>(defaultOnboarding)
-  /** Yalnızca kayıtlı token varken /me beklenirken true; token yoksa ilk pikselden false (public auth flicker olmaz). */
-  const [loading, setLoading] = useState(() => !!getAccessToken())
+  const [loading, setLoading] = useState(true)
 
   const applyOnboardingSession = useCallback((payload: MeResponse | AuthLoginResponse) => {
     setSession({ user: payload.user, tenant: payload.tenant })
@@ -51,14 +55,21 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
   }, [applyOnboardingSession])
 
   useEffect(() => {
+    purgeLegacyAccessTokenStorage()
     let cancelled = false
     async function bootstrap(): Promise<void> {
-      const token = getAccessToken()
-      if (!token) {
-        if (!cancelled) setLoading(false)
-        return
-      }
       try {
+        if (!getAccessToken()) {
+          const token = await refreshAccessTokenOnce()
+          if (!token) {
+            if (!cancelled) {
+              setSession(null)
+              setOnboarding(defaultOnboarding)
+              setLoading(false)
+            }
+            return
+          }
+        }
         const r = await apiFetch<MeResponse>('/api/v1/me')
         if (!cancelled && r.ok) {
           applyOnboardingSession(r)
@@ -88,8 +99,14 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
           sifre: input.sifre
         })
       })
-      applyAuthPayload(r)
+      setAccessToken(r.accessToken)
       applyOnboardingSession(r)
+      if (r.adminAccessToken && r.adminUser && r.adminUser.rol === 'SUPER_ADMIN' && r.adminUser.aktifMi) {
+        setAdminAccessToken(r.adminAccessToken)
+        emitAdminSessionApply(r.adminAccessToken, r.adminUser as AdminUserDto)
+      } else {
+        emitAdminSessionClear()
+      }
     },
     [applyOnboardingSession]
   )
@@ -99,6 +116,8 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
       .catch(() => undefined)
       .finally(() => {
         setAccessToken(null)
+        setAdminAccessToken(null)
+        emitAdminSessionClear()
         setSession(null)
         setOnboarding(defaultOnboarding)
       })

@@ -8,6 +8,7 @@ import { ApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import type { CreateMuvekkilPayload, MuvekkilTurApi } from '../types/muvekkil'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, Select, Textarea } from '../components/ui'
+import { OtomatikHatirlatmaSwitch } from '../components/bildirim/OtomatikHatirlatmaSwitch'
 
 function isEmail(s: string): boolean {
   return /^\S+@\S+\.\S+$/.test(s.trim())
@@ -35,6 +36,8 @@ export function YeniMuvekkilPage(): ReactElement {
   const [tuzelEposta, setTuzelEposta] = useState('')
   const [tuzelAdres, setTuzelAdres] = useState('')
   const [tuzelNot, setTuzelNot] = useState('')
+
+  const [otomatikHatirlatma, setOtomatikHatirlatma] = useState(false)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -77,7 +80,8 @@ export function YeniMuvekkilPage(): ReactElement {
         mudurAdSoyad: '',
         mudurTelefon: '',
         muhasebeAdSoyad: '',
-        muhasebeTelefon: ''
+        muhasebeTelefon: '',
+        otomatikBildirimIzni: otomatikHatirlatma
       }
     }
     return {
@@ -93,7 +97,8 @@ export function YeniMuvekkilPage(): ReactElement {
       mudurAdSoyad: mudurAdSoyad.trim(),
       mudurTelefon: mudurTelefon.trim(),
       muhasebeAdSoyad: muhasebeAdSoyad.trim(),
-      muhasebeTelefon: muhasebeTelefon.trim()
+      muhasebeTelefon: muhasebeTelefon.trim(),
+      otomatikBildirimIzni: otomatikHatirlatma
     }
   }
 
@@ -275,6 +280,15 @@ export function YeniMuvekkilPage(): ReactElement {
                 </div>
               </div>
             )}
+
+            <OtomatikHatirlatmaSwitch
+              id="yeni-muvekkil-otomatik-hatirlatma"
+              label="Bu müvekkile otomatik ödeme hatırlatması gönder"
+              description="Kapalı olduğunda bu müvekkile vadesi yaklaşan veya geciken taksitler için otomatik mesaj gönderilmez. Manuel WhatsApp hatırlatma özelliğini yine kullanabilirsiniz."
+              checked={otomatikHatirlatma}
+              disabled={submitting}
+              onChange={setOtomatikHatirlatma}
+            />
 
             <AlertBox variant="info" title="Bilgi">
               Kayıt sonrası müvekkil detay sayfasına yönlendirilirsiniz; ana sayfa listesi güncellenir.

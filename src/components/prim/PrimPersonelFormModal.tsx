@@ -130,12 +130,12 @@ export function PrimPersonelFormModal(props: Props): ReactElement {
   return (
     <ModalScrim onClose={onClose}>
       <div
-        className="w-[min(720px,92vw)] overflow-hidden rounded-xl border border-border bg-panel shadow-xl"
+        className="mx-auto w-[min(720px,92vw)] overflow-hidden rounded-xl border border-border bg-panel shadow-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="prim-personel-modal-title"
       >
-        <header className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
+        <header data-modal-drag-handle className="flex items-start justify-between gap-4 border-b border-border px-6 py-4">
           <div className="min-w-0 pr-2">
             <h2 id="prim-personel-modal-title" className="text-lg font-bold text-ink">
               {isEdit ? 'Personel düzenle' : 'Yeni personel ekle'}

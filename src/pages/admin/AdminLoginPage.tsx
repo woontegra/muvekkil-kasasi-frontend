@@ -4,10 +4,12 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import { AlertBox, Button, Input } from '../../components/ui'
 import { AuthFormCard } from '../../components/auth/AuthFormCard'
+import { useToast } from '../../toast'
 
 export function AdminLoginPage(): ReactElement {
   const { login, isAuthenticated, loading } = useAdminAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   const [identifier, setIdentifier] = useState('')
   const [sifre, setSifre] = useState('')
   const [err, setErr] = useState<string | null>(null)
@@ -23,9 +25,18 @@ export function AdminLoginPage(): ReactElement {
     setPending(true)
     try {
       await login(identifier.trim(), sifre)
+      toast.success({
+        title: 'Giriş başarılı',
+        description: 'Admin paneline yönlendiriliyorsunuz.'
+      })
       navigate('/admin', { replace: true })
     } catch (ex: unknown) {
-      setErr(ex instanceof Error ? ex.message : 'Giriş yapılamadı.')
+      const message = ex instanceof Error ? ex.message : 'Giriş yapılamadı.'
+      setErr(message)
+      toast.error({
+        title: 'Giriş başarısız',
+        description: message
+      })
     } finally {
       setPending(false)
     }
@@ -36,9 +47,11 @@ export function AdminLoginPage(): ReactElement {
       <AuthFormCard title="Woontegra Admin" subtitle="Süper yönetici girişi" icon="lock">
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           {err ? (
-            <AlertBox variant="danger" title="Giriş">
-              {err}
-            </AlertBox>
+            <div className="motion-field-error" key={err}>
+              <AlertBox variant="danger" title="Giriş">
+                {err}
+              </AlertBox>
+            </div>
           ) : null}
           <Input
             label="Kullanıcı adı veya e-posta"
@@ -55,8 +68,8 @@ export function AdminLoginPage(): ReactElement {
             autoComplete="current-password"
             required
           />
-          <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? 'Giriş…' : 'Giriş yap'}
+          <Button type="submit" className="w-full" loading={pending}>
+            Giriş yap
           </Button>
           <Button type="button" variant="outline" className="w-full" onClick={() => navigate('/login')}>
             Büro kullanıcı girişi

@@ -16,6 +16,7 @@ import { invalidateSmmBekleyen } from '../api/smm'
 import { getDosya } from '../api/dosyalar'
 import { getDosyaHesapOzeti } from '../api/hesapOzeti'
 import { getDosyaMakbuzlari } from '../api/makbuzlar'
+import { getDosyaBildirimAyar, patchDosyaBildirimAyar, patchTaksitBildirimAyar } from '../api/bildirimAyar'
 import {
   createTekVekaletTaksiti,
   createVekaletPesinOdeme,
@@ -31,10 +32,11 @@ import {
   updateVekaletTaksitOdeme,
   upsertDosyaVekalet
 } from '../api/vekalet'
+import { OtomatikHatirlatmaSwitch } from '../components/bildirim/OtomatikHatirlatmaSwitch'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import { VekaletTaksitOdemeModal } from '../components/vekalet/VekaletTaksitOdemeModal'
 import { VekaletTaksitPlaniModal } from '../components/vekalet/VekaletTaksitPlaniModal'
-import { ApiError, resolveOdemeApiError } from '../api/client'
+import { ApiError, friendlyClientErrorMessage, resolveOdemeApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
 import { dosyaDurumuBadgeVariant, dosyaDurumuLabel, mahkemeIcraSatir } from '../lib/dosyaLabels'
@@ -58,7 +60,8 @@ import {
   TR,
   tableActionButtonShrinkClass,
   tableActionsFlexRow,
-  useConfirm
+  useConfirm,
+  DraggablePanel
 } from '../components/ui'
 import { useToast } from '../toast'
 import { cn } from '../lib/cn'
@@ -450,6 +453,85 @@ export function DosyaDetailPage(): ReactElement {
     queryFn: () => getDosyaMakbuzlari(dosyaId!),
     enabled: vekaletFetchEnabled
   })
+
+  const dosyaBildirimAyarQuery = useQuery({
+    queryKey: ['dosya-bildirim-ayar', dosyaId],
+    queryFn: () => getDosyaBildirimAyar(dosyaId!),
+    enabled: Boolean(dosyaId) && dosyaQuery.status === 'success'
+  })
+
+  const patchDosyaBildirimMu = useMutation({
+    mutationFn: (otomatikBildirimAktif: boolean) => patchDosyaBildirimAyar(dosyaId!, otomatikBildirimAktif),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['dosya', dosyaId] })
+      void queryClient.invalidateQueries({ queryKey: ['dosya-bildirim-ayar', dosyaId] })
+      toast.success('Dosya hatırlatma ayarı güncellendi.')
+    },
+    onError: (err) => {
+      toast.error(friendlyClientErrorMessage(err, 'Hatırlatma ayarı güncellenemedi.'))
+    }
+  })
+
+  const patchTaksitBildirimMu = useMutation({
+    mutationFn: ({ taksitId, aktif }: { taksitId: string; aktif: boolean }) =>
+      patchTaksitBildirimAyar(taksitId, aktif),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['vekalet', dosyaId] })
+      toast.success('Taksit hatırlatma ayarı güncellendi.')
+    },
+    onError: (err) => {
+      toast.error(friendlyClientErrorMessage(err, 'Taksit hatırlatma ayarı güncellenemedi.'))
+    }
+  })
+
+  const muvekkilIzniKapali = dosyaBildirimAyarQuery.data?.muvekkilOtomatikBildirimIzni === false
+  const dosyaHatirlatmaEffective = muvekkilIzniKapali
+    ? false
+    : (dosyaBildirimAyarQuery.data?.otomatikBildirimAktif ?? false)
+  const dosyaHatirlatmaDisabled =
+    !canYoneticiIslem ||
+    muvekkilIzniKapali ||
+    patchDosyaBildirimMu.isPending ||
+    dosyaBildirimAyarQuery.isFetching
+
+  async function handleDosyaHatirlatmaToggle(next: boolean): Promise<void> {
+    if (!dosyaId || !canYoneticiIslem || patchDosyaBildirimMu.isPending) return
+    if (!next) {
+      try {
+        const ayar = dosyaBildirimAyarQuery.data ?? (await getDosyaBildirimAyar(dosyaId))
+        if (ayar.pendingPlanliSayisi > 0) {
+          const ok = await confirm({
+            title: 'Otomatik hatırlatmaları kapat',
+            message: `Bu işlem bu dosya için planlanmış ${ayar.pendingPlanliSayisi} otomatik hatırlatmayı iptal edecek.`,
+            confirmLabel: 'Kapat',
+            danger: true
+          })
+          if (!ok) return
+        }
+      } catch (err) {
+        toast.error(friendlyClientErrorMessage(err, 'Hatırlatma bilgisi alınamadı.'))
+        return
+      }
+    }
+    patchDosyaBildirimMu.mutate(next)
+  }
+
+  async function handleTaksitHatirlatmaToggle(t: VekaletTaksitiDto): Promise<void> {
+    if (!canYoneticiIslem || patchTaksitBildirimMu.isPending) return
+    if (muvekkilIzniKapali || !dosyaHatirlatmaEffective) return
+    const aktif = t.otomatikBildirimAktif !== false
+    const next = !aktif
+    if (!next) {
+      const ok = await confirm({
+        title: 'Taksit hatırlatmasını kapat',
+        message: 'Bu taksit için planlanmış otomatik hatırlatmalar iptal edilecek.',
+        confirmLabel: 'Kapat',
+        danger: true
+      })
+      if (!ok) return
+    }
+    patchTaksitBildirimMu.mutate({ taksitId: t.id, aktif: next })
+  }
 
   const { reducedMotion } = useMotionSettings()
   const handleFocusNotFound = useCallback(() => {
@@ -970,6 +1052,41 @@ export function DosyaDetailPage(): ReactElement {
               {smmNotice.text}
             </AlertBox>
           ) : null}
+          {dosyaBildirimAyarQuery.isSuccess ? (
+            <div className="rounded-lg border border-border/80 bg-surface-muted/35 px-3 py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <OtomatikHatirlatmaSwitch
+                    id={`dosya-${dosyaId}-otomatik-hatirlatma`}
+                    label="Bu dosya için otomatik ödeme hatırlatmalarını kullan"
+                    description="Kapalı olduğunda bu dosyadaki taksitler için otomatik mesaj gönderilmez. Manuel WhatsApp hatırlatma özelliğini yine kullanabilirsiniz."
+                    checked={dosyaHatirlatmaEffective}
+                    disabled={dosyaHatirlatmaDisabled}
+                    stateText={{ on: 'Açık', off: 'Kapalı' }}
+                    warning={
+                      muvekkilIzniKapali
+                        ? 'Bu müvekkil için otomatik hatırlatmalar kapalı. Önce müvekkil ayarından izin vermelisiniz.'
+                        : dosyaBildirimAyarQuery.data.muvekkilKapaliUyari
+                    }
+                    onChange={(next) => void handleDosyaHatirlatmaToggle(next)}
+                  />
+                </div>
+                {muvekkilIzniKapali ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-[11px]"
+                    onClick={() => navigate(`${APP_BASE}/muvekkil/${m.id}`)}
+                  >
+                    Müvekkil iznini aç
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : dosyaBildirimAyarQuery.isLoading ? (
+            <p className="text-xs text-ink-muted">Hatırlatma ayarı yükleniyor…</p>
+          ) : null}
           <p className="rounded-md border border-border bg-surface-muted/50 px-3 py-2 text-xs text-ink-muted">
             Kasa hareketleri dosyaya ait avans, masraf ve düzeltme kayıtlarını birlikte gösterir. Vekalet ücreti avans kasasından
             ayrıdır. Vekalet / taksitler ve SMM takibi <span className="font-semibold text-ink">canlı API</span> ile gelir.
@@ -1447,6 +1564,30 @@ export function DosyaDetailPage(): ReactElement {
                                       >
                                         🗑
                                       </button>
+                                    ) : null}
+                                    {!iptal ? (
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          type="button"
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-7 shrink-0 px-2 text-[11px] font-medium"
+                                          disabled={
+                                            !canYoneticiIslem ||
+                                            patchTaksitBildirimMu.isPending ||
+                                            muvekkilIzniKapali ||
+                                            !dosyaHatirlatmaEffective
+                                          }
+                                          onClick={() => void handleTaksitHatirlatmaToggle(t)}
+                                        >
+                                          {t.otomatikBildirimAktif !== false ? 'Hatırlatmayı kapat' : 'Hatırlatmayı aç'}
+                                        </Button>
+                                        {muvekkilIzniKapali ? (
+                                          <span className="text-[10px] text-amber-700 dark:text-amber-400">Müvekkil izni kapalı</span>
+                                        ) : !dosyaHatirlatmaEffective ? (
+                                          <span className="text-[10px] text-amber-700 dark:text-amber-400">Dosya hatırlatması kapalı</span>
+                                        ) : null}
+                                      </div>
                                     ) : null}
                                   </div>
                                 </TD>
@@ -2481,7 +2622,7 @@ function ModalShell(props: { title: string; onClose: () => void; wide?: boolean;
   const { title, onClose, wide, children } = props
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]">
-      <div
+      <DraggablePanel
         role="dialog"
         aria-modal="true"
         className={cn(
@@ -2489,14 +2630,14 @@ function ModalShell(props: { title: string; onClose: () => void; wide?: boolean;
           wide ? 'max-w-xl' : 'max-w-md'
         )}
       >
-        <div className="mb-4 flex items-start justify-between gap-2">
+        <div data-modal-drag-handle className="mb-4 flex items-start justify-between gap-2">
           <h2 className="text-base font-bold text-ink">{title}</h2>
           <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={onClose}>
             ✕
           </Button>
         </div>
         {children}
-      </div>
+      </DraggablePanel>
     </div>
   )
 }

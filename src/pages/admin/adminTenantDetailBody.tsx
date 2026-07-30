@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import type { AdminTenantDetailResponse } from '../../types/admin'
 import { AdminBreadcrumb } from '../../components/admin/AdminBreadcrumb'
 import { AdminEmptyState } from '../../components/admin/AdminEmptyState'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR } from '../../components/ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, DraggablePanel, Input, Table, TBody, TD, TH, THead, TR } from '../../components/ui'
 import { formatDateTimeTR, formatDateTR } from '../../utils/formatters'
 import { lisansDurumuTr } from '../../utils/tenantLicenseDisplay'
 import { AdminTenantUserRow } from './AdminTenantUserRow'
@@ -646,27 +646,29 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
 
       {noteModalOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <Card className="w-full max-w-md border-slate-200 shadow-lg">
-            <CardHeader>
-              <CardTitle className="text-sm">Admin notu</CardTitle>
-            </CardHeader>
-            <CardBody className="space-y-3">
-              <textarea
-                className="min-h-[120px] w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
-                value={noteDraft}
-                onChange={(e) => setNoteDraft(e.target.value)}
-                placeholder="Lisans / büro notu…"
-              />
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="secondary" onClick={() => setNoteModalOpen(false)}>
-                  İptal
-                </Button>
-                <Button type="button" onClick={onSaveNote} disabled={notePending}>
-                  {notePending ? 'Kaydediliyor…' : 'Kaydet'}
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
+          <DraggablePanel className="w-full max-w-md">
+            <Card className="border-slate-200 shadow-lg">
+              <CardHeader data-modal-drag-handle>
+                <CardTitle className="text-sm">Admin notu</CardTitle>
+              </CardHeader>
+              <CardBody className="space-y-3">
+                <textarea
+                  className="min-h-[120px] w-full rounded-md border border-slate-200 px-3 py-2 text-sm"
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="Lisans / büro notu…"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setNoteModalOpen(false)}>
+                    İptal
+                  </Button>
+                  <Button type="button" onClick={onSaveNote} disabled={notePending}>
+                    {notePending ? 'Kaydediliyor…' : 'Kaydet'}
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          </DraggablePanel>
         </div>
       ) : null}
     </div>

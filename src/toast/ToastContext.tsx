@@ -25,10 +25,10 @@ type ToastApi = {
 const ToastContext = createContext<ToastApi | null>(null)
 
 const DEFAULT_DURATION: Record<ToastKind, number> = {
-  success: 3200,
-  error: 5200,
-  warning: 4200,
-  info: 3600,
+  success: 4200,
+  error: 5600,
+  warning: 4500,
+  info: 4000,
   loading: 0
 }
 

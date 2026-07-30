@@ -73,7 +73,7 @@ function durumBadgeVariant(d: BildirimIsDurumu): 'default' | 'success' | 'warnin
 }
 
 function aciklamaText(row: TahsilatBildirimIsiDto): string {
-  return row.hataOzeti || row.atlamaNedeni || row.iptalNedeni || '—'
+  return row.uygunlukAciklama || row.hataOzeti || row.atlamaNedeni || row.iptalNedeni || '—'
 }
 
 function minutesToHHmm(dk: number): string {
@@ -203,16 +203,16 @@ export function BildirimMerkeziPage(): ReactElement {
           <CompactStat label="Yaklaşan" value={ozetCounts.yaklasan} loading={ozetLoading} />
         </StaggerItem>
         <StaggerItem>
-          <CompactStat label="Simülasyon" value={ozetCounts.simulasyon} loading={ozetLoading} />
+          <CompactStat label="Gönderilen" value={ozetQ.data?.ozet.gonderilen ?? 0} loading={ozetLoading} />
         </StaggerItem>
         <StaggerItem>
-          <CompactStat label="Atlanan" value={ozetCounts.atlanan} loading={ozetLoading} />
+          <CompactStat label="Teslim edilen" value={ozetQ.data?.ozet.teslimEdilen ?? 0} loading={ozetLoading} />
         </StaggerItem>
         <StaggerItem>
           <CompactStat label="Başarısız" value={ozetCounts.basarisiz} loading={ozetLoading} />
         </StaggerItem>
         <StaggerItem>
-          <CompactStat label="İptal" value={ozetCounts.iptalEdilen} loading={ozetLoading} />
+          <CompactStat label="Atlanan" value={ozetCounts.atlanan} loading={ozetLoading} />
         </StaggerItem>
       </Stagger>
 
@@ -322,8 +322,9 @@ export function BildirimMerkeziPage(): ReactElement {
                         <TH>Taksit</TH>
                         <TH>Kalan</TH>
                         <TH>Kural</TH>
+                        <TH>Tür</TH>
                         <TH>Planlanan</TH>
-                        <TH>Kanal</TH>
+                        <TH>Telefon</TH>
                         <TH>Durum</TH>
                         <TH>Açıklama</TH>
                         <TH className="text-right">İşlem</TH>
@@ -349,10 +350,15 @@ export function BildirimMerkeziPage(): ReactElement {
                             {formatCurrencyTR(Number(row.kalanTutarSnapshot))}
                           </TD>
                           <TD className="whitespace-nowrap">{bildirimKuralTuruLabel(row.kuralTuru)}</TD>
+                          <TD>
+                            <Badge variant={row.manuelTetikleme ? 'warning' : 'default'}>
+                              {row.manuelTetikleme ? 'Manuel hatırlatma' : 'Otomatik hatırlatma'}
+                            </Badge>
+                          </TD>
                           <TD className="whitespace-nowrap text-xs tabular-nums">
                             {formatDateTimeTR(row.planlananAt)}
                           </TD>
-                          <TD>{row.kanal}</TD>
+                          <TD>{row.telefonMaskeli ?? '—'}</TD>
                           <TD>
                             <Badge variant={durumBadgeVariant(row.durum)}>{bildirimIsDurumLabel(row.durum)}</Badge>
                           </TD>

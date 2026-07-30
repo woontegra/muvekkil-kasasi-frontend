@@ -1,4 +1,5 @@
 export { ModalScrim } from './ModalScrim'
+export { DraggablePanel } from './DraggablePanel'
 export { AlertBox } from './AlertBox'
 export { Badge } from './Badge'
 export { Button } from './Button'

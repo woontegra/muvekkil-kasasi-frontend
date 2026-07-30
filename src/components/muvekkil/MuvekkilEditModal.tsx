@@ -5,6 +5,7 @@ import { updateMuvekkil } from '../../api/muvekkiller'
 import { ApiError } from '../../api/client'
 import { invalidateDashboardSummary } from '../../api/dashboard'
 import type { CreateMuvekkilPayload, MuvekkilDto, MuvekkilTurApi } from '../../types/muvekkil'
+import { OtomatikHatirlatmaSwitch } from '../bildirim/OtomatikHatirlatmaSwitch'
 import { AlertBox, Button, Input, ModalScrim, Select, Textarea } from '../ui'
 
 type Props = {
@@ -36,6 +37,8 @@ export function MuvekkilEditModal({ muvekkil, onClose }: Props): ReactElement {
   const [tuzelEposta, setTuzelEposta] = useState(muvekkil.tur === 'TUZEL' ? (muvekkil.eposta ?? '') : '')
   const [tuzelAdres, setTuzelAdres] = useState(muvekkil.tur === 'TUZEL' ? (muvekkil.adres ?? '') : '')
   const [tuzelNot, setTuzelNot] = useState(muvekkil.tur === 'TUZEL' ? (muvekkil.not ?? '') : '')
+
+  const [otomatikHatirlatma, setOtomatikHatirlatma] = useState(muvekkil.otomatikBildirimIzni ?? false)
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
@@ -77,7 +80,8 @@ export function MuvekkilEditModal({ muvekkil, onClose }: Props): ReactElement {
         mudurAdSoyad: '',
         mudurTelefon: '',
         muhasebeAdSoyad: '',
-        muhasebeTelefon: ''
+        muhasebeTelefon: '',
+        otomatikBildirimIzni: otomatikHatirlatma
       }
     }
     return {
@@ -93,7 +97,8 @@ export function MuvekkilEditModal({ muvekkil, onClose }: Props): ReactElement {
       mudurAdSoyad: mudurAdSoyad.trim(),
       mudurTelefon: mudurTelefon.trim(),
       muhasebeAdSoyad: muhasebeAdSoyad.trim(),
-      muhasebeTelefon: muhasebeTelefon.trim()
+      muhasebeTelefon: muhasebeTelefon.trim(),
+      otomatikBildirimIzni: otomatikHatirlatma
     }
   }
 
@@ -291,6 +296,15 @@ export function MuvekkilEditModal({ muvekkil, onClose }: Props): ReactElement {
               </div>
             </div>
           )}
+
+          <OtomatikHatirlatmaSwitch
+            id="muvekkil-edit-otomatik-hatirlatma"
+            label="Bu müvekkile otomatik ödeme hatırlatması gönder"
+            description="Kapalı olduğunda bu müvekkile vadesi yaklaşan veya geciken taksitler için otomatik mesaj gönderilmez. Manuel WhatsApp hatırlatma özelliğini yine kullanabilirsiniz."
+            checked={otomatikHatirlatma}
+            disabled={submitting}
+            onChange={setOtomatikHatirlatma}
+          />
 
           <div className="flex flex-wrap justify-end gap-2 border-t border-border pt-4">
             <Button type="button" variant="outline" disabled={submitting} onClick={onClose}>

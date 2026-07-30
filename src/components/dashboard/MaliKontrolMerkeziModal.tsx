@@ -254,7 +254,7 @@ export function MaliKontrolMerkeziModal({ open, onClose, data, loading }: Props)
   return (
     <AnimatePresence>
       {open ? (
-        <ModalScrim onClose={onClose} innerAsDialog animatePanel={false}>
+        <ModalScrim onClose={onClose} innerAsDialog animatePanel={false} draggable={false}>
           {/* Dış katman: giriş/çıkış animasyonu (y/scale) — sürükleme transformundan ayrı */}
           <motion.div
             className="mx-auto w-full max-w-lg"

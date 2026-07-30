@@ -1,113 +1,130 @@
+import { useMutation } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getMuvekkil } from '../../api/muvekkiller'
+import { prepareManualWhatsApp, previewManualWhatsApp } from '../../api/tahsilatMerkezi'
 import { APP_BASE } from '../../config/appPaths'
-import { buildWhatsAppWebUrl, normalizeTurkiyePhoneForWhatsApp } from '../../lib/whatsapp'
 import { useToast } from '../../toast'
 import { AlertBox, Button, ModalScrim } from '../ui'
-import { formatCurrencyTR, formatDateTR } from '../../utils/formatters'
 import type { TahsilatMerkeziSatirDto } from '../../types/tahsilatMerkezi'
 
 type Props = {
   row: TahsilatMerkeziSatirDto
-  buroAdi: string
   onClose: () => void
 }
 
-function buildDefaultMessage(row: TahsilatMerkeziSatirDto, buroAdi: string): string {
-  const dosyaBilgisi = row.dosyaNo ? `${row.dosyaBaslik} (${row.dosyaNo})` : row.dosyaBaslik
-  const vade = formatDateTR(`${row.vadeTarihi}T12:00:00.000Z`)
-  const kalan = formatCurrencyTR(Number(row.kalanTutar))
-  return `Sayın ${row.muvekkilAd}, ${dosyaBilgisi} kapsamında ${vade} vadeli vekalet ücreti taksidinizden kalan ${kalan} bulunmaktadır. Bilginize sunarız. ${buroAdi}`
-}
-
-export function WhatsAppHatirlatModal({ row, buroAdi, onClose }: Props): ReactElement {
+export function WhatsAppHatirlatModal({ row, onClose }: Props): ReactElement {
   const toast = useToast()
   const navigate = useNavigate()
-  const [mesaj, setMesaj] = useState(() => buildDefaultMessage(row, buroAdi))
-  const [sending, setSending] = useState(false)
+  const [mesaj, setMesaj] = useState('')
+  const [telefonMaskeli, setTelefonMaskeli] = useState<string | null>(null)
+  const [telefonGecerli, setTelefonGecerli] = useState(true)
+  const [loadingPreview, setLoadingPreview] = useState(true)
+  const [muvekkilAdi, setMuvekkilAdi] = useState(row.muvekkilAd)
 
-  // Satır kimliği / ilgili alanlar değişince sıfırla; her render'da yeni row nesnesi yazmayı ezmesin.
   useEffect(() => {
-    setMesaj(buildDefaultMessage(row, buroAdi))
-    // row alanları aşağıda tek tek; `row` nesnesinin kendisi dependency değil.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    row.id,
-    row.muvekkilId,
-    row.muvekkilAd,
-    row.dosyaBaslik,
-    row.dosyaNo,
-    row.vadeTarihi,
-    row.kalanTutar,
-    buroAdi
-  ])
-
-  const handleSend = async (): Promise<void> => {
-    if (!row.muvekkilTelefonVar) {
-      toast.warning('Müvekkil telefon numarası kayıtlı değil. İletişim bilgilerini güncelleyin.')
-      onClose()
-      navigate(`${APP_BASE}/muvekkil/${row.muvekkilId}`)
-      return
+    let cancelled = false
+    setLoadingPreview(true)
+    void previewManualWhatsApp(row.id)
+      .then((p) => {
+        if (cancelled) return
+        setMesaj(p.mesaj)
+        setTelefonMaskeli(p.telefonMaskeli)
+        setTelefonGecerli(p.telefonGecerli)
+        setMuvekkilAdi(p.muvekkilAdi)
+      })
+      .catch((e) => {
+        if (!cancelled) toast.error(e instanceof Error ? e.message : 'Önizleme alınamadı.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPreview(false)
+      })
+    return () => {
+      cancelled = true
     }
+  }, [row.id, toast])
 
-    setSending(true)
-    try {
-      const res = await getMuvekkil(row.muvekkilId)
-      const telefon = res.telefon?.trim() ?? ''
-      const normalized = telefon ? normalizeTurkiyePhoneForWhatsApp(telefon) : null
-      if (!normalized) {
-        toast.warning('Geçerli bir Türkiye cep telefonu bulunamadı. Müvekkil iletişim bilgilerini güncelleyin.')
+  const prepareMu = useMutation({
+    mutationFn: () =>
+      prepareManualWhatsApp(row.id, {
+        mesaj,
+        idempotencyKey: `ui-wa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+      }),
+    onSuccess: (res) => {
+      if (!res.deepLinkUrl) {
+        toast.error('WhatsApp bağlantısı oluşturulamadı.')
+        return
+      }
+      window.open(res.deepLinkUrl, '_blank', 'noopener,noreferrer')
+      toast.success('WhatsApp açıldı. Mesajı kontrol edip kendi hesabınızdan gönderebilirsiniz.')
+      onClose()
+    },
+    onError: (e) => {
+      const msg = e instanceof Error ? e.message : 'WhatsApp hazırlanamadı.'
+      if (/telefon|INVALID_PHONE/i.test(msg)) {
+        toast.warning(msg)
         onClose()
         navigate(`${APP_BASE}/muvekkil/${row.muvekkilId}`)
         return
       }
-      const url = buildWhatsAppWebUrl(normalized, mesaj.trim())
-      window.open(url, '_blank', 'noopener,noreferrer')
-      onClose()
-    } catch {
-      toast.error('Müvekkil bilgisi alınamadı.')
-    } finally {
-      setSending(false)
+      toast.error(msg)
     }
-  }
+  })
 
   return (
     <ModalScrim onClose={onClose} wide align="top" innerAsDialog>
       <div className="w-full max-w-lg rounded-xl border border-border bg-panel p-5 shadow-xl">
         <div className="mb-4 flex items-start justify-between gap-2">
-          <h2 className="text-base font-bold text-ink">WhatsApp hatırlatma</h2>
+          <h2 className="text-base font-bold text-ink">WhatsApp’tan Gönder</h2>
           <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={onClose}>
             ✕
           </Button>
         </div>
         <div className="space-y-3">
           <AlertBox variant="info" title="Bilgi">
-            Mesaj otomatik gönderilmez; WhatsApp açıldığında içeriği kontrol edip siz gönderirsiniz.
+            Bildirimler WhatsApp üzerinden, kendi WhatsApp hesabınız kullanılarak gönderilir. Mesaj otomatik
+            gönderilmez.
           </AlertBox>
-          <p className="text-xs text-ink-muted">
-            Alıcı: <strong className="text-ink">{row.muvekkilAd}</strong>
-            {row.muvekkilTelefonVar ? null : (
-              <span className="ml-1 text-warning-ink">(telefon kayıtlı değil)</span>
-            )}
-          </p>
-          <label className="block">
-            <span className="mb-1 block text-xs font-semibold text-ink-muted">Mesaj metni</span>
-            <textarea
-              className="min-h-[140px] w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 dark:bg-surface-elevated"
-              value={mesaj}
-              onChange={(e) => setMesaj(e.target.value)}
-            />
-          </label>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={onClose} disabled={sending}>
-              Vazgeç
-            </Button>
-            <Button type="button" onClick={() => void handleSend()} disabled={sending || !mesaj.trim()}>
-              {sending ? 'Hazırlanıyor…' : "WhatsApp'ta Aç"}
-            </Button>
-          </div>
+          {loadingPreview ? (
+            <p className="text-sm text-ink-muted">Önizleme hazırlanıyor…</p>
+          ) : (
+            <>
+              <div className="grid gap-1 text-xs text-ink-muted">
+                <p>
+                  <strong className="text-ink">Alıcı:</strong> {muvekkilAdi}
+                </p>
+                <p>
+                  <strong className="text-ink">Telefon:</strong>{' '}
+                  {telefonMaskeli ?? (telefonGecerli ? '—' : 'Geçersiz / eksik')}
+                </p>
+              </div>
+              {!telefonGecerli ? (
+                <AlertBox variant="warning" title="Telefon gerekli">
+                  Geçerli bir Türkiye cep telefonu bulunamadı. Müvekkil iletişim bilgilerini güncelleyin.
+                </AlertBox>
+              ) : null}
+              <label className="block">
+                <span className="mb-1 block text-xs font-semibold text-ink-muted">Mesaj metni</span>
+                <textarea
+                  className="min-h-[140px] w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 dark:bg-surface-elevated"
+                  value={mesaj}
+                  onChange={(e) => setMesaj(e.target.value)}
+                />
+              </label>
+              <div className="flex justify-end gap-2 pt-1">
+                <Button type="button" variant="outline" onClick={onClose} disabled={prepareMu.isPending}>
+                  İptal
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => prepareMu.mutate()}
+                  disabled={prepareMu.isPending || !mesaj.trim() || !telefonGecerli}
+                >
+                  {prepareMu.isPending ? 'Hazırlanıyor…' : 'WhatsApp’ı Aç'}
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </ModalScrim>

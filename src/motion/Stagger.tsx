@@ -23,11 +23,12 @@ export function Stagger(props: { children: ReactNode; className?: string }): Rea
 
 export function StaggerItem(props: { children: ReactNode; className?: string }): ReactElement {
   const { reducedMotion } = useMotionSettings()
+  const className = cn('h-full min-h-0', props.className)
   if (reducedMotion) {
-    return <div className={props.className}>{props.children}</div>
+    return <div className={className}>{props.children}</div>
   }
   return (
-    <motion.div className={props.className} variants={staggerItem} transition={transition(false, 'fast')}>
+    <motion.div className={className} variants={staggerItem} transition={transition(false, 'fast')}>
       {props.children}
     </motion.div>
   )

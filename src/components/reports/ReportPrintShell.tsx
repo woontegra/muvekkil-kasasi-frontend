@@ -11,14 +11,15 @@ type ReportPrintShellProps = {
 /** Rapor önizleme — Yazdır butonuna basılana kadar print dialog açılmaz. */
 export function ReportPrintShell(props: ReportPrintShellProps): ReactElement {
   const { title, printRootId, onClose, children } = props
+  const safePrintRootId = /^[A-Za-z][\w-]*$/.test(printRootId) ? printRootId : 'report-print-root'
 
   return (
     <div className="report-print-shell mt-4">
       <style>{`
         @media print {
           body * { visibility: hidden !important; }
-          #${printRootId}, #${printRootId} * { visibility: visible !important; }
-          #${printRootId} {
+          #${safePrintRootId}, #${safePrintRootId} * { visibility: visible !important; }
+          #${safePrintRootId} {
             position: absolute !important;
             left: 0 !important;
             top: 0 !important;
@@ -34,7 +35,7 @@ export function ReportPrintShell(props: ReportPrintShellProps): ReactElement {
         @page { size: A4 portrait; margin: 10mm; }
       `}</style>
       <div
-        id={printRootId}
+        id={safePrintRootId}
         className="mx-auto w-full max-w-[210mm] rounded-lg border border-border bg-white p-4 shadow-md print:max-w-none print:rounded-none print:border-0 print:p-0 print:shadow-none"
       >
         <div className="no-print mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">

@@ -305,7 +305,7 @@ export function OtomatikTahsilatBildirimAyarCard(): ReactElement | null {
     <Card className="min-w-0 lg:col-span-2">
       <CardHeader className="border-b border-border">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <CardTitle className="text-base">Otomatik Tahsilat Bildirimleri</CardTitle>
+          <CardTitle className="text-base">WhatsApp Otomatik Hatırlatmalar</CardTitle>
           <div className="flex flex-wrap gap-1.5">
             {testModu ? (
               <Badge variant="warning" className="normal-case tracking-normal">
@@ -333,10 +333,15 @@ export function OtomatikTahsilatBildirimAyarCard(): ReactElement | null {
           </AlertBox>
         ) : null}
 
+        <AlertBox variant="info" title="WhatsApp bildirimi">
+          {ayarlarQ.data?.whatsapp?.bilgi ??
+            'Bildirimler WhatsApp üzerinden, kendi WhatsApp hesabınız kullanılarak gönderilir.'}
+        </AlertBox>
+
         <p className="text-sm leading-relaxed text-ink-muted">
           Program, vekalet ücreti taksitleri yaklaşınca, vade günü geldiğinde veya ödeme geciktiğinde
-          müvekkile gönderilecek WhatsApp hatırlatmalarını otomatik olarak planlar. Detaylı liste
-          için{' '}
+          müvekkile gönderilecek WhatsApp hatırlatmalarını otomatik olarak planlar. Mesajlar yalnızca
+          açıkça izin verdiğiniz müvekkillere gönderilir. Detaylı liste için{' '}
           <Link to={`${APP_BASE}/bildirim-merkezi`} className="font-semibold text-primary hover:underline">
             Bildirim Merkezi
           </Link>
@@ -354,7 +359,7 @@ export function OtomatikTahsilatBildirimAyarCard(): ReactElement | null {
               }}
               disabled={saveMu.isPending || ayarlarQ.isLoading}
             />
-            <span className="font-medium text-ink">Otomatik hatırlatmaları aç</span>
+            <span className="font-medium text-ink">Otomatik hatırlatma planlamasını aç</span>
           </label>
           <label className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 text-sm">
             <input
@@ -501,10 +506,6 @@ export function OtomatikTahsilatBildirimAyarCard(): ReactElement | null {
             )
           })}
         </div>
-
-        <AlertBox variant="info" title="WhatsApp durumu">
-          WhatsApp otomatik gönderimi henüz aktif değil. Sistem test modunda planlama yapıyor.
-        </AlertBox>
 
         <div className="flex flex-wrap gap-2 pt-1">
           <Button type="button" size="sm" disabled={saveMu.isPending || ayarlarQ.isLoading} onClick={() => void handleKaydet()}>

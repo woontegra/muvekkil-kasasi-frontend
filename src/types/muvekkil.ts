@@ -18,7 +18,7 @@ export type MuvekkilDto = {
   muhasebeAdSoyad: string
   muhasebeTelefon: string
   aktifMi: boolean
-  /** Otomatik tahsilat bildirimi izni (ileride UI). */
+  /** Otomatik ödeme hatırlatması izni (varsayılan kapalı). */
   otomatikBildirimIzni?: boolean
   createdById: string
   updatedById: string | null
@@ -58,4 +58,5 @@ export type CreateMuvekkilPayload = {
   mudurTelefon: string
   muhasebeAdSoyad: string
   muhasebeTelefon: string
+  otomatikBildirimIzni?: boolean
 }

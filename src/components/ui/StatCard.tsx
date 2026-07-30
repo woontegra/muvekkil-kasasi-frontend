@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
+import { DashboardSummaryCard, type DashboardSummaryTone } from '../dashboard/DashboardSummaryCard'
 
 export type StatCardProps = {
   label: string
@@ -14,6 +15,9 @@ export type StatCardProps = {
   onClick?: () => void
   /** Alt satır — örn. “Detayları gör”. */
   footerHint?: string
+  tone?: DashboardSummaryTone
+  trailing?: ReactNode
+  titleBadge?: ReactNode
 }
 
 export function StatCard({
@@ -26,47 +30,37 @@ export function StatCard({
   selected,
   disabled,
   onClick,
-  footerHint
+  footerHint,
+  tone = 'default',
+  trailing,
+  titleBadge
 }: StatCardProps): ReactElement {
-  const shellClass = cn(
-    'motion-card-in rounded-xl border border-border bg-panel p-3.5 shadow-card',
-    'flex gap-3 text-left transition-[transform,box-shadow,border-color,background-color] duration-150',
-    interactive && !disabled && 'cursor-pointer hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary-soft/20 hover:shadow-md motion-reduce:hover:translate-y-0',
-    selected && 'border-primary/50 bg-primary-soft/25 ring-2 ring-primary/20',
-    disabled && interactive && 'cursor-not-allowed opacity-60 hover:border-border hover:bg-panel hover:shadow-card hover:translate-y-0'
+  const meta =
+    footerHint && interactive ? (
+      <p className="line-clamp-1 text-[10px] font-semibold text-primary">{footerHint}</p>
+    ) : sub ? (
+      <p className="line-clamp-2 text-[10px] leading-snug text-ink-muted">{sub}</p>
+    ) : null
+
+  const trailingNode =
+    trailing ??
+    (icon ? (
+      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-soft text-primary">{icon}</div>
+    ) : null)
+
+  return (
+    <DashboardSummaryCard
+      title={label}
+      value={value}
+      meta={meta}
+      trailing={trailingNode}
+      titleBadge={titleBadge}
+      interactive={interactive}
+      selected={selected}
+      disabled={disabled}
+      tone={tone}
+      onClick={onClick}
+      className={cn(className)}
+    />
   )
-
-  const body = (
-    <>
-      {icon ? (
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
-          {icon}
-        </div>
-      ) : null}
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-ink-muted">{label}</p>
-        <p className="mt-0.5 truncate text-lg font-bold tabular-nums tracking-tight text-ink">{value}</p>
-        {sub ? <p className="mt-0.5 text-xs text-ink-subtle">{sub}</p> : null}
-        {footerHint && interactive ? (
-          <p className="mt-1 text-[11px] font-semibold text-primary underline-offset-2">{footerHint}</p>
-        ) : null}
-      </div>
-    </>
-  )
-
-  if (interactive && onClick) {
-    return (
-      <button
-        type="button"
-        className={cn(shellClass, 'w-full outline-none focus-visible:ring-2 focus-visible:ring-primary/30', className)}
-        onClick={onClick}
-        disabled={disabled}
-        aria-pressed={selected}
-      >
-        {body}
-      </button>
-    )
-  }
-
-  return <div className={cn(shellClass, className)}>{body}</div>
 }

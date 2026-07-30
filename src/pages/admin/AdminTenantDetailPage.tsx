@@ -12,8 +12,8 @@ import {
   adminTenantUpdateRequest,
   type AdminExtendLicenseRequestBody
 } from '../../api/adminApi'
-import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import { AdminConfirmDialog } from '../../components/admin/AdminConfirmDialog'
+import { useAdminAuth } from '../../contexts/AdminAuthContext'
 import { AdminTenantDetailBody } from './adminTenantDetailBody'
 import {
   dateInputToUtcEndOfDayIso,
@@ -55,6 +55,7 @@ export function AdminTenantDetailPage(): ReactElement {
   const [extendFormErr, setExtendFormErr] = useState<string | null>(null)
   const [resetResult, setResetResult] = useState<string | null>(null)
   const [editReady, setEditReady] = useState(false)
+
   const [editForm, setEditForm] = useState<Record<string, string>>({})
 
   const detailQ = useQuery({

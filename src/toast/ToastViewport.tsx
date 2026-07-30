@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import type { ReactElement } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMotionSettings } from '../motion/MotionProvider'
@@ -34,14 +35,16 @@ type Props = {
   onDismiss: (id: string) => void
 }
 
-export function ToastViewport(props: Props): ReactElement {
+export function ToastViewport(props: Props): ReactElement | null {
   const { items, onDismiss } = props
   const { reducedMotion } = useMotionSettings()
-  const t = transition(reducedMotion, 'fast')
+  const t = transition(reducedMotion, 'base')
 
-  return (
+  if (typeof document === 'undefined') return null
+
+  return createPortal(
     <div
-      className="pointer-events-none fixed inset-x-0 top-0 z-[200] flex flex-col items-end gap-2 p-3 sm:p-4"
+      className="pointer-events-none fixed inset-x-0 top-0 z-[400] flex flex-col items-end gap-2 p-3 sm:p-4"
       aria-live="polite"
       aria-relevant="additions"
     >
@@ -56,7 +59,7 @@ export function ToastViewport(props: Props): ReactElement {
             exit={reducedMotion ? undefined : 'exit'}
             transition={t}
             className={cn(
-              'pointer-events-auto w-full max-w-[min(100%,22rem)] overflow-hidden rounded-lg border px-3 py-2.5 shadow-card',
+              'pointer-events-auto w-full max-w-[min(100%,22rem)] overflow-hidden rounded-lg border px-3 py-2.5 shadow-lg',
               KIND_STYLES[item.kind]
             )}
             role={item.kind === 'error' ? 'alert' : 'status'}
@@ -82,6 +85,7 @@ export function ToastViewport(props: Props): ReactElement {
           </motion.div>
         ))}
       </AnimatePresence>
-    </div>
+    </div>,
+    document.body
   )
 }

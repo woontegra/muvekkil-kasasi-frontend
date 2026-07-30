@@ -1,16 +1,20 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, ReactElement, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import { getMuvekkilBildirimAyar, patchMuvekkilBildirimAyar } from '../api/bildirimAyar'
 import { listMuvekkilDosyalari } from '../api/dosyalar'
 import { getMuvekkil } from '../api/muvekkiller'
-import { ApiError } from '../api/client'
+import { ApiError, friendlyClientErrorMessage } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
+import { useAuth } from '../contexts/AuthContext'
+import { isYoneticiRole } from '../lib/isYonetici'
 import { dosyaDurumuBadgeVariant, dosyaDurumuLabel, dosyaTuruLabel, mahkemeIcraSatir } from '../lib/dosyaLabels'
 import { cn } from '../lib/cn'
 import { MuvekkilEditModal } from '../components/muvekkil/MuvekkilEditModal'
 import { MuvekkilKarlilikTab } from '../components/mali/MuvekkilKarlilikTab'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass, useConfirm } from '../components/ui'
+import { useToast } from '../toast'
 
 function ProfileStatCard({ label, value, className }: { label: string; value: ReactNode; className?: string }): ReactElement {
   return (
@@ -29,9 +33,15 @@ function ProfileStatCard({ label, value, className }: { label: string; value: Re
 export function MuvekkilDetailPage(): ReactElement {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { session } = useAuth()
+  const { confirm } = useConfirm()
+  const toast = useToast()
+  const isYonetici = isYoneticiRole(session?.user.role)
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [editOpen, setEditOpen] = useState(false)
+  const [hatirlatmaToggling, setHatirlatmaToggling] = useState(false)
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(q.trim()), 350)
@@ -49,6 +59,43 @@ export function MuvekkilDetailPage(): ReactElement {
     queryFn: () => listMuvekkilDosyalari(id!, { q: debouncedQ || undefined, page: 1, limit: 100 }),
     enabled: Boolean(id) && muvekkilQuery.isSuccess
   })
+
+  const patchHatirlatmaMu = useMutation({
+    mutationFn: (otomatikBildirimIzni: boolean) => patchMuvekkilBildirimAyar(id!, otomatikBildirimIzni),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['muvekkil', id] })
+      await queryClient.invalidateQueries({ queryKey: ['muvekkiller'] })
+      toast.success('Otomatik hatırlatma ayarı güncellendi.')
+    },
+    onError: (err) => {
+      toast.error(friendlyClientErrorMessage(err, 'Hatırlatma ayarı güncellenemedi.'))
+    }
+  })
+
+  async function handleHatirlatmaToggle(next: boolean): Promise<void> {
+    if (!id || !isYonetici || hatirlatmaToggling || patchHatirlatmaMu.isPending) return
+    if (!next) {
+      setHatirlatmaToggling(true)
+      try {
+        const ayar = await getMuvekkilBildirimAyar(id)
+        if (ayar.pendingPlanliSayisi > 0) {
+          const ok = await confirm({
+            title: 'Otomatik hatırlatmaları kapat',
+            message: `Bu işlem bu müvekkil için planlanmış ${ayar.pendingPlanliSayisi} otomatik hatırlatmayı iptal edecek.`,
+            confirmLabel: 'Kapat',
+            danger: true
+          })
+          if (!ok) return
+        }
+      } catch (err) {
+        toast.error(friendlyClientErrorMessage(err, 'Hatırlatma bilgisi alınamadı.'))
+        return
+      } finally {
+        setHatirlatmaToggling(false)
+      }
+    }
+    patchHatirlatmaMu.mutate(next)
+  }
 
   if (!id) {
     return <Navigate to={APP_BASE} replace />
@@ -88,6 +135,7 @@ export function MuvekkilDetailPage(): ReactElement {
   }
 
   const m = muvekkilQuery.data
+  const hatirlatmaAcik = m.otomatikBildirimIzni === true
   const tuzelKutu =
     m.tur === 'TUZEL' &&
     (m.yetkiliAdSoyad.trim() ||
@@ -122,6 +170,26 @@ export function MuvekkilDetailPage(): ReactElement {
               <Badge variant={m.tur === 'TUZEL' ? 'accent' : 'primary'} className="!normal-case">
                 {m.tur === 'TUZEL' ? 'Tüzel kişi' : 'Gerçek kişi'}
               </Badge>
+              {isYonetici ? (
+                <button
+                  type="button"
+                  className="inline-flex"
+                  disabled={hatirlatmaToggling || patchHatirlatmaMu.isPending}
+                  onClick={() => void handleHatirlatmaToggle(!hatirlatmaAcik)}
+                  title={hatirlatmaAcik ? 'Otomatik hatırlatmaları kapat' : 'Otomatik hatırlatmaları aç'}
+                >
+                  <Badge
+                    variant={hatirlatmaAcik ? 'success' : 'default'}
+                    className="!normal-case cursor-pointer hover:opacity-90"
+                  >
+                    {hatirlatmaAcik ? 'Otomatik hatırlatmalar açık' : 'Otomatik hatırlatmalar kapalı'}
+                  </Badge>
+                </button>
+              ) : (
+                <Badge variant={hatirlatmaAcik ? 'success' : 'default'} className="!normal-case">
+                  {hatirlatmaAcik ? 'Otomatik hatırlatmalar açık' : 'Otomatik hatırlatmalar kapalı'}
+                </Badge>
+              )}
             </div>
             {m.tur === 'TUZEL' && m.sirketUnvani?.trim() ? (
               <p className="text-sm font-medium text-ink-muted">{m.sirketUnvani.trim()}</p>
@@ -133,6 +201,18 @@ export function MuvekkilDetailPage(): ReactElement {
             ) : null}
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
+            {isYonetici ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="shadow-sm"
+                disabled={hatirlatmaToggling || patchHatirlatmaMu.isPending}
+                onClick={() => void handleHatirlatmaToggle(!hatirlatmaAcik)}
+              >
+                {hatirlatmaAcik ? 'Hatırlatmayı kapat' : 'Hatırlatmayı aç'}
+              </Button>
+            ) : null}
             <Button type="button" variant="outline" className="shadow-sm" onClick={() => setEditOpen(true)}>
               Düzenle
             </Button>

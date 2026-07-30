@@ -4,9 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { getTahsilatBildirimOzet, TAHSILAT_BILDIRIM_QUERY_KEY } from '../../api/tahsilatBildirim'
 import { Badge } from '../ui'
 import { AnimatedNumber } from '../../motion'
-import { cn } from '../../lib/cn'
 import { APP_BASE } from '../../config/appPaths'
 import { readBildirimOzetCounts } from '../../types/tahsilatBildirim'
+import { DashboardSummaryCard, dashboardSummaryIconBubble } from './DashboardSummaryCard'
 
 export function OtomatikBildirimlerCard(): ReactElement {
   const navigate = useNavigate()
@@ -22,47 +22,35 @@ export function OtomatikBildirimlerCard(): ReactElement {
   const testModu = counts.testModu ?? true
 
   return (
-    <button
-      type="button"
-      className={cn(
-        'motion-card-in rounded-xl border border-border bg-panel p-3.5 shadow-card',
-        'flex w-full cursor-pointer gap-3 text-left',
-        'transition-[transform,box-shadow,border-color,background-color] duration-150',
-        'hover:-translate-y-0.5 hover:border-primary/35 hover:bg-primary-soft/20 hover:shadow-md',
-        'outline-none focus-visible:ring-2 focus-visible:ring-primary/30',
-        'motion-reduce:hover:translate-y-0'
-      )}
+    <DashboardSummaryCard
+      title="Otomatik Bildirimler"
+      interactive
       onClick={() => navigate(`${APP_BASE}/bildirim-merkezi`)}
-    >
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-ink-muted">Otomatik Bildirimler</p>
-          {testModu ? (
-            <Badge variant="warning" className="normal-case tracking-normal">
-              Test Modu
-            </Badge>
-          ) : null}
-        </div>
-        {ozetQ.isLoading ? (
-          <p className="mt-1.5 text-sm text-ink-subtle">Yükleniyor…</p>
+      titleBadge={
+        testModu ? (
+          <Badge variant="warning" className="!px-1.5 !py-0 text-[9px] normal-case tracking-normal">
+            Test Modu
+          </Badge>
+        ) : null
+      }
+      trailing={dashboardSummaryIconBubble('✉')}
+      value={
+        ozetQ.isLoading ? (
+          <span className="text-sm text-ink-subtle">Yükleniyor…</span>
         ) : (
-          <div className="mt-1.5 space-y-1">
-            <p className="text-sm font-bold tabular-nums leading-tight text-ink">
-              <AnimatedNumber value={counts.bugunPlanlanan} format={(n) => String(Math.round(n))} /> bugün
-              planlanan
-            </p>
-            <p className="text-[10px] text-ink-muted">
-              <AnimatedNumber value={counts.atlanan} format={(n) => String(Math.round(n))} /> atlanan · Bildirim
-              Merkezi
-            </p>
-          </div>
-        )}
-      </div>
-      <div className="flex shrink-0 flex-col items-center justify-center">
-        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-sm font-bold text-ink-muted">
-          ✉
-        </span>
-      </div>
-    </button>
+          <span className="text-lg font-extrabold tabular-nums leading-none text-ink">
+            <AnimatedNumber value={counts.bugunPlanlanan} format={(n) => String(Math.round(n))} />
+            <span className="ml-1 text-xs font-semibold text-ink-muted">bugün</span>
+          </span>
+        )
+      }
+      meta={
+        ozetQ.isLoading ? null : (
+          <p className="line-clamp-2 text-[10px] leading-snug text-ink-muted">
+            <AnimatedNumber value={counts.atlanan} format={(n) => String(Math.round(n))} /> atlanan · Bildirim Merkezi
+          </p>
+        )
+      }
+    />
   )
 }

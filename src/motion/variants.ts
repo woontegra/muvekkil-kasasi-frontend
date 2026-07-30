@@ -16,9 +16,9 @@ export function transition(reduced: boolean, ms: keyof typeof duration = 'base')
 }
 
 export const pageVariants: Variants = {
-  initial: { opacity: 0, y: 8 },
+  initial: { opacity: 0, y: 14 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 }
+  exit: { opacity: 0, y: -8 }
 }
 
 export const fadeVariants: Variants = {
@@ -52,9 +52,27 @@ export const staggerItem: Variants = {
 }
 
 export const toastVariants: Variants = {
-  initial: { opacity: 0, y: -8, scale: 0.98 },
-  animate: { opacity: 1, y: 0, scale: 1 },
-  exit: { opacity: 0, y: -6, scale: 0.98 }
+  initial: { opacity: 0, y: -16, scale: 0.94, x: 12 },
+  animate: { opacity: 1, y: 0, scale: 1, x: 0 },
+  exit: { opacity: 0, y: -10, scale: 0.96, x: 8 }
+}
+
+/** Login / public auth — daha belirgin giriş animasyonu. */
+export const authHeroContainer: Variants = {
+  initial: {},
+  animate: {
+    transition: { staggerChildren: 0.09, delayChildren: 0.12 }
+  }
+}
+
+export const authHeroItem: Variants = {
+  initial: { opacity: 0, y: 22 },
+  animate: { opacity: 1, y: 0 }
+}
+
+export const authCardVariants: Variants = {
+  initial: { opacity: 0, y: 32, scale: 0.96 },
+  animate: { opacity: 1, y: 0, scale: 1 }
 }
 
 export const rowVariants: Variants = {

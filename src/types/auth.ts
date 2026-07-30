@@ -52,6 +52,16 @@ export type AuthLoginResponse = AuthOnboardingState & {
   accessToken: string
   user: AuthUserDto
   tenant: AuthTenantDto
+  /** Linked SuperAdmin oturumu — yalnızca bağlı platform yöneticisinde gelir. */
+  adminAccessToken?: string
+  adminUser?: {
+    id: string
+    adSoyad: string
+    kullaniciAdi: string
+    eposta: string | null
+    rol: 'SUPER_ADMIN' | 'DESTEK' | 'FINANS'
+    aktifMi: boolean
+  }
 }
 
 export type MeResponse = AuthOnboardingState & {

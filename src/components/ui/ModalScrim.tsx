@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { cn } from '../../lib/cn'
 import { useMotionSettings } from '../../motion/MotionProvider'
 import { modalBackdropVariants, modalPanelVariants, transition } from '../../motion/variants'
+import { DraggablePanel } from './DraggablePanel'
 
 type Props = {
   children: ReactNode
@@ -19,11 +20,14 @@ type Props = {
   innerAsDialog?: boolean
   /** Panel giriş animasyonu (çıkış için üstte AnimatePresence gerekir) */
   animatePanel?: boolean
+  /** Tut-sürükle (varsayılan açık). Özel drag kullanan modallarda kapatın. */
+  draggable?: boolean
 }
 
 /**
  * Modal arka planı — input seçimi sırasında mouse modal dışına taşınsa bile kapanmaz.
  * Kapatma yalnızca backdrop üzerinde başlayıp backdrop üzerinde biten tıklamada çalışır.
+ * Panel varsayılan olarak ortalanır ve başlıktan sürüklenir.
  */
 export function ModalScrim(props: Props): ReactElement | null {
   const {
@@ -36,7 +40,8 @@ export function ModalScrim(props: Props): ReactElement | null {
     align = 'center',
     wide,
     innerAsDialog,
-    animatePanel = true
+    animatePanel = true,
+    draggable = true
   } = props
   const pointerDownOnBackdrop = useRef(false)
   const { reducedMotion } = useMotionSettings()
@@ -55,6 +60,21 @@ export function ModalScrim(props: Props): ReactElement | null {
 
   if (typeof document === 'undefined') return null
 
+  const panelBody =
+    animatePanel && !reducedMotion ? (
+      <motion.div
+        className={align === 'center' ? 'max-w-full' : 'w-full'}
+        variants={modalPanelVariants}
+        initial="initial"
+        animate="animate"
+        transition={t}
+      >
+        {children}
+      </motion.div>
+    ) : (
+      children
+    )
+
   const panel = (
     <div
       className={cn(
@@ -62,7 +82,7 @@ export function ModalScrim(props: Props): ReactElement | null {
           ? wide
             ? 'w-full max-w-4xl'
             : 'w-full max-w-2xl'
-          : 'my-auto flex w-full min-w-0 max-w-full justify-center px-0 py-4 sm:px-2',
+          : 'my-auto flex w-full max-w-full justify-center',
         innerClassName
       )}
       role={innerAsDialog ? 'dialog' : undefined}
@@ -70,19 +90,9 @@ export function ModalScrim(props: Props): ReactElement | null {
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      {animatePanel && !reducedMotion ? (
-        <motion.div
-          className="w-full"
-          variants={modalPanelVariants}
-          initial="initial"
-          animate="animate"
-          transition={t}
-        >
-          {children}
-        </motion.div>
-      ) : (
-        children
-      )}
+      <DraggablePanel enabled={draggable} className={align === 'center' ? 'max-w-full' : 'w-full'}>
+        {panelBody}
+      </DraggablePanel>
     </div>
   )
 

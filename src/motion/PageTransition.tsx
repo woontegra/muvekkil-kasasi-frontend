@@ -12,7 +12,7 @@ export function PageTransition(): ReactElement {
   const t = transition(reducedMotion, 'fast')
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    <AnimatePresence mode="wait">
       <motion.div
         key={location.pathname}
         className="w-full min-w-0"

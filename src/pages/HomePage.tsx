@@ -20,9 +20,10 @@ import { getPreviousAccountingPeriod, getNextAccountingPeriod } from '../lib/acc
 import { getMaliKontrolUyarilari, MALI_KONTROL_QUERY_KEY } from '../api/maliKontrol'
 import { getTahsilatMerkeziOzet, TAKSILAT_MERKEZI_QUERY_KEY } from '../api/tahsilatMerkezi'
 import { useAuth } from '../contexts/AuthContext'
+import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { cn } from '../lib/cn'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, EmptyState, Input, PageLoading, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, DraggablePanel, EmptyState, Input, PageLoading, Select, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
 import { AnimatedNumber, Stagger, StaggerItem } from '../motion'
 import { useToast } from '../toast'
 import type { MuvekkilDto } from '../types/muvekkil'
@@ -30,6 +31,8 @@ import type { SmmBekleyenDto } from '../types/smm'
 import { formatCurrencyTR } from '../utils/formatters'
 
 type HealthResponse = { ok: boolean; db?: string }
+
+type OtomatikHatirlatmaFilter = 'TUMU' | 'ACIK' | 'KAPALI'
 
 const MUVEKKIL_PAGE_SIZE = 10
 
@@ -40,12 +43,20 @@ export function HomePage(): ReactElement {
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [page, setPage] = useState(1)
+  const [otomatikHatirlatmaFilter, setOtomatikHatirlatmaFilter] = useState<OtomatikHatirlatmaFilter>('TUMU')
   const [smmPanelOpen, setSmmPanelOpen] = useState(false)
   const [smmModalRow, setSmmModalRow] = useState<SmmBekleyenDto | null>(null)
   const [donemRefDate, setDonemRefDate] = useState<string | null>(null)
   const [donemModalOpen, setDonemModalOpen] = useState(false)
   const [maliKontrolOpen, setMaliKontrolOpen] = useState(false)
   const { session } = useAuth()
+  const { admin: platformAdmin, loading: platformAdminLoading, isAuthenticated: platformAdminOk } =
+    useAdminAuth()
+  const showAdminPanelCard =
+    !platformAdminLoading &&
+    platformAdminOk &&
+    platformAdmin?.rol === 'SUPER_ADMIN' &&
+    platformAdmin.aktifMi === true
   const isMaliKontrolYetkili = session?.user.role === 'BURO_SAHIBI' || session?.user.role === 'AVUKAT_YONETICI'
 
   const maliKontrolQuery = useQuery({
@@ -98,13 +109,12 @@ export function HomePage(): ReactElement {
   }, [donemData])
 
   useEffect(() => {
-    const t = window.setTimeout(() => setDebouncedQ(q.trim()), 350)
+    const t = window.setTimeout(() => {
+      setDebouncedQ(q.trim())
+      setPage(1)
+    }, 350)
     return () => window.clearTimeout(t)
   }, [q])
-
-  useEffect(() => {
-    setPage(1)
-  }, [debouncedQ])
 
   const health = useQuery({
     queryKey: ['health'],
@@ -112,8 +122,14 @@ export function HomePage(): ReactElement {
   })
 
   const muvekkilQuery = useQuery({
-    queryKey: ['muvekkiller', debouncedQ, page],
-    queryFn: () => listMuvekkiller({ q: debouncedQ || undefined, page, limit: MUVEKKIL_PAGE_SIZE })
+    queryKey: ['muvekkiller', debouncedQ, page, otomatikHatirlatmaFilter],
+    queryFn: () =>
+      listMuvekkiller({
+        q: debouncedQ || undefined,
+        page,
+        limit: MUVEKKIL_PAGE_SIZE,
+        otomatikHatirlatma: otomatikHatirlatmaFilter
+      })
   })
 
   const dashboardQuery = useQuery({
@@ -152,6 +168,10 @@ export function HomePage(): ReactElement {
 
   function onSearch(e: FormEvent): void {
     e.preventDefault()
+    const next = q.trim()
+    setQ(next)
+    setDebouncedQ(next)
+    setPage(1)
   }
 
   const dash = dashboardQuery.data
@@ -224,24 +244,24 @@ export function HomePage(): ReactElement {
         </AlertBox>
       ) : null}
 
-      <Stagger className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        <StaggerItem>
+      <Stagger className="grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <StaggerItem className="h-full min-h-0">
           <StatCard
             label="Vadesi geçmiş taksit"
             value={statVal(dash?.vadesiGecmisTaksit, dashboardQuery.isLoading)}
             sub="Ödenmemiş, vadesi geçmiş taksitler"
           />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="h-full min-h-0">
           <TahsilatBekleyenlerCard
             ozet={tahsilatMerkeziOzetQuery.data?.ozet}
             loading={tahsilatMerkeziOzetQuery.isLoading}
           />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="h-full min-h-0">
           <OtomatikBildirimlerCard />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="h-full min-h-0">
           <StatCard
             label="SMM bekleyen"
             value={smmStatValue}
@@ -251,27 +271,27 @@ export function HomePage(): ReactElement {
             onClick={openSmmPanel}
           />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="h-full min-h-0">
           <StatCard
             label="Onay bekleyen"
             value={statVal(dash?.onayBekleyenToplam, dashboardQuery.isLoading)}
             sub="Onay bekleyen kasa hareketleri"
           />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="h-full min-h-0">
           <StatCard label="Ofis kasa bakiyesi" value={ofisBakiyeVal} sub="Onaylanmış kasa hareketlerine göre" />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="h-full min-h-0">
           <StatCard
             label="Aktif müvekkil"
             value={statVal(dash?.toplamMuvekkil, dashboardQuery.isLoading)}
             sub="Kayıtlı aktif müvekkiller"
           />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="h-full min-h-0">
           <StatCard label="Aktif dosya" value={statVal(dash?.aktifDosya, dashboardQuery.isLoading)} sub="Takibi devam eden dosyalar" />
         </StaggerItem>
-        <StaggerItem>
+        <StaggerItem className="h-full min-h-0">
           <HesapDonemiCard
             data={donemData}
             loading={donemQuery.isLoading}
@@ -281,11 +301,28 @@ export function HomePage(): ReactElement {
           />
         </StaggerItem>
         {isMaliKontrolYetkili ? (
-          <StaggerItem>
+          <StaggerItem className="h-full min-h-0">
             <MaliKontrolKart
               data={maliKontrolQuery.data}
               loading={maliKontrolQuery.isLoading}
               onClick={() => setMaliKontrolOpen(true)}
+            />
+          </StaggerItem>
+        ) : null}
+        {showAdminPanelCard ? (
+          <StaggerItem className="h-full min-h-0">
+            <StatCard
+              label="Admin Paneli"
+              value="Yönetim"
+              sub="Müşteri, kullanıcı ve lisans işlemlerini yönetin."
+              interactive
+              footerHint="Panele git"
+              onClick={() => navigate('/admin')}
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                </svg>
+              }
             />
           </StaggerItem>
         ) : null}
@@ -378,26 +415,43 @@ export function HomePage(): ReactElement {
               )}
             </p>
           </div>
-          <div className="flex w-full flex-col gap-2 lg:max-w-2xl lg:flex-row lg:items-center">
-            <form onSubmit={onSearch} className="flex min-w-0 flex-1 gap-2">
-              <Input
-                placeholder="Ad, şirket, telefon veya e-posta ara…"
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                className="min-w-0 flex-1"
-                aria-label="Müvekkil ara"
-              />
-              <Button type="submit" variant="secondary">
-                Ara
+          <div className="flex w-full flex-col gap-2 lg:max-w-3xl">
+            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end">
+              <form onSubmit={onSearch} className="flex min-w-0 flex-1 gap-2">
+                <Input
+                  placeholder="Ad, şirket, telefon veya e-posta ara…"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  className="min-w-0 flex-1"
+                  aria-label="Müvekkil ara"
+                />
+                <Button type="submit" variant="secondary">
+                  Ara
+                </Button>
+              </form>
+              <Button type="button" variant="outline" className="shrink-0" onClick={() => navigate(`${APP_BASE}/muvekkiller/yeni`)}>
+                Yeni Müvekkil
               </Button>
-            </form>
-            <Button type="button" variant="outline" className="shrink-0" onClick={() => navigate(`${APP_BASE}/muvekkiller/yeni`)}>
-              Yeni Müvekkil
-            </Button>
+            </div>
+            <div className="max-w-xs">
+              <Select
+                label="Otomatik Hatırlatma"
+                name="otomatikHatirlatma"
+                value={otomatikHatirlatmaFilter}
+                onChange={(e) => {
+                  setOtomatikHatirlatmaFilter(e.target.value as OtomatikHatirlatmaFilter)
+                  setPage(1)
+                }}
+              >
+                <option value="TUMU">Tümü</option>
+                <option value="ACIK">Açık</option>
+                <option value="KAPALI">Kapalı</option>
+              </Select>
+            </div>
           </div>
         </CardHeader>
         <CardBody className="p-0">
-          {muvekkilQuery.isLoading ? (
+          {muvekkilQuery.isLoading || muvekkilQuery.isFetching ? (
             <div className="px-4 py-6">
               <PageLoading label="Müvekkiller yükleniyor…" />
             </div>
@@ -434,9 +488,18 @@ export function HomePage(): ReactElement {
                           onClick={() => navigate(detailTo)}
                         >
                           <TD>
-                            <span className="font-semibold text-primary decoration-primary/35 underline-offset-2 transition group-hover/row:text-primary group-hover/row:underline">
-                              {m.gorunenAd}
-                            </span>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="font-semibold text-primary decoration-primary/35 underline-offset-2 transition group-hover/row:text-primary group-hover/row:underline">
+                                {m.gorunenAd}
+                              </span>
+                              {m.otomatikBildirimIzni === true ? (
+                                <Badge variant="success" className="!normal-case text-[10px]">
+                                  Hatırlatma açık
+                                </Badge>
+                              ) : (
+                                <span className="text-[10px] font-medium text-ink-muted">Kapalı</span>
+                              )}
+                            </div>
                           </TD>
                           <TD>
                             {m.tur === 'TUZEL' ? (
@@ -546,12 +609,12 @@ function HomeSmmKesildiModal(props: {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]">
-      <div
+      <DraggablePanel
         role="dialog"
         aria-modal="true"
         className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-white p-5 shadow-xl dark:bg-surface-elevated"
       >
-        <div className="mb-4 flex items-start justify-between gap-2">
+        <div data-modal-drag-handle className="mb-4 flex items-start justify-between gap-2">
           <h2 className="text-base font-bold text-ink">SMM kesildi</h2>
           <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={onClose} disabled={loading}>
             ✕
@@ -581,7 +644,7 @@ function HomeSmmKesildiModal(props: {
             </Button>
           </div>
         </div>
-      </div>
+      </DraggablePanel>
     </div>
   )
 }

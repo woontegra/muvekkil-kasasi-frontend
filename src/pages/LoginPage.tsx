@@ -1,5 +1,5 @@
 import type { FormEvent, ReactElement } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { APP_BASE } from '../config/appPaths'
 import { friendlyLoginErrorMessage } from '../api/client'
@@ -7,12 +7,15 @@ import { useAuth } from '../contexts/AuthContext'
 import { normalizeLoginIdentifier } from '../lib/normalizeKullaniciAdi'
 import { AuthFormCard } from '../components/auth/AuthFormCard'
 import { AlertBox, Button, Input } from '../components/ui'
+import { useToast } from '../toast'
 
 export function LoginPage(): ReactElement {
   const { login, session, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const toast = useToast()
   const resetOk = Boolean((location.state as { resetOk?: boolean } | null)?.resetOk)
+  const resetToastShown = useRef(false)
   const [identifier, setIdentifier] = useState('')
   const [sifre, setSifre] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -22,6 +25,15 @@ export function LoginPage(): ReactElement {
     if (!loading && session) navigate(APP_BASE, { replace: true })
   }, [loading, session, navigate])
 
+  useEffect(() => {
+    if (!resetOk || resetToastShown.current) return
+    resetToastShown.current = true
+    toast.success({
+      title: 'Şifre güncellendi',
+      description: 'Yeni şifrenizle giriş yapabilirsiniz.'
+    })
+  }, [resetOk, toast])
+
   async function onSubmit(e: FormEvent): Promise<void> {
     e.preventDefault()
     setError(null)
@@ -30,9 +42,18 @@ export function LoginPage(): ReactElement {
       const id = identifier.trim()
       const loginId = id.includes('@') ? id.toLowerCase() : normalizeLoginIdentifier(id)
       await login({ identifier: loginId, sifre: sifre.trim() })
+      toast.success({
+        title: 'Giriş başarılı',
+        description: 'Müvekkil Kasası’na yönlendiriliyorsunuz.'
+      })
       navigate(APP_BASE, { replace: true })
     } catch (err) {
-      setError(friendlyLoginErrorMessage(err))
+      const message = friendlyLoginErrorMessage(err)
+      setError(message)
+      toast.error({
+        title: 'Giriş başarısız',
+        description: message
+      })
     } finally {
       setSubmitting(false)
     }
@@ -57,12 +78,14 @@ export function LoginPage(): ReactElement {
         </AlertBox>
       ) : null}
       {error ? (
-        <AlertBox variant="danger" title="Giriş başarısız">
-          {error}
-        </AlertBox>
+        <div className="motion-field-error" key={error}>
+          <AlertBox variant="danger" title="Giriş başarısız">
+            {error}
+          </AlertBox>
+        </div>
       ) : null}
       {resetOk ? (
-        <AlertBox variant="success" title="Şifre güncellendi">
+        <AlertBox variant="success" title="Şifre güncellendi" className="motion-success-pop">
           Yeni şifrenizle giriş yapabilirsiniz.
         </AlertBox>
       ) : null}
@@ -95,8 +118,8 @@ export function LoginPage(): ReactElement {
             Şifremi unuttum
           </Link>
         </div>
-        <Button type="submit" className="h-10 w-full text-[0.95rem]" disabled={submitting || bootstrapping}>
-          {submitting ? 'Giriş yapılıyor…' : 'Giriş Yap'}
+        <Button type="submit" className="h-10 w-full text-[0.95rem]" loading={submitting} disabled={bootstrapping}>
+          Giriş Yap
         </Button>
       </form>
     </AuthFormCard>

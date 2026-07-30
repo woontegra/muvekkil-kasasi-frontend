@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { apiFetch } from './client'
 import type {
   ListTahsilatMerkeziParams,
+  ManualWhatsAppPreviewResponse,
   TahsilatMerkeziListResponse,
   TahsilatMerkeziOzetResponse
 } from '../types/tahsilatMerkezi'
@@ -37,4 +38,27 @@ export async function listTahsilatMerkezi(
 
 export function invalidateTahsilatMerkezi(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: TAKSILAT_MERKEZI_QUERY_KEY })
+}
+
+export async function previewManualWhatsApp(taksitId: string): Promise<ManualWhatsAppPreviewResponse> {
+  return apiFetch<ManualWhatsAppPreviewResponse>(
+    `/api/v1/tahsilat-merkezi/${encodeURIComponent(taksitId)}/manual-whatsapp/preview`
+  )
+}
+
+export async function prepareManualWhatsApp(
+  taksitId: string,
+  body: { mesaj: string; idempotencyKey: string }
+): Promise<{
+  ok: true
+  status: 'READY' | 'DUPLICATE' | 'FAILED'
+  jobId?: string
+  deepLinkUrl?: string | null
+  telefonMaskeli?: string
+  message?: string
+}> {
+  return apiFetch(`/api/v1/tahsilat-merkezi/${encodeURIComponent(taksitId)}/manual-whatsapp/prepare`, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
 }

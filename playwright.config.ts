@@ -31,12 +31,12 @@ export default defineConfig({
         storageState: 'e2e/.auth/user.json'
       },
       dependencies: ['setup'],
-      testIgnore: /global\.setup\.ts|login-inputs\.spec\.ts/
+      testIgnore: /global\.setup\.ts|login-inputs\.spec\.ts|cross-tenant-isolation\.spec\.ts|role-matrix\.spec\.ts|auth-session\.spec\.ts|tenant-isolation\.spec\.ts/
     },
     {
       name: 'public',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /login-inputs\.spec\.ts|tenant-isolation\.spec\.ts/
+      testMatch: /login-inputs\.spec\.ts|tenant-isolation\.spec\.ts|auth-session\.spec\.ts|cross-tenant-isolation\.spec\.ts|role-matrix\.spec\.ts/
     },
     {
       name: 'mobile',
