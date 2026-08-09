@@ -16,7 +16,6 @@ import { invalidateSmmBekleyen } from '../api/smm'
 import { getDosya } from '../api/dosyalar'
 import { getDosyaHesapOzeti } from '../api/hesapOzeti'
 import { getDosyaMakbuzlari } from '../api/makbuzlar'
-import { getDosyaBildirimAyar, patchDosyaBildirimAyar, patchTaksitBildirimAyar } from '../api/bildirimAyar'
 import {
   createTekVekaletTaksiti,
   createVekaletPesinOdeme,
@@ -32,11 +31,10 @@ import {
   updateVekaletTaksitOdeme,
   upsertDosyaVekalet
 } from '../api/vekalet'
-import { OtomatikHatirlatmaSwitch } from '../components/bildirim/OtomatikHatirlatmaSwitch'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import { VekaletTaksitOdemeModal } from '../components/vekalet/VekaletTaksitOdemeModal'
 import { VekaletTaksitPlaniModal } from '../components/vekalet/VekaletTaksitPlaniModal'
-import { ApiError, friendlyClientErrorMessage, resolveOdemeApiError } from '../api/client'
+import { ApiError, resolveOdemeApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
 import { dosyaDurumuBadgeVariant, dosyaDurumuLabel, mahkemeIcraSatir } from '../lib/dosyaLabels'
@@ -186,11 +184,59 @@ function smmDurumRozet(s: TaksitSmmDurumApi): ReactElement | string {
   )
 }
 
-function smmListeDurum(t: VekaletMakbuzListeDto): string {
+function smmMakbuzListeCell(t: VekaletMakbuzListeDto): ReactElement {
   if (t.smmKesildiMi) {
-    return t.smmNo?.trim() ? `Evet (${t.smmNo.trim()})` : 'Evet'
+    const label = t.smmNo?.trim() || 'Evet'
+    return (
+      <Badge variant="success" className="!normal-case !px-1.5 !py-0 text-[10px] font-semibold">
+        {label}
+      </Badge>
+    )
   }
-  return 'Hayır'
+  return <span className="text-[11px] text-ink-subtle">Hayır</span>
+}
+
+const MAKBUZ_ACTION_BTN_CLASS = 'h-8 shrink-0 px-2.5 text-[11px] font-medium'
+
+function MakbuzPanelShell(props: { title: string; count: number; children: ReactNode }): ReactElement {
+  const { title, count, children } = props
+  return (
+    <section className="flex h-full min-h-[180px] flex-col rounded-lg border border-border bg-panel shadow-sm">
+      <div className="flex min-h-11 shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3">
+        <h3 className="text-[13px] font-semibold text-ink">{title}</h3>
+        <span className="shrink-0 text-xs tabular-nums text-ink-muted">{count} kayıt</span>
+      </div>
+      <div className="flex flex-1 flex-col px-5 py-4">{children}</div>
+    </section>
+  )
+}
+
+function MakbuzActionButtons(props: { onView: () => void | Promise<void>; onPrint: () => void | Promise<void> }): ReactElement {
+  return (
+    <div className="flex shrink-0 items-center gap-1.5">
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className={MAKBUZ_ACTION_BTN_CLASS}
+        onClick={() => {
+          void props.onView()
+        }}
+      >
+        Görüntüle
+      </Button>
+      <Button
+        type="button"
+        size="sm"
+        className={MAKBUZ_ACTION_BTN_CLASS}
+        onClick={() => {
+          void props.onPrint()
+        }}
+      >
+        Yazdır
+      </Button>
+    </div>
+  )
 }
 
 function isoDateToInput(iso: string): string {
@@ -453,85 +499,6 @@ export function DosyaDetailPage(): ReactElement {
     queryFn: () => getDosyaMakbuzlari(dosyaId!),
     enabled: vekaletFetchEnabled
   })
-
-  const dosyaBildirimAyarQuery = useQuery({
-    queryKey: ['dosya-bildirim-ayar', dosyaId],
-    queryFn: () => getDosyaBildirimAyar(dosyaId!),
-    enabled: Boolean(dosyaId) && dosyaQuery.status === 'success'
-  })
-
-  const patchDosyaBildirimMu = useMutation({
-    mutationFn: (otomatikBildirimAktif: boolean) => patchDosyaBildirimAyar(dosyaId!, otomatikBildirimAktif),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['dosya', dosyaId] })
-      void queryClient.invalidateQueries({ queryKey: ['dosya-bildirim-ayar', dosyaId] })
-      toast.success('Dosya hatırlatma ayarı güncellendi.')
-    },
-    onError: (err) => {
-      toast.error(friendlyClientErrorMessage(err, 'Hatırlatma ayarı güncellenemedi.'))
-    }
-  })
-
-  const patchTaksitBildirimMu = useMutation({
-    mutationFn: ({ taksitId, aktif }: { taksitId: string; aktif: boolean }) =>
-      patchTaksitBildirimAyar(taksitId, aktif),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['vekalet', dosyaId] })
-      toast.success('Taksit hatırlatma ayarı güncellendi.')
-    },
-    onError: (err) => {
-      toast.error(friendlyClientErrorMessage(err, 'Taksit hatırlatma ayarı güncellenemedi.'))
-    }
-  })
-
-  const muvekkilIzniKapali = dosyaBildirimAyarQuery.data?.muvekkilOtomatikBildirimIzni === false
-  const dosyaHatirlatmaEffective = muvekkilIzniKapali
-    ? false
-    : (dosyaBildirimAyarQuery.data?.otomatikBildirimAktif ?? false)
-  const dosyaHatirlatmaDisabled =
-    !canYoneticiIslem ||
-    muvekkilIzniKapali ||
-    patchDosyaBildirimMu.isPending ||
-    dosyaBildirimAyarQuery.isFetching
-
-  async function handleDosyaHatirlatmaToggle(next: boolean): Promise<void> {
-    if (!dosyaId || !canYoneticiIslem || patchDosyaBildirimMu.isPending) return
-    if (!next) {
-      try {
-        const ayar = dosyaBildirimAyarQuery.data ?? (await getDosyaBildirimAyar(dosyaId))
-        if (ayar.pendingPlanliSayisi > 0) {
-          const ok = await confirm({
-            title: 'Otomatik hatırlatmaları kapat',
-            message: `Bu işlem bu dosya için planlanmış ${ayar.pendingPlanliSayisi} otomatik hatırlatmayı iptal edecek.`,
-            confirmLabel: 'Kapat',
-            danger: true
-          })
-          if (!ok) return
-        }
-      } catch (err) {
-        toast.error(friendlyClientErrorMessage(err, 'Hatırlatma bilgisi alınamadı.'))
-        return
-      }
-    }
-    patchDosyaBildirimMu.mutate(next)
-  }
-
-  async function handleTaksitHatirlatmaToggle(t: VekaletTaksitiDto): Promise<void> {
-    if (!canYoneticiIslem || patchTaksitBildirimMu.isPending) return
-    if (muvekkilIzniKapali || !dosyaHatirlatmaEffective) return
-    const aktif = t.otomatikBildirimAktif !== false
-    const next = !aktif
-    if (!next) {
-      const ok = await confirm({
-        title: 'Taksit hatırlatmasını kapat',
-        message: 'Bu taksit için planlanmış otomatik hatırlatmalar iptal edilecek.',
-        confirmLabel: 'Kapat',
-        danger: true
-      })
-      if (!ok) return
-    }
-    patchTaksitBildirimMu.mutate({ taksitId: t.id, aktif: next })
-  }
 
   const { reducedMotion } = useMotionSettings()
   const handleFocusNotFound = useCallback(() => {
@@ -1052,44 +1019,9 @@ export function DosyaDetailPage(): ReactElement {
               {smmNotice.text}
             </AlertBox>
           ) : null}
-          {dosyaBildirimAyarQuery.isSuccess ? (
-            <div className="rounded-lg border border-border/80 bg-surface-muted/35 px-3 py-2.5">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <OtomatikHatirlatmaSwitch
-                    id={`dosya-${dosyaId}-otomatik-hatirlatma`}
-                    label="Bu dosya için otomatik ödeme hatırlatmalarını kullan"
-                    description="Kapalı olduğunda bu dosyadaki taksitler için otomatik mesaj gönderilmez. Manuel WhatsApp hatırlatma özelliğini yine kullanabilirsiniz."
-                    checked={dosyaHatirlatmaEffective}
-                    disabled={dosyaHatirlatmaDisabled}
-                    stateText={{ on: 'Açık', off: 'Kapalı' }}
-                    warning={
-                      muvekkilIzniKapali
-                        ? 'Bu müvekkil için otomatik hatırlatmalar kapalı. Önce müvekkil ayarından izin vermelisiniz.'
-                        : dosyaBildirimAyarQuery.data.muvekkilKapaliUyari
-                    }
-                    onChange={(next) => void handleDosyaHatirlatmaToggle(next)}
-                  />
-                </div>
-                {muvekkilIzniKapali ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2 text-[11px]"
-                    onClick={() => navigate(`${APP_BASE}/muvekkil/${m.id}`)}
-                  >
-                    Müvekkil iznini aç
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-          ) : dosyaBildirimAyarQuery.isLoading ? (
-            <p className="text-xs text-ink-muted">Hatırlatma ayarı yükleniyor…</p>
-          ) : null}
           <p className="rounded-md border border-border bg-surface-muted/50 px-3 py-2 text-xs text-ink-muted">
             Kasa hareketleri dosyaya ait avans, masraf ve düzeltme kayıtlarını birlikte gösterir. Vekalet ücreti avans kasasından
-            ayrıdır. Vekalet / taksitler ve SMM takibi <span className="font-semibold text-ink">canlı API</span> ile gelir.
+            ayrıdır. Vekalet, taksit ve SMM bilgileri güncel veriler üzerinden gösterilir.
           </p>
           <div className="flex flex-wrap gap-1 border-b border-border pb-1">
             {TABS.map((t) => (
@@ -1565,30 +1497,6 @@ export function DosyaDetailPage(): ReactElement {
                                         🗑
                                       </button>
                                     ) : null}
-                                    {!iptal ? (
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          variant="ghost"
-                                          className="h-7 shrink-0 px-2 text-[11px] font-medium"
-                                          disabled={
-                                            !canYoneticiIslem ||
-                                            patchTaksitBildirimMu.isPending ||
-                                            muvekkilIzniKapali ||
-                                            !dosyaHatirlatmaEffective
-                                          }
-                                          onClick={() => void handleTaksitHatirlatmaToggle(t)}
-                                        >
-                                          {t.otomatikBildirimAktif !== false ? 'Hatırlatmayı kapat' : 'Hatırlatmayı aç'}
-                                        </Button>
-                                        {muvekkilIzniKapali ? (
-                                          <span className="text-[10px] text-amber-700 dark:text-amber-400">Müvekkil izni kapalı</span>
-                                        ) : !dosyaHatirlatmaEffective ? (
-                                          <span className="text-[10px] text-amber-700 dark:text-amber-400">Dosya hatırlatması kapalı</span>
-                                        ) : null}
-                                      </div>
-                                    ) : null}
                                   </div>
                                 </TD>
                               </TR>
@@ -1679,169 +1587,125 @@ export function DosyaDetailPage(): ReactElement {
           ) : null}
 
           {tab === 'makbuz' ? (
-            <div className="space-y-6">
+            <div className="w-full">
               {hesapOzetiError ? <AlertBox variant="danger" title="Hesap özeti">{hesapOzetiError}</AlertBox> : null}
               {makbuzError ? <AlertBox variant="danger" title="Makbuzlar">{makbuzError}</AlertBox> : null}
               {makbuzQuery.isLoading || hesapOzetiQuery.isLoading ? (
                 <p className="text-sm text-ink-muted">Makbuz listesi yükleniyor…</p>
               ) : makbuzData && hesapData ? (
-                avansMakbuzRows.length === 0 && vekaletMakbuzListe.length === 0 ? (
-                  <p className="text-sm text-ink-muted">Henüz yazdırılabilir makbuz yok.</p>
-                ) : (
-                  <>
-                    <section className="space-y-2">
-                      <h3 className="text-sm font-bold text-ink">Avans makbuzları</h3>
-                      <div className="overflow-x-auto rounded-lg border border-border">
-                        <Table>
-                          <THead>
-                            <TR>
-                              <TH>Tarih</TH>
-                              <TH>Belge / makbuz no</TH>
-                              <TH className="text-right">Tutar</TH>
-                              <TH>Açıklama</TH>
-                              <TH>İşlem</TH>
-                            </TR>
-                          </THead>
-                          <TBody>
-                            {avansMakbuzRows.length === 0 ? (
-                              <TableEmptyRow colSpan={5}>Onaylı avans girişi yok.</TableEmptyRow>
-                            ) : (
-                              avansMakbuzRows.map((row) => (
-                                <TR key={row.id}>
-                                  <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(row.tarih)}</TD>
-                                  <TD className="font-mono text-xs">{row.makbuzNo || row.belgeNo}</TD>
-                                  <TD className="text-right text-sm font-semibold tabular-nums">{formatCurrencyTR(Number(row.tutar))}</TD>
-                                  <TD className="max-w-[220px] text-sm text-ink-muted">{row.aciklama?.trim() || '—'}</TD>
-                                  <TD>
-                                    <div className="flex flex-wrap gap-1">
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 px-2 text-[11px]"
-                                        onClick={() => {
-                                          const full = hesapData.kasaHareketleri.find((x) => x.id === row.id)
-                                          if (!full) return
-                                          const printedAt = new Date().toISOString()
-                                          setReceiptModal({
-                                            kind: 'advance',
-                                            hareket: full,
-                                            printRootId: `adv-rcpt-${row.id}-${Date.now()}`,
-                                            printedAt
-                                          })
-                                        }}
-                                      >
-                                        Görüntüle
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        className="h-7 px-2 text-[11px]"
-                                        onClick={() => {
-                                          const full = hesapData.kasaHareketleri.find((x) => x.id === row.id)
-                                          if (!full) return
-                                          const printedAt = new Date().toISOString()
-                                          setReceiptModal({
-                                            kind: 'advance',
-                                            hareket: full,
-                                            printRootId: `adv-rcpt-${row.id}-${Date.now()}`,
-                                            printedAt
-                                          })
-                                          window.setTimeout(() => window.print(), 400)
-                                        }}
-                                      >
-                                        Yazdır
-                                      </Button>
-                                    </div>
-                                  </TD>
-                                </TR>
-                              ))
-                            )}
-                          </TBody>
-                        </Table>
-                      </div>
-                    </section>
+                <div className="grid w-full grid-cols-1 gap-5 min-[1200px]:grid-cols-2 min-[1200px]:items-stretch">
+                  <MakbuzPanelShell title="Avans makbuzları" count={avansMakbuzRows.length}>
+                    {avansMakbuzRows.length === 0 ? (
+                      <p className="text-xs text-ink-muted">Henüz avans makbuzu yok.</p>
+                    ) : (
+                      <ul className="divide-y divide-border/70">
+                        {avansMakbuzRows.map((row) => (
+                          <li key={row.id} className="py-3 first:pt-0 last:pb-0">
+                            <div className="flex items-center gap-3">
+                              <span className="w-[92px] shrink-0 text-[13px] text-ink-muted">{formatDateTR(row.tarih)}</span>
+                              <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-ink">
+                                {row.makbuzNo || row.belgeNo}
+                              </span>
+                              <span className="w-[108px] shrink-0 text-right text-[13px] font-semibold tabular-nums text-ink">
+                                {formatCurrencyTR(Number(row.tutar))}
+                              </span>
+                              <MakbuzActionButtons
+                                onView={() => {
+                                  const full = hesapData.kasaHareketleri.find((x) => x.id === row.id)
+                                  if (!full) return
+                                  setReceiptModal({
+                                    kind: 'advance',
+                                    hareket: full,
+                                    printRootId: `adv-rcpt-${row.id}-${Date.now()}`,
+                                    printedAt: new Date().toISOString()
+                                  })
+                                }}
+                                onPrint={() => {
+                                  const full = hesapData.kasaHareketleri.find((x) => x.id === row.id)
+                                  if (!full) return
+                                  const printedAt = new Date().toISOString()
+                                  setReceiptModal({
+                                    kind: 'advance',
+                                    hareket: full,
+                                    printRootId: `adv-rcpt-${row.id}-${Date.now()}`,
+                                    printedAt
+                                  })
+                                  window.setTimeout(() => window.print(), 400)
+                                }}
+                              />
+                            </div>
+                            {row.aciklama?.trim() ? (
+                              <p className="mt-1.5 truncate text-xs text-ink-muted">{row.aciklama.trim()}</p>
+                            ) : null}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </MakbuzPanelShell>
 
-                    <section className="space-y-2">
-                      <h3 className="text-sm font-bold text-ink">Vekalet makbuzları</h3>
-                      <div className="overflow-x-auto rounded-lg border border-border">
-                        <Table>
-                          <THead>
-                            <TR>
-                              <TH>Taksit no</TH>
-                              <TH>Ödeme tarihi</TH>
-                              <TH>Makbuz no</TH>
-                              <TH className="text-right">Tutar</TH>
-                              <TH>SMM</TH>
-                              <TH>İşlem</TH>
-                            </TR>
-                          </THead>
-                          <TBody>
-                            {vekaletMakbuzListe.length === 0 ? (
-                              <TableEmptyRow colSpan={6}>Ödenmiş vekalet taksiti yok.</TableEmptyRow>
-                            ) : (
-                              vekaletMakbuzListe.map((row) => {
-                                const odemeId = row.odemeId ?? row.id
-                                const makbuzRowId = dosyaFocusElementId('odeme', odemeId)
-                                return (
-                                <TR
-                                  key={row.id}
-                                  id={makbuzRowId}
-                                  className={cn(isRowHighlighted(makbuzRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS)}
-                                >
-                                  <TD className="font-medium tabular-nums">{row.taksitNo}</TD>
-                                  <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(row.odemeTarihi ?? undefined)}</TD>
-                                  <TD className="font-mono text-xs">{row.makbuzNo ?? '—'}</TD>
-                                  <TD className="text-right text-sm font-semibold tabular-nums">{formatCurrencyTR(Number(row.tutar))}</TD>
-                                  <TD className="text-xs text-ink-muted">{smmListeDurum(row)}</TD>
-                                  <TD>
-                                    <div className="flex flex-wrap gap-1">
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 px-2 text-[11px]"
-                                        onClick={async () => {
-                                          const res = await getVekaletOdemeMakbuz(odemeId)
-                                          setReceiptModal({
-                                            kind: 'vekalet-odeme',
-                                            makbuz: res.makbuz,
-                                            printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
-                                            printedAt: new Date().toISOString()
-                                          })
-                                        }}
-                                      >
-                                        Görüntüle
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        className="h-7 px-2 text-[11px]"
-                                        onClick={async () => {
-                                          const res = await getVekaletOdemeMakbuz(odemeId)
-                                          const printedAt = new Date().toISOString()
-                                          setReceiptModal({
-                                            kind: 'vekalet-odeme',
-                                            makbuz: res.makbuz,
-                                            printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
-                                            printedAt
-                                          })
-                                          window.setTimeout(() => window.print(), 400)
-                                        }}
-                                      >
-                                        Yazdır
-                                      </Button>
-                                    </div>
-                                  </TD>
-                                </TR>
-                              )})
-                            )}
-                          </TBody>
-                        </Table>
-                      </div>
-                    </section>
-                  </>
-                )
+                  <MakbuzPanelShell title="Vekalet makbuzları" count={vekaletMakbuzListe.length}>
+                    {vekaletMakbuzListe.length === 0 ? (
+                      <p className="text-xs text-ink-muted">Henüz vekalet makbuzu yok.</p>
+                    ) : (
+                      <ul className="divide-y divide-border/70">
+                        {vekaletMakbuzListe.map((row) => {
+                          const odemeId = row.odemeId ?? row.id
+                          const makbuzRowId = dosyaFocusElementId('odeme', odemeId)
+                          return (
+                            <li
+                              key={row.id}
+                              id={makbuzRowId}
+                              className={cn(
+                                'rounded-md py-3 first:pt-0 last:pb-0',
+                                isRowHighlighted(makbuzRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
+                              )}
+                            >
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                                <span className="w-12 shrink-0 text-xs font-semibold tabular-nums text-ink-muted">
+                                  #{row.taksitNo}
+                                </span>
+                                <span className="w-[88px] shrink-0 text-[13px] text-ink-muted">
+                                  {formatDateTR(row.odemeTarihi ?? undefined)}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate font-mono text-[13px] font-medium text-ink">
+                                  {row.makbuzNo ?? '—'}
+                                </span>
+                                <span className="w-[100px] shrink-0 text-right text-[13px] font-semibold tabular-nums text-ink">
+                                  {formatCurrencyTR(Number(row.tutar))}
+                                </span>
+                                <span className="flex w-16 shrink-0 items-center justify-center gap-1">
+                                  {smmMakbuzListeCell(row)}
+                                </span>
+                                <MakbuzActionButtons
+                                  onView={async () => {
+                                    const res = await getVekaletOdemeMakbuz(odemeId)
+                                    setReceiptModal({
+                                      kind: 'vekalet-odeme',
+                                      makbuz: res.makbuz,
+                                      printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
+                                      printedAt: new Date().toISOString()
+                                    })
+                                  }}
+                                  onPrint={async () => {
+                                    const res = await getVekaletOdemeMakbuz(odemeId)
+                                    const printedAt = new Date().toISOString()
+                                    setReceiptModal({
+                                      kind: 'vekalet-odeme',
+                                      makbuz: res.makbuz,
+                                      printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
+                                      printedAt
+                                    })
+                                    window.setTimeout(() => window.print(), 400)
+                                  }}
+                                />
+                              </div>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </MakbuzPanelShell>
+                </div>
               ) : (
                 <p className="text-sm text-ink-muted">Makbuz listesi yüklenemedi.</p>
               )}

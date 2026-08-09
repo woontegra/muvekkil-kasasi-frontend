@@ -44,7 +44,7 @@ export function AdminLoginPage(): ReactElement {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4 py-10">
-      <AuthFormCard title="Woontegra Admin" subtitle="Süper yönetici girişi" icon="lock">
+      <AuthFormCard title="Woontegra Admin" subtitle="Platform yönetim girişi" icon="lock">
         <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
           {err ? (
             <div className="motion-field-error" key={err}>

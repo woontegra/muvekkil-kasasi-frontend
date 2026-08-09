@@ -28,7 +28,6 @@ type TabId =
   | 'girisCihaz'
   | 'demoTakibi'
   | 'islemGecmisi'
-  | 'destek'
 
 export function AdminTenantDetailPage(): ReactElement {
   const { id } = useParams<{ id: string }>()

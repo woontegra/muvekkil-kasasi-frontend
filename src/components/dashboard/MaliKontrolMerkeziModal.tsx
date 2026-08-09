@@ -1,6 +1,7 @@
-import type { ReactElement, PointerEvent as ReactPointerEvent } from 'react'
+import type { KeyboardEvent, ReactElement, PointerEvent as ReactPointerEvent } from 'react'
 import { useState, useMemo, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '../../toast'
 import { AnimatePresence, motion, useDragControls, useMotionValue } from 'framer-motion'
 import { ModalScrim, Button, Badge, EmptyState } from '../ui'
 import { Stagger, StaggerItem } from '../../motion'
@@ -8,7 +9,7 @@ import { useMotionSettings } from '../../motion/MotionProvider'
 import { modalPanelVariants, transition } from '../../motion/variants'
 import { cn } from '../../lib/cn'
 import { formatCurrencyTR } from '../../utils/formatters'
-import { buildMaliKontrolNavigateUrl } from '../../lib/maliKontrolNavigation'
+import { buildMaliKontrolNavigateUrl, canNavigateMaliKontrolUyari } from '../../lib/maliKontrolNavigation'
 import type { MaliKontrolUyari, MaliKontrolResponse, UyariSeviyesi, UyariTuru } from '../../types/maliKontrol'
 import { UYARI_TUR_ETIKET } from '../../types/maliKontrol'
 
@@ -78,7 +79,21 @@ function UyariSatir({
   u: MaliKontrolUyari
   onNavigate: (u: MaliKontrolUyari) => void
 }): ReactElement {
-  const canNavigate = Boolean(u.actionPayload)
+  const canNavigate = canNavigateMaliKontrolUyari(u)
+
+  const handleActivate = (): void => {
+    if (!canNavigate) return
+    onNavigate(u)
+  }
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>): void => {
+    if (!canNavigate) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onNavigate(u)
+    }
+  }
+
   return (
     <motion.div
       layout
@@ -86,9 +101,20 @@ function UyariSatir({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -4 }}
       transition={{ duration: 0.18 }}
+      role={canNavigate ? 'button' : undefined}
+      tabIndex={canNavigate ? 0 : undefined}
+      aria-label={
+        canNavigate
+          ? `${UYARI_TUR_ETIKET[u.tur]}: ${u.muvekkilAd}, ${u.dosyaBaslik}. Kayda git.`
+          : undefined
+      }
+      onClick={canNavigate ? handleActivate : undefined}
+      onKeyDown={canNavigate ? handleKeyDown : undefined}
       className={cn(
-        'rounded-lg border px-3 py-2.5',
-        SEVIYE_RENK[u.seviye]
+        'rounded-lg border px-3 py-2.5 outline-none',
+        SEVIYE_RENK[u.seviye],
+        canNavigate &&
+          'cursor-pointer transition-[transform,box-shadow,background-color,border-color] duration-150 hover:-translate-y-px hover:shadow-sm hover:brightness-[1.02] focus-visible:ring-2 focus-visible:ring-primary/40'
       )}
     >
       <div className="flex items-start justify-between gap-2">
@@ -114,13 +140,12 @@ function UyariSatir({
             <span className="text-[10px] opacity-60">{u.tarih}</span>
           ) : null}
           {canNavigate ? (
-            <button
-              type="button"
-              className="mt-0.5 rounded-md border border-current/20 px-2 py-0.5 text-[10px] font-semibold hover:bg-white/20 transition-colors"
-              onClick={() => onNavigate(u)}
+            <span
+              className="mt-0.5 rounded-md border border-current/20 px-2 py-0.5 text-[10px] font-semibold"
+              aria-hidden
             >
               Git →
-            </button>
+            </span>
           ) : null}
         </div>
       </div>
@@ -151,6 +176,7 @@ const SEV_OPTIONS: { value: UyariSeviyesi | 'TUMU'; label: string }[] = [
 
 export function MaliKontrolMerkeziModal({ open, onClose, data, loading }: Props): ReactElement | null {
   const navigate = useNavigate()
+  const toast = useToast()
   const [view, setView] = useState<ViewMode>('tumAcik')
   const [turFilter, setTurFilter] = useState<UyariTuru | 'TUMU'>('TUMU')
   const [sevFilter, setSevFilter] = useState<UyariSeviyesi | 'TUMU'>('TUMU')
@@ -225,11 +251,14 @@ export function MaliKontrolMerkeziModal({ open, onClose, data, loading }: Props)
 
   const handleUyariNavigate = useCallback(
     (u: MaliKontrolUyari) => {
-      if (!u.actionPayload) return
+      if (!canNavigateMaliKontrolUyari(u)) {
+        toast.warning('Bu kayıt için doğrudan yönlendirme yapılamıyor.')
+        return
+      }
       onClose()
       navigate(buildMaliKontrolNavigateUrl(u.actionPayload))
     },
-    [navigate, onClose]
+    [navigate, onClose, toast]
   )
 
   const today = isoToday()

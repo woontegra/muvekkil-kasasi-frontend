@@ -3,6 +3,10 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --app-header-height: 64px;
+  }
+
   html {
     @apply antialiased;
     color: theme('colors.ink.DEFAULT');
@@ -42,6 +46,32 @@
   }
   .motion-success-pop {
     animation: mkSuccessPop 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .mk-sidebar {
+    background: linear-gradient(175deg, #0f172a 0%, #0c1222 48%, #0a0f1a 100%);
+    box-shadow: 4px 0 24px rgba(15, 23, 42, 0.12);
+  }
+
+  .app-shell-header {
+    height: var(--app-header-height);
+    box-sizing: border-box;
+  }
+
+  .mk-login-success-circle {
+    stroke-dasharray: 151;
+    stroke-dashoffset: 151;
+    animation: mkLoginSuccessCircle 0.42s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+
+  .mk-login-success-check {
+    stroke-dasharray: 24;
+    stroke-dashoffset: 24;
+    animation: mkLoginSuccessCheck 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+  }
+
+  .mk-demo-banner-in {
+    animation: mkDemoBannerIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 }
 
@@ -110,13 +140,40 @@
   }
 }
 
+@keyframes mkLoginSuccessCircle {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mkLoginSuccessCheck {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mkDemoBannerIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .motion-card-in,
   .motion-fade-in,
   .motion-row-in,
   .motion-field-error,
   .motion-success-pop,
-  .animate-authCardIn {
+  .animate-authCardIn,
+  .mk-login-success-circle,
+  .mk-login-success-check,
+  .mk-demo-banner-in {
     animation: none !important;
+    stroke-dashoffset: 0;
   }
 }

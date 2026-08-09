@@ -92,6 +92,41 @@ export async function getTahsilatBildirimWhatsAppDurum(): Promise<WhatsAppDurumR
   return apiFetch<WhatsAppDurumResponse>('/api/v1/tahsilat-bildirim/whatsapp-durum')
 }
 
+export type OpenBildirimJobWhatsAppResponse = {
+  ok: true
+  jobId: string
+  deepLinkUrl?: string | null
+  telefonMaskeli?: string | null
+  durum?: string
+}
+
+export async function openBildirimJobWhatsApp(
+  jobId: string,
+  body?: { mesaj?: string }
+): Promise<OpenBildirimJobWhatsAppResponse> {
+  return apiFetch<OpenBildirimJobWhatsAppResponse>(
+    `/api/v1/tahsilat-bildirim/isler/${encodeURIComponent(jobId)}/whatsapp-ac`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body ?? {})
+    }
+  )
+}
+
+export type MarkBildirimJobGonderildiResponse = {
+  ok: true
+  jobId: string
+  durum?: string
+  already?: boolean
+}
+
+export async function markBildirimJobGonderildi(jobId: string): Promise<MarkBildirimJobGonderildiResponse> {
+  return apiFetch<MarkBildirimJobGonderildiResponse>(
+    `/api/v1/tahsilat-bildirim/isler/${encodeURIComponent(jobId)}/gonderildi-isaretle`,
+    { method: 'POST' }
+  )
+}
+
 export function invalidateTahsilatBildirim(queryClient: QueryClient): void {
   void queryClient.invalidateQueries({ queryKey: TAHSILAT_BILDIRIM_QUERY_KEY })
 }

@@ -1,19 +1,30 @@
 import { useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { useState } from 'react'
-import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getDashboardSummary } from '../api/dashboard'
 import { getCurrentLicense } from '../api/license'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { sidebarNavForRole } from '../config/nav'
 import { useAuth } from '../contexts/AuthContext'
 import { roleLabel } from '../lib/roleLabel'
-import { cn } from '../lib/cn'
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, AlertBox } from '../components/ui'
 import { useSafeBackdropClose } from '../components/ui/useSafeBackdropClose'
 import { PageTransition } from '../motion'
+import { AppSidebar } from '../components/shell/AppSidebar'
+import { DemoTrialBanner, shouldShowDemoTrialBanner } from '../components/shell/DemoTrialBanner'
+import { TopbarActionChip } from '../components/shell/TopbarActionChip'
 
 import type { AuthUserDto } from '../types/auth'
+
+function userInitials(adSoyad: string | undefined): string {
+  if (!adSoyad?.trim()) return '?'
+  const parts = adSoyad.trim().split(/\s+/).filter(Boolean)
+  if (parts.length >= 2) {
+    return `${parts[0]![0] ?? ''}${parts[parts.length - 1]![0] ?? ''}`.toUpperCase()
+  }
+  return (parts[0]!.slice(0, 2) || '?').toUpperCase()
+}
 
 function normalizePath(pathname: string): string {
   const p = pathname.replace(/\/$/, '')
@@ -44,15 +55,6 @@ function mobilePageSubtitle(pathname: string, role: AuthUserDto['role'] | undefi
   const nav = sidebarNavForRole(role)
   const hit = nav.find((x) => p === x.to || (x.to !== APP_BASE && (p === x.to || p.startsWith(`${x.to}/`))))
   return hit?.label ?? 'Uygulama'
-}
-
-function navClassName({ isActive }: { isActive: boolean }): string {
-  return cn(
-    'flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-semibold transition-[background-color,color,transform] duration-150 ease-out',
-    isActive
-      ? 'bg-primary-soft text-primary shadow-inner'
-      : 'text-ink-muted hover:translate-x-0.5 hover:bg-surface-muted hover:text-ink motion-reduce:hover:translate-x-0'
-  )
 }
 
 export function DashboardShell(): ReactElement {
@@ -89,79 +91,67 @@ export function DashboardShell(): ReactElement {
   const licenseInfoEksik = lic && lic.uyariSeviyesi === 'BILGI_EKSIK'
   const licenseSoftKritik = lic && lic.uyariSeviyesi === 'KRITIK' && !licenseHard
   const licenseSoftYaklasiyor = lic && lic.uyariSeviyesi === 'YAKLASIYOR' && !licenseHard
+  const showDemoBanner = shouldShowDemoTrialBanner(lic)
 
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
-      <aside className="hidden h-full min-h-0 w-[220px] flex-shrink-0 flex-col border-r border-border bg-panel md:flex">
-        <div className="flex h-14 shrink-0 flex-col justify-center gap-0.5 border-b border-border px-4">
-          <p className="text-[10px] font-bold uppercase leading-none tracking-wider text-ink-subtle">Woontegra</p>
-          <p className="truncate text-sm font-bold leading-tight text-ink">Kasa Defteri</p>
-          {session ? (
-            <p className="truncate text-[11px] font-semibold leading-tight text-primary" title={session.tenant.slug}>
-              {session.tenant.buroAdi}
-            </p>
-          ) : null}
-        </div>
-        <nav className="min-h-0 flex-1 space-y-0.5 overflow-y-auto overscroll-contain p-2" aria-label="Ana menü">
-          {navItems.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.to === APP_BASE} className={navClassName}>
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <footer className="shrink-0 border-t border-border bg-panel px-3 py-2.5 text-[10px] leading-snug text-ink-subtle">
-          <p className="font-medium text-ink-muted">Woontegra Teknoloji Yazılım ve Dijital Hizmetler Ltd. Şti.</p>
-          <p className="mt-1 tabular-nums text-ink-subtle">Sürüm 1.0</p>
-        </footer>
-      </aside>
+      <AppSidebar role={session?.user.role} />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-panel px-3 shadow-sm md:gap-6 md:px-5">
+        <header className="app-shell-header box-border flex shrink-0 items-center justify-between gap-4 border-b border-border bg-panel px-4 shadow-sm md:px-5">
           <div className="min-w-0 flex-1 md:hidden">
             <p className="truncate text-xs font-bold leading-tight text-ink">{session?.tenant.buroAdi ?? '—'}</p>
             <p className="truncate text-[11px] leading-tight text-ink-muted">{mobilePageSubtitle(loc.pathname, session?.user.role)}</p>
           </div>
           <div className="hidden min-w-0 flex-1 md:block">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Büro</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Büro</p>
             <p className="truncate text-sm font-bold leading-tight text-ink">{session?.tenant.buroAdi}</p>
-            <p className="truncate text-[11px] leading-tight text-ink-subtle">Kod: {session?.tenant.slug}</p>
           </div>
-          <div className="hidden min-w-0 md:block md:max-w-[280px]">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">Kullanıcı</p>
-            <p className="truncate text-sm font-bold leading-tight text-ink">
-              {session?.user.adSoyad}
-              {session?.tenant.musteriNo ? (
-                <span className="font-normal text-ink-muted"> · Müşteri No: {session.tenant.musteriNo}</span>
-              ) : null}
-            </p>
-          </div>
-          <div className="flex flex-shrink-0 flex-wrap items-center justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn('relative gap-1.5', !hasBadge && 'opacity-75')}
-              type="button"
-              onClick={() => setOnayAcik(true)}
-            >
-              Onay bekleyen
-              {hasBadge ? (
-                <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
-                  {onaySayisi}
-                </span>
-              ) : null}
-            </Button>
-            <span className="hidden rounded-md border border-border bg-surface-muted px-2 py-1 text-[11px] font-semibold text-ink-muted sm:inline">
-              {session ? roleLabel(session.user.role) : '—'}
-            </span>
-            <Button variant="outline" size="sm" onClick={() => logout()}>
-              Çıkış
-            </Button>
+
+          <div className="flex shrink-0 items-center gap-3">
+            {hasBadge ? (
+              <TopbarActionChip
+                type="button"
+                variant="default"
+                badge={onaySayisi}
+                onClick={() => setOnayAcik(true)}
+                aria-label={`Onay bekleyen, ${onaySayisi} kayıt`}
+              >
+                Onay bekleyen
+              </TopbarActionChip>
+            ) : null}
+
+            <div className="flex items-center gap-2 border-l border-border pl-3">
+              <div
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary"
+                aria-hidden
+              >
+                {userInitials(session?.user.adSoyad)}
+              </div>
+              <div className="hidden min-w-0 sm:block">
+                <p className="max-w-[200px] truncate text-sm font-semibold leading-tight text-ink">{session?.user.adSoyad}</p>
+                <p className="text-[11px] leading-tight text-ink-muted">{session ? roleLabel(session.user.role) : '—'}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
+                aria-label="Çıkış yap"
+              >
+                <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+                </svg>
+                <span className="hidden md:inline">Çıkış</span>
+              </button>
+            </div>
           </div>
         </header>
 
+        {showDemoBanner && lic ? <DemoTrialBanner license={lic} /> : null}
+
         {onayAcik ? (
           <div
-            className="fixed inset-0 z-30 flex items-start justify-end bg-black/25 p-3 pt-16 backdrop-blur-[1px]"
+            className="fixed inset-0 z-30 flex items-start justify-end bg-black/25 p-3 pt-[var(--app-header-height)] backdrop-blur-[1px]"
             role="presentation"
             {...onayBackdropClose}
           >

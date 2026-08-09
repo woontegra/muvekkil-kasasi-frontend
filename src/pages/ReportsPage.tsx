@@ -1,7 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { fetchIcraTahsilatReport, fetchOfisKasaReport } from '../api/reports'
+import { APP_BASE } from '../config/appPaths'
 import { listPrimPersoneller } from '../api/primPersonel'
 import { IcraTahsilatReportSheet } from '../components/reports/IcraTahsilatReportSheet'
 import { OfisKasaReportSheet } from '../components/reports/OfisKasaReportSheet'
@@ -36,20 +38,25 @@ function ReportCard(props: {
   active: boolean
   disabled?: boolean
   onClick: () => void
+  to?: string
 }): ReactElement {
-  const { title, description, active, disabled, onClick } = props
+  const { title, description, active, disabled, onClick, to } = props
+  const className = cn(
+    'rounded-lg border px-3 py-2.5 text-left transition',
+    disabled && 'cursor-not-allowed opacity-55',
+    !disabled && 'hover:border-primary/40 hover:bg-primary-soft/15',
+    active ? 'border-primary/50 bg-primary-soft/20 ring-1 ring-primary/25' : 'border-border bg-panel'
+  )
+  if (to && !disabled) {
+    return (
+      <Link to={to} className={className}>
+        <p className="text-sm font-bold text-ink">{title}</p>
+        <p className="mt-0.5 text-xs text-ink-muted">{description}</p>
+      </Link>
+    )
+  }
   return (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={onClick}
-      className={cn(
-        'rounded-lg border px-3 py-2.5 text-left transition',
-        disabled && 'cursor-not-allowed opacity-55',
-        !disabled && 'hover:border-primary/40 hover:bg-primary-soft/15',
-        active ? 'border-primary/50 bg-primary-soft/20 ring-1 ring-primary/25' : 'border-border bg-panel'
-      )}
-    >
+    <button type="button" disabled={disabled} onClick={onClick} className={className}>
       <p className="text-sm font-bold text-ink">{title}</p>
       <p className="mt-0.5 text-xs text-ink-muted">{description}</p>
     </button>
@@ -141,16 +148,16 @@ export function ReportsPage(): ReactElement {
         />
         <ReportCard
           title="Dosya Hesap Özeti"
-          description="Dosya detayı → Kasa sekmesinden alınır."
+          description="Müvekkil listesinden dosyayı açıp Kasa sekmesine gidin."
           active={false}
-          disabled
+          to={APP_BASE}
           onClick={() => undefined}
         />
         <ReportCard
           title="Makbuzlar"
-          description="Sonraki fazda rapor merkezine eklenecek."
+          description="Dosya detayındaki Makbuzlar sekmesinden yazdırın."
           active={false}
-          disabled
+          to={APP_BASE}
           onClick={() => undefined}
         />
       </div>

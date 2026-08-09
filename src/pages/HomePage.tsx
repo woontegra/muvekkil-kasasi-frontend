@@ -9,11 +9,12 @@ import { listMuvekkiller } from '../api/muvekkiller'
 import { listSmmBekleyenler, SMM_BEKLEYEN_QUERY_KEY } from '../api/smm'
 import { markOdemeSmmKesildi } from '../api/vekalet'
 import { SmmBekleyenHomePanel } from '../components/dashboard/SmmBekleyenHomePanel'
+import { HomeAlertsStrip } from '../components/home/HomeAlertsStrip'
+import { MuvekkilListToolbar } from '../components/home/MuvekkilListToolbar'
 import { TaksitUyarilariSection } from '../components/dashboard/TaksitUyarilariSection'
 import { HesapDonemiCard } from '../components/dashboard/HesapDonemiCard'
 import { HesapDonemiModal } from '../components/dashboard/HesapDonemiModal'
 import { MaliKontrolKart } from '../components/dashboard/MaliKontrolKart'
-import { OtomatikBildirimlerCard } from '../components/dashboard/OtomatikBildirimlerCard'
 import { TahsilatBekleyenlerCard } from '../components/dashboard/TahsilatBekleyenlerCard'
 import { MaliKontrolMerkeziModal } from '../components/dashboard/MaliKontrolMerkeziModal'
 import { getPreviousAccountingPeriod, getNextAccountingPeriod } from '../lib/accountingPeriod'
@@ -22,8 +23,7 @@ import { getTahsilatMerkeziOzet, TAKSILAT_MERKEZI_QUERY_KEY } from '../api/tahsi
 import { useAuth } from '../contexts/AuthContext'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
-import { cn } from '../lib/cn'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, DraggablePanel, EmptyState, Input, PageLoading, Select, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, DraggablePanel, EmptyState, PageLoading, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
 import { AnimatedNumber, Stagger, StaggerItem } from '../motion'
 import { useToast } from '../toast'
 import type { MuvekkilDto } from '../types/muvekkil'
@@ -31,8 +31,6 @@ import type { SmmBekleyenDto } from '../types/smm'
 import { formatCurrencyTR } from '../utils/formatters'
 
 type HealthResponse = { ok: boolean; db?: string }
-
-type OtomatikHatirlatmaFilter = 'TUMU' | 'ACIK' | 'KAPALI'
 
 const MUVEKKIL_PAGE_SIZE = 10
 
@@ -43,7 +41,6 @@ export function HomePage(): ReactElement {
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [page, setPage] = useState(1)
-  const [otomatikHatirlatmaFilter, setOtomatikHatirlatmaFilter] = useState<OtomatikHatirlatmaFilter>('TUMU')
   const [smmPanelOpen, setSmmPanelOpen] = useState(false)
   const [smmModalRow, setSmmModalRow] = useState<SmmBekleyenDto | null>(null)
   const [donemRefDate, setDonemRefDate] = useState<string | null>(null)
@@ -122,13 +119,12 @@ export function HomePage(): ReactElement {
   })
 
   const muvekkilQuery = useQuery({
-    queryKey: ['muvekkiller', debouncedQ, page, otomatikHatirlatmaFilter],
+    queryKey: ['muvekkiller', debouncedQ, page],
     queryFn: () =>
       listMuvekkiller({
         q: debouncedQ || undefined,
         page,
-        limit: MUVEKKIL_PAGE_SIZE,
-        otomatikHatirlatma: otomatikHatirlatmaFilter
+        limit: MUVEKKIL_PAGE_SIZE
       })
   })
 
@@ -259,9 +255,6 @@ export function HomePage(): ReactElement {
           />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
-          <OtomatikBildirimlerCard />
-        </StaggerItem>
-        <StaggerItem className="h-full min-h-0">
           <StatCard
             label="SMM bekleyen"
             value={smmStatValue}
@@ -335,50 +328,14 @@ export function HomePage(): ReactElement {
         </AlertBox>
       ) : null}
 
-      <div
-        className={cn(
-          'flex flex-wrap gap-2 rounded-lg border px-3 py-2.5 text-sm',
-          uyariParcalari.length > 0
-            ? 'border-warning/30 bg-warning-soft/40 text-warning-ink'
-            : 'border-border bg-surface-muted/50 text-ink-muted'
-        )}
-      >
-        <span className="font-semibold">Uyarılar</span>
-        <span>
-          {uyariParcalari.length > 0 ? (
-            <>
-              {uyariParcalari.map((item, i) => {
-                const sep = i > 0 ? '. ' : ''
-                if (item.smmLink) {
-                  return (
-                    <span key={item.key}>
-                      {sep}
-                      <button
-                        type="button"
-                        className="cursor-pointer font-semibold underline decoration-warning-ink/60 underline-offset-2 hover:decoration-warning-ink"
-                        onClick={openSmmPanel}
-                      >
-                        {item.text}
-                      </button>
-                    </span>
-                  )
-                }
-                return (
-                  <span key={item.key}>
-                    {sep}
-                    {item.text}
-                  </span>
-                )
-              })}
-              .
-            </>
-          ) : dashboardQuery.isLoading || smmQuery.isPending ? (
-            'Özet yükleniyor…'
-          ) : (
-            'Şu an kritik uyarı yok (vadesi geçmiş taksit, SMM bekleyen veya onay bekleyen yok).'
-          )}
-        </span>
-      </div>
+      <HomeAlertsStrip
+        items={uyariParcalari.map((item) => ({
+          key: item.key,
+          text: item.text,
+          onClick: item.smmLink ? openSmmPanel : undefined
+        }))}
+        loading={dashboardQuery.isLoading || smmQuery.isPending}
+      />
 
       <SmmBekleyenHomePanel
         open={smmPanelOpen}
@@ -400,56 +357,16 @@ export function HomePage(): ReactElement {
         />
       ) : null}
 
-      <Card>
-        <CardHeader className="flex flex-col gap-3 border-b border-border sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <CardTitle>Müvekkiller</CardTitle>
-            <p className="mt-1 text-xs text-ink-muted">
-              {muvekkilQuery.isSuccess ? (
-                <>
-                  Kayıtlı <strong>{total}</strong> müvekkil · sayfa başına {MUVEKKIL_PAGE_SIZE}. Satıra veya
-                  &quot;Detay&quot;a tıklayınca içeri girilir.
-                </>
-              ) : (
-                'Liste yükleniyor…'
-              )}
-            </p>
-          </div>
-          <div className="flex w-full flex-col gap-2 lg:max-w-3xl">
-            <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end">
-              <form onSubmit={onSearch} className="flex min-w-0 flex-1 gap-2">
-                <Input
-                  placeholder="Ad, şirket, telefon veya e-posta ara…"
-                  value={q}
-                  onChange={(e) => setQ(e.target.value)}
-                  className="min-w-0 flex-1"
-                  aria-label="Müvekkil ara"
-                />
-                <Button type="submit" variant="secondary">
-                  Ara
-                </Button>
-              </form>
-              <Button type="button" variant="outline" className="shrink-0" onClick={() => navigate(`${APP_BASE}/muvekkiller/yeni`)}>
-                Yeni Müvekkil
-              </Button>
-            </div>
-            <div className="max-w-xs">
-              <Select
-                label="Otomatik Hatırlatma"
-                name="otomatikHatirlatma"
-                value={otomatikHatirlatmaFilter}
-                onChange={(e) => {
-                  setOtomatikHatirlatmaFilter(e.target.value as OtomatikHatirlatmaFilter)
-                  setPage(1)
-                }}
-              >
-                <option value="TUMU">Tümü</option>
-                <option value="ACIK">Açık</option>
-                <option value="KAPALI">Kapalı</option>
-              </Select>
-            </div>
-          </div>
-        </CardHeader>
+      <Card className="overflow-hidden shadow-card">
+        <MuvekkilListToolbar
+          q={q}
+          onQChange={setQ}
+          onSearch={onSearch}
+          total={total}
+          listReady={muvekkilQuery.isSuccess}
+          pageSize={MUVEKKIL_PAGE_SIZE}
+          onNew={() => navigate(`${APP_BASE}/muvekkiller/yeni`)}
+        />
         <CardBody className="p-0">
           {muvekkilQuery.isLoading || muvekkilQuery.isFetching ? (
             <div className="px-4 py-6">
@@ -488,18 +405,9 @@ export function HomePage(): ReactElement {
                           onClick={() => navigate(detailTo)}
                         >
                           <TD>
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="font-semibold text-primary decoration-primary/35 underline-offset-2 transition group-hover/row:text-primary group-hover/row:underline">
-                                {m.gorunenAd}
-                              </span>
-                              {m.otomatikBildirimIzni === true ? (
-                                <Badge variant="success" className="!normal-case text-[10px]">
-                                  Hatırlatma açık
-                                </Badge>
-                              ) : (
-                                <span className="text-[10px] font-medium text-ink-muted">Kapalı</span>
-                              )}
-                            </div>
+                            <span className="font-semibold text-primary decoration-primary/35 underline-offset-2 transition group-hover/row:text-primary group-hover/row:underline">
+                              {m.gorunenAd}
+                            </span>
                           </TD>
                           <TD>
                             {m.tur === 'TUZEL' ? (

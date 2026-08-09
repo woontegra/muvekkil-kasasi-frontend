@@ -62,3 +62,35 @@ export async function prepareManualWhatsApp(
     body: JSON.stringify(body)
   })
 }
+
+export type ManualSmsPreviewResponse = {
+  ok?: true
+  taksitId: string
+  muvekkilAdi: string
+  dosyaBilgisi: string
+  vadeTarihi: string
+  kalanTutar: string
+  telefonMaskeli: string | null
+  mesaj: string
+  smsParcaSayisi: number
+  smsKrediTuketimi: number
+  bakiye: number
+  bakiyeSonrasiTahmini: number
+  testModu: boolean
+}
+
+export async function previewManualSms(taksitId: string): Promise<ManualSmsPreviewResponse> {
+  return apiFetch<ManualSmsPreviewResponse>(
+    `/api/v1/tahsilat-merkezi/${encodeURIComponent(taksitId)}/manual-sms/preview`
+  )
+}
+
+export async function sendManualSms(
+  taksitId: string,
+  body: { mesaj: string; idempotencyKey: string }
+): Promise<{ ok: true; status: string; jobId?: string; message?: string }> {
+  return apiFetch(`/api/v1/tahsilat-merkezi/${encodeURIComponent(taksitId)}/manual-sms/send`, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+}

@@ -8,6 +8,7 @@ import {
   adminSettingsSystemInfoRequest
 } from '../../api/adminApi'
 import { useAdminAuth } from '../../contexts/AdminAuthContext'
+import { isSuperAdminRole } from '../../lib/adminRoles'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input } from '../../components/ui'
 import { formatDateTimeTR } from '../../utils/formatters'
 
@@ -24,7 +25,8 @@ function generateStrongPassword(): string {
 }
 
 export function AdminSettingsPage(): ReactElement {
-  const { refreshMe } = useAdminAuth()
+  const { refreshMe, admin } = useAdminAuth()
+  const isSuper = isSuperAdminRole(admin?.rol)
   const qc = useQueryClient()
 
   const profileQ = useQuery({
@@ -33,7 +35,8 @@ export function AdminSettingsPage(): ReactElement {
   })
   const sysQ = useQuery({
     queryKey: ['admin-settings-system'],
-    queryFn: adminSettingsSystemInfoRequest
+    queryFn: adminSettingsSystemInfoRequest,
+    enabled: isSuper
   })
 
   const [adSoyad, setAdSoyad] = useState('')
@@ -187,41 +190,43 @@ export function AdminSettingsPage(): ReactElement {
         </Card>
       </div>
 
-      <Card className="border-slate-200 shadow-sm">
-        <CardHeader className="border-b border-slate-100 bg-slate-50/80 py-3">
-          <CardTitle className="text-base">Sistem bilgileri</CardTitle>
-        </CardHeader>
-        <CardBody className="py-5">
-          {sysQ.isLoading ? (
-            <p className="text-sm text-ink-muted">Yükleniyor…</p>
-          ) : sysQ.isError ? (
-            <p className="text-sm text-danger">{sysQ.error instanceof Error ? sysQ.error.message : 'Bilgi alınamadı.'}</p>
-          ) : sysQ.data ? (
-            <dl className="grid max-w-3xl gap-3 text-sm sm:grid-cols-2">
-              <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">
-                <dt className="text-xs font-bold uppercase text-slate-500">API durumu</dt>
-                <dd className="mt-1 font-semibold text-emerald-700">{sysQ.data.apiStatus}</dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">
-                <dt className="text-xs font-bold uppercase text-slate-500">Ortam</dt>
-                <dd className="mt-1 font-semibold text-ink">{sysQ.data.environment}</dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 sm:col-span-2">
-                <dt className="text-xs font-bold uppercase text-slate-500">Frontend domain</dt>
-                <dd className="mt-1 break-all font-mono text-xs text-ink">{sysQ.data.frontendDomain}</dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 sm:col-span-2">
-                <dt className="text-xs font-bold uppercase text-slate-500">Backend domain</dt>
-                <dd className="mt-1 break-all font-mono text-xs text-ink">{sysQ.data.backendDomain}</dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">
-                <dt className="text-xs font-bold uppercase text-slate-500">Versiyon</dt>
-                <dd className="mt-1 font-semibold text-ink">{sysQ.data.version}</dd>
-              </div>
-            </dl>
-          ) : null}
-        </CardBody>
-      </Card>
+      {isSuper ? (
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="border-b border-slate-100 bg-slate-50/80 py-3">
+            <CardTitle className="text-base">Sistem bilgileri</CardTitle>
+          </CardHeader>
+          <CardBody className="py-5">
+            {sysQ.isLoading ? (
+              <p className="text-sm text-ink-muted">Yükleniyor…</p>
+            ) : sysQ.isError ? (
+              <p className="text-sm text-danger">{sysQ.error instanceof Error ? sysQ.error.message : 'Bilgi alınamadı.'}</p>
+            ) : sysQ.data ? (
+              <dl className="grid max-w-3xl gap-3 text-sm sm:grid-cols-2">
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">
+                  <dt className="text-xs font-bold uppercase text-slate-500">API durumu</dt>
+                  <dd className="mt-1 font-semibold text-emerald-700">{sysQ.data.apiStatus}</dd>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">
+                  <dt className="text-xs font-bold uppercase text-slate-500">Ortam</dt>
+                  <dd className="mt-1 font-semibold text-ink">{sysQ.data.environment}</dd>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 sm:col-span-2">
+                  <dt className="text-xs font-bold uppercase text-slate-500">Frontend domain</dt>
+                  <dd className="mt-1 break-all font-mono text-xs text-ink">{sysQ.data.frontendDomain}</dd>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2 sm:col-span-2">
+                  <dt className="text-xs font-bold uppercase text-slate-500">Backend domain</dt>
+                  <dd className="mt-1 break-all font-mono text-xs text-ink">{sysQ.data.backendDomain}</dd>
+                </div>
+                <div className="rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2">
+                  <dt className="text-xs font-bold uppercase text-slate-500">Versiyon</dt>
+                  <dd className="mt-1 font-semibold text-ink">{sysQ.data.version}</dd>
+                </div>
+              </dl>
+            ) : null}
+          </CardBody>
+        </Card>
+      ) : null}
     </div>
   )
 }

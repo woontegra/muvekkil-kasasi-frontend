@@ -103,8 +103,7 @@ const TABS: { id: string; label: string }[] = [
   { id: 'kullanim', label: 'Kullanım Geçmişi' },
   { id: 'girisCihaz', label: 'Giriş & Cihaz' },
   { id: 'demoTakibi', label: 'Demo Takibi' },
-  { id: 'islemGecmisi', label: 'İşlem Geçmişi' },
-  { id: 'destek', label: 'Destek Talepleri' }
+  { id: 'islemGecmisi', label: 'İşlem Geçmişi' }
 ]
 
 export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactElement {
@@ -487,8 +486,8 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
                 <InfoRow label="Müvekkil sayısı" value={d.ozet.toplamMuvekkil} />
                 <InfoRow label="Dosya sayısı" value={d.ozet.toplamDosya} />
                 <InfoRow label="Kasa hareketi sayısı" value={d.ozet.kasaHareketi} />
-                <InfoRow label="İcra tahsilat kaydı" value="—" />
-                <InfoRow label="Makbuz sayısı" value="—" />
+                <InfoRow label="İcra tahsilat kaydı" value={d.ozet.icraTahsilatKaydi} />
+                <InfoRow label="Makbuz sayısı" value={d.ozet.makbuzSayisi} />
                 <InfoRow label="Son işlem tarihi" value={formatDateTimeTR(sonIslemTarihi)} />
               </dl>
             )}
@@ -502,7 +501,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
             <CardBody className="space-y-3">
               <dl>
                 <InfoRow label="Son giriş tarihi" value={lastLoginIso ? formatDateTimeTR(lastLoginIso) : '—'} />
-                <InfoRow label="Son IP" value="—" />
+                <InfoRow label="Son IP" value={d.sonIp ?? '—'} />
               </dl>
               <p className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-600">
                 Bu SaaS sürümünde cihaz aktivasyonu kullanılmaz.
@@ -594,7 +593,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
               <InfoRow label="Demo mu?" value={t.demoMu ? 'Evet' : 'Hayır'} />
               <InfoRow label="Demo bitiş tarihi" value={t.demoBitisTarihi ? formatDateTR(t.demoBitisTarihi) : '—'} />
               <InfoRow label="Demo kalan gün" value={demoKalanGun != null ? String(demoKalanGun) : '—'} />
-              <InfoRow label="Demo verildiği tarih" value="—" />
+              <InfoRow label="Demo verildiği tarih" value={d.demoVerildiTarihi ? formatDateTR(d.demoVerildiTarihi) : '—'} />
               <InfoRow label="Demo notu" value={t.demoMu && t.lisansNotlari ? t.lisansNotlari : '—'} />
             </dl>
           </CardBody>
@@ -614,6 +613,8 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
                   <THead>
                     <TR className="bg-slate-50/80">
                       <TH>Tarih</TH>
+                      <TH>Kullanıcı</TH>
+                      <TH>IP</TH>
                       <TH>Aksiyon</TH>
                       <TH>Entity</TH>
                     </TR>
@@ -622,6 +623,8 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
                     {d.sonAuditLoglar.map((a) => (
                       <TR key={a.id}>
                         <TD className="whitespace-nowrap text-xs">{formatDateTimeTR(a.createdAt)}</TD>
+                        <TD className="text-xs">{a.kullaniciAdSoyad ?? a.kullaniciAdi ?? '—'}</TD>
+                        <TD className="whitespace-nowrap font-mono text-xs text-slate-600">{a.ipAddress ?? '—'}</TD>
                         <TD className="text-xs">{a.action}</TD>
                         <TD className="text-xs text-slate-500">
                           {a.entityType ?? ''} {a.entityId ?? ''}
@@ -632,14 +635,6 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
                 </Table>
               </div>
             )}
-          </CardBody>
-        </Card>
-      )}
-
-      {tab === 'destek' && (
-        <Card className="border-slate-200/80 shadow-sm">
-          <CardBody>
-            <AdminEmptyState description="Bu alanda henüz kayıt bulunmuyor." />
           </CardBody>
         </Card>
       )}

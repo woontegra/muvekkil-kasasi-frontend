@@ -16,6 +16,7 @@ import { createVekaletTaksitOdeme } from '../api/vekalet'
 import { resolveOdemeApiError } from '../api/client'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import { WhatsAppHatirlatModal } from '../components/tahsilat/WhatsAppHatirlatModal'
+import { SmsHatirlatModal } from '../components/tahsilat/SmsHatirlatModal'
 import { VekaletTaksitOdemeModal } from '../components/vekalet/VekaletTaksitOdemeModal'
 import {
   AlertBox,
@@ -104,6 +105,7 @@ export function TahsilatMerkeziPage(): ReactElement {
 
   const [odemeRow, setOdemeRow] = useState<TahsilatMerkeziSatirDto | null>(null)
   const [whatsappRow, setWhatsappRow] = useState<TahsilatMerkeziSatirDto | null>(null)
+  const [smsRow, setSmsRow] = useState<TahsilatMerkeziSatirDto | null>(null)
 
   const listParams = useMemo(
     () => ({
@@ -354,6 +356,7 @@ export function TahsilatMerkeziPage(): ReactElement {
                           setOdemeRow(row)
                         }}
                         onWhatsapp={() => setWhatsappRow(row)}
+                        onSms={() => setSmsRow(row)}
                         onEkstreAc={() =>
                           navigate(
                             buildMaliKontrolNavigateUrl({
@@ -426,6 +429,7 @@ export function TahsilatMerkeziPage(): ReactElement {
       ) : null}
 
       {whatsappRow ? <WhatsAppHatirlatModal row={whatsappRow} onClose={() => setWhatsappRow(null)} /> : null}
+      {smsRow ? <SmsHatirlatModal row={smsRow} onClose={() => setSmsRow(null)} /> : null}
     </div>
   )
 }
@@ -461,10 +465,11 @@ function ListeSatir(props: {
   row: TahsilatMerkeziSatirDto
   onOdeme: () => void
   onWhatsapp: () => void
+  onSms: () => void
   onEkstreAc: () => void
   onDosya: () => void
 }): ReactElement {
-  const { row, onOdeme, onWhatsapp, onEkstreAc, onDosya } = props
+  const { row, onOdeme, onWhatsapp, onSms, onEkstreAc, onDosya } = props
   const taksitLabel = row.taksitAciklama?.trim()
     ? `#${row.taksitNo} - ${row.taksitAciklama}`
     : `Taksit #${row.taksitNo}`
@@ -500,6 +505,9 @@ function ListeSatir(props: {
           </Button>
           <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onWhatsapp}>
             WhatsApp’tan Gönder
+          </Button>
+          <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onSms}>
+            SMS Gönder
           </Button>
           <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onEkstreAc}>
             Ekstre Aç

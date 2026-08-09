@@ -31,6 +31,7 @@ import { AdminSuperAdminsPage } from './pages/admin/AdminSuperAdminsPage'
 import { AdminTenantDetailPage } from './pages/admin/AdminTenantDetailPage'
 import { AdminCreateTenantPage } from './pages/admin/AdminCreateTenantPage'
 import { AdminTenantsPage } from './pages/admin/AdminTenantsPage'
+import { AdminSuperRoute } from './components/admin/AdminSuperRoute'
 import { RoleRoute } from './components/auth/RoleRoute'
 
 export default function App(): ReactElement {
@@ -53,12 +54,26 @@ export default function App(): ReactElement {
         }
       >
         <Route index element={<AdminDashboardPage />} />
-        <Route path="burolar/yeni" element={<AdminCreateTenantPage />} />
+        <Route
+          path="burolar/yeni"
+          element={
+            <AdminSuperRoute>
+              <AdminCreateTenantPage />
+            </AdminSuperRoute>
+          }
+        />
         <Route path="burolar" element={<AdminTenantsPage />} />
         <Route path="burolar/:id" element={<AdminTenantDetailPage />} />
         <Route path="lisans-uyarilar" element={<AdminLicenseAlertsPage />} />
         <Route path="pasif-burolar" element={<AdminPassiveTenantsPage />} />
-        <Route path="sistem" element={<AdminSuperAdminsPage />} />
+        <Route
+          path="sistem"
+          element={
+            <AdminSuperRoute>
+              <AdminSuperAdminsPage />
+            </AdminSuperRoute>
+          }
+        />
         <Route path="ayarlar" element={<AdminSettingsPage />} />
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Route>

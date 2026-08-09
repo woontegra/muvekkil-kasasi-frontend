@@ -17,7 +17,7 @@ type AuthContextValue = {
   onboarding: AuthOnboardingState
   loading: boolean
   isAuthenticated: boolean
-  login: (input: { identifier: string; sifre: string }) => Promise<void>
+  login: (input: { identifier: string; sifre: string }) => Promise<AuthLoginResponse>
   logout: () => void
   refreshMe: () => Promise<void>
   applyOnboardingSession: (payload: MeResponse | AuthLoginResponse) => void
@@ -107,6 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }): ReactElemen
       } else {
         emitAdminSessionClear()
       }
+      return r
     },
     [applyOnboardingSession]
   )

@@ -1,5 +1,5 @@
 import { APP_BASE } from '../config/appPaths'
-import type { MaliKontrolActionPayload, MaliKontrolActionTarget } from '../types/maliKontrol'
+import type { MaliKontrolActionPayload, MaliKontrolActionTarget, MaliKontrolUyari } from '../types/maliKontrol'
 
 export type DosyaDetailTabKey = MaliKontrolActionPayload['tab']
 
@@ -21,6 +21,13 @@ export function parseDosyaFocusParam(focus: string): { kind: DosyaFocusKind; id:
 
 export function buildDosyaFocusParam(kind: DosyaFocusKind, id: string): string {
   return `${kind}:${id}`
+}
+
+export function canNavigateMaliKontrolUyari(
+  u: MaliKontrolUyari
+): u is MaliKontrolUyari & { actionPayload: MaliKontrolActionPayload } {
+  const p = u.actionPayload
+  return Boolean(p?.muvekkilId && p?.dosyaId)
 }
 
 export function buildMaliKontrolNavigateUrl(payload: MaliKontrolActionPayload): string {

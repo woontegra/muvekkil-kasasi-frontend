@@ -14,6 +14,9 @@ import {
 } from '../api/icraTahsilat'
 import { listMuvekkiller } from '../api/muvekkiller'
 import { getBagliPrimPersonel, listAktifPrimPersonel } from '../api/primPersonel'
+import { fetchIcraTahsilatReport } from '../api/reports'
+import { IcraTahsilatReportSheet } from '../components/reports/IcraTahsilatReportSheet'
+import { ReportPrintShell } from '../components/reports/ReportPrintShell'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import {
   AlertBox,
@@ -96,6 +99,25 @@ export function IcraTahsilatPage(): ReactElement {
 
   const [createOpen, setCreateOpen] = useState(false)
   const [detayId, setDetayId] = useState<string | null>(null)
+  const [icraReportPreview, setIcraReportPreview] = useState<Awaited<ReturnType<typeof fetchIcraTahsilatReport>> | null>(null)
+
+  const icraReportMu = useMutation({
+    mutationFn: () =>
+      fetchIcraTahsilatReport({
+        startDate: listParams.startDate ?? dateInputToIso(monthStartFromToday()),
+        endDate: listParams.endDate ?? dateInputToIso(todayInputDate()),
+        alacakTuru: listParams.alacakTuru,
+        durum: listParams.durum,
+        tahsilatiYapanPersonelId: listParams.tahsilatiYapanPersonelId,
+        q: listParams.q
+      }),
+    onSuccess: (data) => setIcraReportPreview(data)
+  })
+
+  function monthStartFromToday(): string {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+  }
 
   const listParams = useMemo(
     () => ({
@@ -150,8 +172,8 @@ export function IcraTahsilatPage(): ReactElement {
           <Button type="button" onClick={() => setCreateOpen(true)}>
             Yeni icra tahsilat alacağı
           </Button>
-          <Button type="button" variant="outline" disabled title="Rapor altyapısı henüz hazır değil">
-            İcra tahsilat raporu yazdır
+          <Button type="button" variant="outline" disabled={icraReportMu.isPending} onClick={() => icraReportMu.mutate()}>
+            {icraReportMu.isPending ? 'Hazırlanıyor…' : 'İcra tahsilat raporu yazdır'}
           </Button>
         </div>
       </div>
@@ -272,6 +294,16 @@ export function IcraTahsilatPage(): ReactElement {
           onClose={() => setDetayId(null)}
           onChanged={invalidate}
         />
+      ) : null}
+
+      {icraReportPreview ? (
+        <ReportPrintShell
+          title="İcra Tahsilat Raporu"
+          printRootId="icra-tahsilat-page-report-print"
+          onClose={() => setIcraReportPreview(null)}
+        >
+          <IcraTahsilatReportSheet data={icraReportPreview} />
+        </ReportPrintShell>
       ) : null}
     </div>
   )

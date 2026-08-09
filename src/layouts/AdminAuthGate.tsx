@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { APP_BASE } from '../config/appPaths'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
+import { isPlatformAdminRole } from '../lib/adminRoles'
 import { useAuth } from '../contexts/AuthContext'
 import { useToast } from '../toast'
 
@@ -54,7 +55,7 @@ export function AdminAuthGate({ children }: { children: ReactNode }): ReactEleme
     )
   }
 
-  if (!isAuthenticated || admin?.rol !== 'SUPER_ADMIN') {
+  if (!isAuthenticated || !admin?.aktifMi || !isPlatformAdminRole(admin.rol)) {
     return <Navigate to={APP_BASE} replace />
   }
 

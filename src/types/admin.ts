@@ -154,8 +154,11 @@ export type AdminTenantDetailAuditDto = {
   action: string
   entityType: string | null
   entityId: string | null
-  createdAt: string
   userId: string | null
+  ipAddress: string | null
+  kullaniciAdSoyad: string | null
+  kullaniciAdi: string | null
+  createdAt: string
 }
 
 export type LicenseRenewalSourceDto = 'WOONTEGRA_WEBSITE' | 'SUPER_ADMIN'
@@ -183,7 +186,11 @@ export type AdminTenantDetailResponse = {
     toplamDosya: number
     kasaHareketi: number
     auditKayit: number
+    icraTahsilatKaydi: number
+    makbuzSayisi: number
   }
+  sonIp: string | null
+  demoVerildiTarihi: string | null
   sonAuditLoglar: AdminTenantDetailAuditDto[]
   licenseRenewals: AdminTenantLicenseRenewalDto[]
 }

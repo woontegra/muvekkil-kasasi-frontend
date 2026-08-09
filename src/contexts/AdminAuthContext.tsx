@@ -11,8 +11,13 @@ import { getAccessToken } from '../api/accessTokenMemory'
 import { joinApiUrl } from '../api/apiBase'
 import { refreshAdminAccessTokenOnce } from '../api/refreshAdminAccess'
 import type { AdminUserDto } from '../types/admin'
+import { isPlatformAdminRole } from '../lib/adminRoles'
 import { useAuth } from './AuthContext'
 import { subscribeAdminSessionEvents } from './adminSessionEvents'
+
+function canUseAdminPanel(user: AdminUserDto | null | undefined): user is AdminUserDto {
+  return !!user?.aktifMi && isPlatformAdminRole(user.rol)
+}
 
 type AdminAuthContextValue = {
   admin: AdminUserDto | null
@@ -76,7 +81,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }): ReactE
   useEffect(() => {
     return subscribeAdminSessionEvents({
       onApply: (token, user) => {
-        if (user.rol === 'SUPER_ADMIN' && user.aktifMi) applyAdminSession(token, user)
+        if (canUseAdminPanel(user)) applyAdminSession(token, user)
         else clearAdminSession()
       },
       onClear: () => clearAdminSession()
@@ -103,7 +108,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }): ReactE
         }
         const r = await adminMeRequest()
         if (!cancelled) {
-          if (r.adminUser.rol === 'SUPER_ADMIN' && r.adminUser.aktifMi) {
+          if (canUseAdminPanel(r.adminUser)) {
             setAdmin(r.adminUser)
           } else {
             clearAdminSession()
@@ -130,15 +135,15 @@ export function AdminAuthProvider({ children }: { children: ReactNode }): ReactE
   useEffect(() => {
     if (tenantLoading || loading) return
     if (!tenantAuthed) return
-    if (admin?.rol === 'SUPER_ADMIN' && admin.aktifMi) return
+    if (admin && canUseAdminPanel(admin)) return
     void elevateFromTenant()
   }, [tenantLoading, loading, tenantAuthed, admin, elevateFromTenant])
 
   const login = useCallback(async (identifier: string, sifre: string) => {
     const r = await adminLoginRequest(identifier, sifre)
-    if (r.adminUser.rol !== 'SUPER_ADMIN') {
+    if (!canUseAdminPanel(r.adminUser)) {
       clearAdminSession()
-      throw new Error('Yalnızca SUPER_ADMIN platform paneline girebilir.')
+      throw new Error('Platform paneline erişim yetkiniz yok veya hesabınız pasif.')
     }
     applyAdminSession(r.adminAccessToken, r.adminUser)
   }, [applyAdminSession, clearAdminSession])
@@ -155,7 +160,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }): ReactE
     () => ({
       admin,
       loading,
-      isAuthenticated: !!admin && admin.rol === 'SUPER_ADMIN',
+      isAuthenticated: canUseAdminPanel(admin),
       login,
       logout,
       refreshMe,

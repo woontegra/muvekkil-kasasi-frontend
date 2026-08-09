@@ -25,3 +25,14 @@ export async function changeInitialPasswordRequest(
 }
 
 export type AuthPayloadWithOnboarding = AuthLoginResponse
+
+export async function changePasswordRequest(body: {
+  mevcutSifre: string
+  yeniSifre: string
+  yeniSifreTekrar: string
+}): Promise<{ ok: true; message: string }> {
+  return apiFetch<{ ok: true; message: string }>('/api/v1/auth/change-password', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+}
