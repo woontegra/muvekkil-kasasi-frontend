@@ -13,6 +13,10 @@ import { useSafeBackdropClose } from '../components/ui/useSafeBackdropClose'
 import { PageTransition } from '../motion'
 import { AppSidebar } from '../components/shell/AppSidebar'
 import { DemoTrialBanner, shouldShowDemoTrialBanner } from '../components/shell/DemoTrialBanner'
+import {
+  LicenseRenewalBanner,
+  shouldShowLicenseRenewalBanner
+} from '../components/shell/LicenseRenewalBanner'
 import { TopbarActionChip } from '../components/shell/TopbarActionChip'
 
 import type { AuthUserDto } from '../types/auth'
@@ -92,6 +96,7 @@ export function DashboardShell(): ReactElement {
   const licenseSoftKritik = lic && lic.uyariSeviyesi === 'KRITIK' && !licenseHard
   const licenseSoftYaklasiyor = lic && lic.uyariSeviyesi === 'YAKLASIYOR' && !licenseHard
   const showDemoBanner = shouldShowDemoTrialBanner(lic)
+  const showRenewalHeaderBanner = shouldShowLicenseRenewalBanner(lic) && !showDemoBanner
 
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
@@ -148,6 +153,7 @@ export function DashboardShell(): ReactElement {
         </header>
 
         {showDemoBanner && lic ? <DemoTrialBanner license={lic} /> : null}
+        {showRenewalHeaderBanner && lic ? <LicenseRenewalBanner license={lic} /> : null}
 
         {onayAcik ? (
           <div
@@ -264,20 +270,20 @@ export function DashboardShell(): ReactElement {
               </Link>
             </div>
           ) : null}
-          {licenseSoftKritik && lic && !showDemoBanner ? (
+          {licenseSoftKritik && lic && !showDemoBanner && !showRenewalHeaderBanner ? (
             <div className="mb-4 flex flex-col gap-2 rounded-lg border border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-3 text-sm text-orange-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="min-w-0 font-medium">
-                Lisansınızın bitmesine {licenseQuery.data?.kalanGun ?? '—'} gün kaldı. Yenileme için Woontegra ile iletişime geçin.
+                Lisansınızın bitmesine {licenseQuery.data?.kalanGun ?? '—'} gün kaldı.
               </p>
               <Link
                 to={`${APP_BASE}/ayarlar`}
                 className="inline-flex shrink-0 items-center justify-center rounded-md border border-orange-500 bg-white px-3 py-1.5 text-xs font-bold text-orange-950 hover:bg-orange-100"
               >
-                Detayları gör
+                Lisansı yenile
               </Link>
             </div>
           ) : null}
-          {licenseSoftYaklasiyor && lic ? (
+          {licenseSoftYaklasiyor && lic && !showRenewalHeaderBanner ? (
             <div className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="min-w-0 font-medium">Lisansınızın bitmesine {lic.kalanGun ?? '—'} gün kaldı.</p>
               <Link

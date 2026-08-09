@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
-import { WOONTEGRA_LICENSE_URL } from '../../config/woontegraExternal'
+import { useState } from 'react'
+import { createLicensePurchaseLink } from '../../api/licensePurchase'
 import { cn } from '../../lib/cn'
 import type { TenantLicenseCurrent } from '../../types/license'
 import { kalanGunFromIsoEnd } from '../../utils/tenantLicenseDisplay'
@@ -53,6 +54,20 @@ export function DemoTrialBanner({ license }: DemoTrialBannerProps): ReactElement
   const kalanGun = resolveDemoKalanGun(license)!
   const tone = toneFromKalanGun(kalanGun)
   const styles = toneStyles[tone]
+  const [loading, setLoading] = useState(false)
+
+  async function handlePurchaseClick(): Promise<void> {
+    if (loading) return
+    setLoading(true)
+    try {
+      const res = await createLicensePurchaseLink()
+      window.open(res.purchaseUrl, '_blank', 'noopener,noreferrer')
+    } catch {
+      window.alert('Lisans satın alma bağlantısı oluşturulamadı. Lütfen tekrar deneyin.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div
@@ -65,17 +80,17 @@ export function DemoTrialBanner({ license }: DemoTrialBannerProps): ReactElement
     >
       <p className="min-w-0 flex-1 truncate text-xs font-medium sm:text-[13px]">{demoMessage(kalanGun)}</p>
       <div className="flex shrink-0 items-center gap-2">
-        <a
-          href={WOONTEGRA_LICENSE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
+          disabled={loading}
+          onClick={() => void handlePurchaseClick()}
           className={cn(
-            'inline-flex h-7 items-center justify-center rounded-md border px-2.5 text-[11px] font-bold leading-none transition-colors',
+            'inline-flex h-7 items-center justify-center rounded-md border px-2.5 text-[11px] font-bold leading-none transition-colors disabled:opacity-60',
             styles.btn
           )}
         >
-          Lisans Satın Al
-        </a>
+          {loading ? 'Hazırlanıyor…' : 'Lisans Satın Al'}
+        </button>
       </div>
     </div>
   )

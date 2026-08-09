@@ -1,6 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
+import { useState } from 'react'
 import { getCurrentLicense } from '../../../api/license'
+import { createLicenseRenewalLink } from '../../../api/licensePurchase'
 import { useAuth } from '../../../contexts/AuthContext'
 import { cn } from '../../../lib/cn'
 import { Badge } from '../../ui'
@@ -57,9 +59,13 @@ function licenseLeadText(lic: TenantLicenseCurrent, role?: AuthUserDto['role']):
     case 'NORMAL':
       return 'Lisansınız aktif.'
     case 'YAKLASIYOR':
-      return `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı.`
+      return katip
+        ? `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı.`
+        : `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı. Yenilemek için aşağıdaki düğmeyi kullanın.`
     case 'KRITIK':
-      return `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı. Yenileme için Woontegra ile iletişime geçin.`
+      return katip
+        ? `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı.`
+        : `Lisansınızın bitmesine ${lic.kalanGun ?? '—'} gün kaldı. Lisansı yenilemeniz önerilir.`
     case 'BITTI':
       return 'Lisans süreniz sona ermiştir. Yeni kayıt ve düzenleme işlemleri kapatılmıştır.'
     case 'PASIF':
@@ -85,6 +91,9 @@ export function LisansKullanimPanel(): ReactElement {
   const { session } = useAuth()
   const role = session?.user.role
   const showFullLicenseDetail = role === 'BURO_SAHIBI' || role === 'AVUKAT_YONETICI'
+  const canRenewLicense = showFullLicenseDetail
+  const [renewLoading, setRenewLoading] = useState(false)
+  const queryClient = useQueryClient()
 
   const q = useQuery({
     queryKey: ['tenant-license-current'],
@@ -93,6 +102,20 @@ export function LisansKullanimPanel(): ReactElement {
     refetchOnWindowFocus: true
   })
   const lic = q.data
+
+  async function handleRenewClick(): Promise<void> {
+    if (renewLoading) return
+    setRenewLoading(true)
+    try {
+      const res = await createLicenseRenewalLink()
+      window.open(res.purchaseUrl, '_blank', 'noopener,noreferrer')
+      void queryClient.invalidateQueries({ queryKey: ['tenant-license-current'] })
+    } catch {
+      window.alert('Lisans yenileme bağlantısı oluşturulamadı. Lütfen tekrar deneyin.')
+    } finally {
+      setRenewLoading(false)
+    }
+  }
 
   return (
     <AyarlarPanelShell title="Lisans & Kullanım" description="Büro lisans durumu ve kullanım bilgileri.">
@@ -151,6 +174,25 @@ export function LisansKullanimPanel(): ReactElement {
             ) : null}
             {lic.yillikUcret != null ? <SettingRow label="Yıllık ücret" value={`${lic.yillikUcret} TL`} /> : null}
           </div>
+
+          {canRenewLicense && lic && !lic.demoMu ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-white px-4 py-4 shadow-sm">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ink">Lisans yenileme</p>
+                <p className="mt-1 text-xs text-ink-muted">
+                  Mevcut hesabınız ve verileriniz korunur; yeni hesap oluşturulmaz.
+                </p>
+              </div>
+              <button
+                type="button"
+                disabled={renewLoading}
+                onClick={() => void handleRenewClick()}
+                className="inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-primary/30 bg-primary px-4 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
+              >
+                {renewLoading ? 'Hazırlanıyor…' : 'Lisansı Yenile'}
+              </button>
+            </div>
+          ) : null}
         </div>
       ) : null}
     </AyarlarPanelShell>
