@@ -283,9 +283,9 @@ export function DashboardShell(): ReactElement {
               </Link>
             </div>
           ) : null}
-          {licenseSoftYaklasiyor && lic && !showRenewalHeaderBanner ? (
+          {licenseSoftYaklasiyor && lic && !showDemoBanner && !showRenewalHeaderBanner ? (
             <div className="mb-4 flex flex-col gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-3 text-sm text-amber-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-              <p className="min-w-0 font-medium">Lisansınızın bitmesine {lic.kalanGun ?? '—'} gün kaldı.</p>
+              <p className="min-w-0 font-medium">Lisansınızın bitmesine {licenseQuery.data?.kalanGun ?? '—'} gün kaldı.</p>
               <Link
                 to={`${APP_BASE}/ayarlar`}
                 className="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-500/60 bg-white px-3 py-1.5 text-xs font-bold text-amber-950 hover:bg-amber-100"

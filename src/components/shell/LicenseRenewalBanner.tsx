@@ -3,16 +3,25 @@ import { useState } from 'react'
 import { createLicenseRenewalLink } from '../../api/licensePurchase'
 import { cn } from '../../lib/cn'
 import type { TenantLicenseCurrent } from '../../types/license'
+import { kalanGunFromIsoEnd } from '../../utils/tenantLicenseDisplay'
 
 export type LicenseRenewalBannerProps = {
   license: TenantLicenseCurrent
 }
 
-type RenewalBannerTone = 'warning' | 'critical'
+type RenewalBannerTone = 'soft' | 'warning' | 'critical'
 
-function toneFromUyari(uyari: TenantLicenseCurrent['uyariSeviyesi']): RenewalBannerTone {
-  if (uyari === 'KRITIK' || uyari === 'BITTI') return 'critical'
-  return 'warning'
+function resolveRenewalKalanGun(license: TenantLicenseCurrent): number | null {
+  if (license.kalanGun != null) return license.kalanGun
+  if (license.lisansBitisTarihi) return kalanGunFromIsoEnd(license.lisansBitisTarihi)
+  return null
+}
+
+/** 8–30 gün: soft amber · 3–7 gün: belirgin amber · 0–2 gün: kritik kırmızı */
+function toneFromKalanGun(kalanGun: number): RenewalBannerTone {
+  if (kalanGun <= 2) return 'critical'
+  if (kalanGun <= 7) return 'warning'
+  return 'soft'
 }
 
 function renewalMessage(kalanGun: number): string {
@@ -22,6 +31,10 @@ function renewalMessage(kalanGun: number): string {
 }
 
 const toneStyles: Record<RenewalBannerTone, { bar: string; btn: string }> = {
+  soft: {
+    bar: 'border-amber-200/80 bg-gradient-to-r from-amber-50/95 to-yellow-50 text-amber-900',
+    btn: 'border-amber-300 bg-white/90 text-amber-900 hover:bg-white'
+  },
   warning: {
     bar: 'border-amber-300/90 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-950',
     btn: 'border-amber-400 bg-white/90 text-amber-950 hover:bg-white'
@@ -36,14 +49,16 @@ export function shouldShowLicenseRenewalBanner(
   license: TenantLicenseCurrent | undefined
 ): license is TenantLicenseCurrent {
   if (!license || license.demoMu) return false
-  if (license.kalanGun == null) return false
-  if (license.uyariSeviyesi !== 'YAKLASIYOR' && license.uyariSeviyesi !== 'KRITIK') return false
-  return license.kalanGun <= 30
+  if (license.lisansDurumu !== 'AKTIF') return false
+  if (license.uyariSeviyesi === 'PASIF' || license.uyariSeviyesi === 'BILGI_EKSIK') return false
+  const kalanGun = resolveRenewalKalanGun(license)
+  if (kalanGun == null) return false
+  return kalanGun <= 30
 }
 
 export function LicenseRenewalBanner({ license }: LicenseRenewalBannerProps): ReactElement {
-  const kalanGun = license.kalanGun ?? 0
-  const tone = toneFromUyari(license.uyariSeviyesi)
+  const kalanGun = resolveRenewalKalanGun(license) ?? 0
+  const tone = toneFromKalanGun(kalanGun)
   const styles = toneStyles[tone]
   const [loading, setLoading] = useState(false)
 
