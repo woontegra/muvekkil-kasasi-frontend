@@ -264,10 +264,10 @@ export function DashboardShell(): ReactElement {
               </Link>
             </div>
           ) : null}
-          {licenseSoftKritik && lic ? (
+          {licenseSoftKritik && lic && !showDemoBanner ? (
             <div className="mb-4 flex flex-col gap-2 rounded-lg border border-orange-400 bg-gradient-to-r from-orange-50 to-amber-50 px-3 py-3 text-sm text-orange-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="min-w-0 font-medium">
-                Lisansınızın bitmesine {lic.kalanGun ?? '—'} gün kaldı. Yenileme için Woontegra ile iletişime geçin.
+                Lisansınızın bitmesine {licenseQuery.data?.kalanGun ?? '—'} gün kaldı. Yenileme için Woontegra ile iletişime geçin.
               </p>
               <Link
                 to={`${APP_BASE}/ayarlar`}

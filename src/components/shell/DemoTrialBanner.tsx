@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { WOONTEGRA_LICENSE_URL, WOONTEGRA_WEBSITE_URL } from '../../config/woontegraExternal'
+import { WOONTEGRA_LICENSE_URL } from '../../config/woontegraExternal'
 import { cn } from '../../lib/cn'
 import type { TenantLicenseCurrent } from '../../types/license'
 import { kalanGunFromIsoEnd } from '../../utils/tenantLicenseDisplay'
@@ -75,17 +75,6 @@ export function DemoTrialBanner({ license }: DemoTrialBannerProps): ReactElement
           )}
         >
           Lisans Satın Al
-        </a>
-        <a
-          href={WOONTEGRA_WEBSITE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            'hidden h-7 items-center justify-center rounded-md border px-2.5 text-[11px] font-semibold leading-none transition-colors sm:inline-flex',
-            styles.btn
-          )}
-        >
-          Paketleri İncele
         </a>
       </div>
     </div>
