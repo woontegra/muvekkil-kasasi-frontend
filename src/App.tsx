@@ -11,6 +11,7 @@ import { DosyaDetailPage } from './pages/DosyaDetailPage'
 import { YeniDosyaPage } from './pages/YeniDosyaPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { HomePage } from './pages/HomePage'
+import { LicenseRenewalEntryPage } from './pages/LicenseRenewalEntryPage'
 import { LoginPage } from './pages/LoginPage'
 import { MuvekkilDetailPage } from './pages/MuvekkilDetailPage'
 import { OfisKasasiPage } from './pages/OfisKasasiPage'
@@ -99,6 +100,7 @@ export default function App(): ReactElement {
         <Route path="raporlar" element={<ReportsPage />} />
         <Route path="kullanicilar" element={<KullanicilarPage />} />
         <Route path="ayarlar/masaustu-ice-aktar" element={<MasaustuIceAktarPage />} />
+        <Route path="lisans-yenile" element={<LicenseRenewalEntryPage />} />
         <Route path="ayarlar" element={<AyarlarPage />} />
       </Route>
 

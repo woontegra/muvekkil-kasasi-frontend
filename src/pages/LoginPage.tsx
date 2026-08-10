@@ -1,9 +1,10 @@
 import type { FormEvent, ReactElement } from 'react'
 import { useEffect, useId, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { APP_BASE } from '../config/appPaths'
 import { friendlyLoginErrorMessage } from '../api/client'
 import { useAuth } from '../contexts/AuthContext'
+import { safeAppReturnPath } from '../lib/licenseRenewal'
 import { normalizeLoginIdentifier } from '../lib/normalizeKullaniciAdi'
 import { LoginSuccessOverlay } from '../components/auth/LoginSuccessOverlay'
 import { PremiumAlert } from '../components/auth/premium/PremiumAlert'
@@ -19,6 +20,8 @@ export function LoginPage(): ReactElement {
   const { login, session, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const returnTo = safeAppReturnPath(searchParams.get('return'))
   const toast = useToast()
   const idUser = useId()
   const idPass = useId()
@@ -44,9 +47,9 @@ export function LoginPage(): ReactElement {
 
   useEffect(() => {
     if (!loading && session && !successVisible) {
-      navigate(APP_BASE, { replace: true })
+      navigate(returnTo ?? APP_BASE, { replace: true })
     }
-  }, [loading, session, navigate, successVisible])
+  }, [loading, session, navigate, successVisible, returnTo])
 
   useEffect(() => {
     if (!resetOk || resetToastShown.current) return
@@ -76,7 +79,7 @@ export function LoginPage(): ReactElement {
       setWelcomeName(result.user.adSoyad?.trim() || null)
       setSuccessVisible(true)
       redirectTimer.current = setTimeout(() => {
-        navigate(APP_BASE, { replace: true })
+        navigate(returnTo ?? APP_BASE, { replace: true })
       }, LOGIN_SUCCESS_DELAY_MS)
     } catch (err) {
       const message = friendlyLoginErrorMessage(err)

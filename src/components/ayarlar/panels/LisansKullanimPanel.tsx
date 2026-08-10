@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { useState } from 'react'
 import { getCurrentLicense } from '../../../api/license'
-import { createLicenseRenewalLink } from '../../../api/licensePurchase'
+import { startLicenseRenewal } from '../../../lib/licenseRenewal'
 import { useAuth } from '../../../contexts/AuthContext'
 import { cn } from '../../../lib/cn'
 import { Badge } from '../../ui'
@@ -107,8 +107,7 @@ export function LisansKullanimPanel(): ReactElement {
     if (renewLoading) return
     setRenewLoading(true)
     try {
-      const res = await createLicenseRenewalLink()
-      window.open(res.purchaseUrl, '_blank', 'noopener,noreferrer')
+      await startLicenseRenewal()
       void queryClient.invalidateQueries({ queryKey: ['tenant-license-current'] })
     } catch {
       window.alert('Lisans yenileme bağlantısı oluşturulamadı. Lütfen tekrar deneyin.')

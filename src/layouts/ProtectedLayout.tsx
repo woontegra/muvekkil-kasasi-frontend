@@ -1,11 +1,12 @@
 import type { ReactElement } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useLocation } from 'react-router-dom'
 import { FirstLoginOnboarding } from '../components/auth/FirstLoginOnboarding'
 import { useAuth } from '../contexts/AuthContext'
 import { DashboardShell } from './DashboardShell'
 
 export function ProtectedLayout(): ReactElement {
   const { session, loading } = useAuth()
+  const location = useLocation()
 
   if (loading) {
     return (
@@ -16,7 +17,8 @@ export function ProtectedLayout(): ReactElement {
   }
 
   if (!session) {
-    return <Navigate to="/login" replace />
+    const returnTo = `${location.pathname}${location.search}`
+    return <Navigate to={`/login?return=${encodeURIComponent(returnTo)}`} replace />
   }
 
   return (
