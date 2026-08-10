@@ -60,10 +60,12 @@ export function ModalScrim(props: Props): ReactElement | null {
 
   if (typeof document === 'undefined') return null
 
+  const panelWidthClass = wide ? 'w-full max-w-4xl' : 'w-full max-w-2xl'
+
   const panelBody =
     animatePanel && !reducedMotion ? (
       <motion.div
-        className={align === 'center' ? 'max-w-full' : 'w-full'}
+        className="w-full"
         variants={modalPanelVariants}
         initial="initial"
         animate="animate"
@@ -78,11 +80,8 @@ export function ModalScrim(props: Props): ReactElement | null {
   const panel = (
     <div
       className={cn(
-        align === 'top'
-          ? wide
-            ? 'w-full max-w-4xl'
-            : 'w-full max-w-2xl'
-          : 'my-auto flex w-full max-w-full justify-center',
+        panelWidthClass,
+        align === 'center' ? 'mx-auto' : undefined,
         innerClassName
       )}
       role={innerAsDialog ? 'dialog' : undefined}
@@ -90,7 +89,7 @@ export function ModalScrim(props: Props): ReactElement | null {
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <DraggablePanel enabled={draggable} className={align === 'center' ? 'max-w-full' : 'w-full'}>
+      <DraggablePanel enabled={draggable} className="w-full">
         {panelBody}
       </DraggablePanel>
     </div>

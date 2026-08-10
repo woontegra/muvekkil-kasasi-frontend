@@ -129,7 +129,7 @@ function ImportModal(props: {
       align="center"
       draggable={false}
       innerAsDialog
-      innerClassName="w-full max-w-[min(640px,calc(100vw-2rem))]"
+      innerClassName="w-[min(720px,calc(100vw-2rem))] max-w-full"
     >
       <div className="w-full overflow-hidden rounded-2xl border border-border bg-panel shadow-xl">
         <div className="flex items-start justify-between gap-3 border-b border-border px-5 py-4">
@@ -148,28 +148,28 @@ function ImportModal(props: {
 
         <div className="space-y-4 px-5 py-5">
           {phase.kind === 'checking' ? (
-            <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <div className="flex flex-col items-center gap-4 px-4 py-8 text-center sm:px-10">
               <div
                 className="h-10 w-10 animate-spin rounded-full border-[3px] border-primary border-r-transparent"
                 aria-hidden
               />
-              <div>
+              <div className="w-full max-w-md">
                 <p className="text-sm font-medium text-ink">Yedek dosyanız kontrol ediliyor…</p>
-                <p className="mt-1 text-xs text-ink-muted">{phase.fileName}</p>
+                <p className="mt-2 break-all text-xs text-ink-muted">{phase.fileName}</p>
               </div>
             </div>
           ) : null}
 
           {phase.kind === 'importing' ? (
-            <div className="flex flex-col items-center gap-4 py-6 text-center">
+            <div className="flex flex-col items-center gap-4 px-4 py-8 text-center sm:px-10">
               <div
                 className="h-10 w-10 animate-spin rounded-full border-[3px] border-primary border-r-transparent"
                 aria-hidden
               />
-              <div>
-                <p className="text-sm font-medium text-ink">Verileriniz aktarılıyor</p>
-                <p className="mt-1 text-xs text-ink-muted">Lütfen bu pencereyi kapatmayın.</p>
-                <p className="mt-2 text-xs text-ink-subtle">{phase.fileName}</p>
+              <div className="w-full max-w-md">
+                <p className="text-base font-semibold text-ink">Verileriniz aktarılıyor</p>
+                <p className="mt-2 text-sm text-ink-muted">Lütfen bu pencereyi kapatmayın.</p>
+                <p className="mt-3 break-all text-xs text-ink-subtle">{phase.fileName}</p>
               </div>
             </div>
           ) : null}

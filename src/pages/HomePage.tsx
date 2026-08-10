@@ -17,6 +17,7 @@ import { HesapDonemiModal } from '../components/dashboard/HesapDonemiModal'
 import { MaliKontrolKart } from '../components/dashboard/MaliKontrolKart'
 import { TahsilatBekleyenlerCard } from '../components/dashboard/TahsilatBekleyenlerCard'
 import { MaliKontrolMerkeziModal } from '../components/dashboard/MaliKontrolMerkeziModal'
+import { BugunkuRandevularCard } from '../pages/RandevularPage'
 import { getPreviousAccountingPeriod, getNextAccountingPeriod } from '../lib/accountingPeriod'
 import { getMaliKontrolUyarilari, MALI_KONTROL_QUERY_KEY } from '../api/maliKontrol'
 import { getTahsilatMerkeziOzet, TAKSILAT_MERKEZI_QUERY_KEY } from '../api/tahsilatMerkezi'
@@ -336,6 +337,8 @@ export function HomePage(): ReactElement {
         }))}
         loading={dashboardQuery.isLoading || smmQuery.isPending}
       />
+
+      <BugunkuRandevularCard />
 
       <SmmBekleyenHomePanel
         open={smmPanelOpen}

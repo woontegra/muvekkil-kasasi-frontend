@@ -182,7 +182,7 @@ export function TahsilatMerkeziPage(): ReactElement {
   return (
     <div className="w-full space-y-5">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-ink md:text-2xl">Tahsilat Merkezi</h1>
+        <h1 className="text-xl font-bold tracking-tight text-ink md:text-2xl">Tahsilat Takibi</h1>
         <p className="mt-1 text-sm text-ink-muted">
           Vadesi yaklaşan, bugün vadesi gelen, gecikmiş ve kısmi ödenmiş vekalet taksitleri.
         </p>

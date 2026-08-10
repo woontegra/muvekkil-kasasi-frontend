@@ -123,7 +123,7 @@ test.describe.serial('Finansal CRUD + PDF (UI)', () => {
     expect(buf.subarray(0, 4).toString('utf8')).toBe('%PDF')
     const latin1 = buf.toString('latin1')
     expect(latin1).toMatch(/\/Type\s*\/Catalog|endobj/)
-    expect(latin1).not.toMatch(/Tahsilat Merkezi|Ana menü|Bildirim Merkezi/)
+    expect(latin1).not.toMatch(/Tahsilat Takibi|Ana menü|Bildirim Merkezi/)
     // Metin tabanlı PDF (Roboto gömülü stream/font)
     expect(latin1).toMatch(/Font|Roboto|stream/)
 

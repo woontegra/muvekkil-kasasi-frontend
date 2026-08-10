@@ -10,6 +10,7 @@ import { dosyaDurumuBadgeVariant, dosyaDurumuLabel, dosyaTuruLabel, mahkemeIcraS
 import { cn } from '../lib/cn'
 import { MuvekkilEditModal } from '../components/muvekkil/MuvekkilEditModal'
 import { MuvekkilKarlilikTab } from '../components/mali/MuvekkilKarlilikTab'
+import { MuvekkilRandevularSection } from '../pages/RandevularPage'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
 
 function ProfileStatCard({ label, value, className }: { label: string; value: ReactNode; className?: string }): ReactElement {
@@ -295,6 +296,15 @@ export function MuvekkilDetailPage(): ReactElement {
               </Table>
             </div>
           )}
+        </CardBody>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader className="border-b border-border px-4 py-3">
+          <CardTitle className="text-base">Randevular</CardTitle>
+        </CardHeader>
+        <CardBody className="px-4 py-4">
+          <MuvekkilRandevularSection muvekkilId={id} />
         </CardBody>
       </Card>
 

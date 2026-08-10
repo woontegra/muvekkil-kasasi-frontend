@@ -114,11 +114,11 @@ export function BildirimMerkeziPage(): ReactElement {
     <div className="w-full space-y-5">
       <PageHeader
         title="Bildirim Merkezi"
-        description="Geçmiş WhatsApp hatırlatma kayıtlarını görüntüleyin. Yeni hatırlatma için Tahsilat Merkezi'ni kullanın."
+        description="Geçmiş WhatsApp hatırlatma kayıtlarını görüntüleyin. Yeni hatırlatma için Tahsilat Takibi'ni kullanın."
       />
 
       <AlertBox variant="info" title="WhatsApp hatırlatması">
-        Tahsilat Merkezi üzerinden WhatsApp&apos;ta Aç ile hazır mesajı gönderebilirsiniz. Gönderim, sizin WhatsApp
+        Tahsilat Takibi üzerinden WhatsApp&apos;ta Aç ile hazır mesajı gönderebilirsiniz. Gönderim, sizin WhatsApp
         hesabınız üzerinden tamamlanır.
       </AlertBox>
 
@@ -164,7 +164,7 @@ export function BildirimMerkeziPage(): ReactElement {
               description={`${BILDIRIM_GORUNUM_LABEL[tab]} görünümünde kayıt bulunamadı.`}
               action={
                 <Link to={`${APP_BASE}/tahsilat-merkezi`} className="text-sm font-semibold text-primary hover:underline">
-                  Tahsilat Merkezi&apos;ne git
+                  Tahsilat Takibi&apos;ne git
                 </Link>
               }
             />

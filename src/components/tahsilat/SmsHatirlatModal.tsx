@@ -75,8 +75,8 @@ export function SmsHatirlatModal({ row, onClose }: Props): ReactElement {
   })
 
   return (
-    <ModalScrim onClose={onClose} wide align="top" innerAsDialog>
-      <div className="w-full max-w-lg rounded-xl border border-border bg-panel p-5 shadow-xl">
+    <ModalScrim onClose={onClose} wide innerAsDialog>
+      <div className="mx-auto w-full max-w-lg rounded-xl border border-border bg-panel p-5 shadow-xl">
         <div className="mb-4 flex items-start justify-between gap-2">
           <h2 className="text-base font-bold text-ink">SMS Gönder</h2>
           <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={onClose}>

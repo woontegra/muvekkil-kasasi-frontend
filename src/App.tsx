@@ -21,6 +21,7 @@ import { TahsilatMerkeziPage } from './pages/TahsilatMerkeziPage'
 import { KullanicilarPage } from './pages/KullanicilarPage'
 import { PrimlerPage } from './pages/PrimlerPage'
 import { ReportsPage } from './pages/ReportsPage'
+import { RandevularPage } from './pages/RandevularPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { YeniMuvekkilPage } from './pages/YeniMuvekkilPage'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
@@ -85,6 +86,7 @@ export default function App(): ReactElement {
         <Route path="muvekkil/:id/dosyalar/yeni" element={<YeniDosyaPage />} />
         <Route path="muvekkil/:id/dosya/:dosyaId" element={<DosyaDetailPage />} />
         <Route path="muvekkil/:id" element={<MuvekkilDetailPage />} />
+        <Route path="randevular" element={<RandevularPage />} />
         <Route path="ofis-kasasi" element={<OfisKasasiPage />} />
         <Route path="icra-tahsilat" element={<IcraTahsilatPage />} />
         <Route path="tahsilat-merkezi" element={<TahsilatMerkeziPage />} />
