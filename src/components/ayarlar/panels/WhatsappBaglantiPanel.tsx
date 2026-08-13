@@ -125,13 +125,24 @@ export function WhatsappBaglantiPanel(): ReactElement {
       try {
         const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data
         if (!data || data.type !== 'WA_EMBEDDED_SIGNUP') return
-        if (data.event === 'FINISH' || data.event === 'FINISH_ONLY_WABA') {
+        // Cloud API FINISH + Business App coexistence FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING
+        if (
+          data.event === 'FINISH' ||
+          data.event === 'FINISH_ONLY_WABA' ||
+          data.event === 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'
+        ) {
           const wabaId = String(data.data?.waba_id ?? data.data?.wabaId ?? '')
           const phoneNumberId = String(
-            data.data?.phone_number_id ?? data.data?.phoneNumberId ?? ''
+            data.data?.phone_number_id ??
+              data.data?.phoneNumberId ??
+              data.data?.phone_number_ids?.[0] ??
+              ''
           )
           if (wabaId && phoneNumberId) {
             pendingIdsRef.current = { wabaId, phoneNumberId }
+          } else if (wabaId) {
+            // Meta Business App finish örneği yalnızca waba_id döndürebilir; phone id varsa ayrıca gelir.
+            pendingIdsRef.current = { wabaId, phoneNumberId: phoneNumberId || '' }
           }
         }
       } catch {
@@ -174,7 +185,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
             if (!ids?.wabaId || !ids.phoneNumberId) {
               reject(
                 new Error(
-                  'WABA / telefon bilgisi alınamadı. Embedded Signup’ı tamamlayıp tekrar deneyin.'
+                  'WABA / telefon bilgisi alınamadı. WhatsApp Business App onboarding’i tamamlayıp tekrar deneyin.'
                 )
               )
               return
@@ -192,7 +203,8 @@ export function WhatsappBaglantiPanel(): ReactElement {
             override_default_response_type: true,
             extras: {
               setup: {},
-              featureType: '',
+              // Meta: mevcut WhatsApp Business App numarası + Cloud API coexistence
+              featureType: 'whatsapp_business_app_onboarding',
               sessionInfoVersion: '3'
             }
           }
