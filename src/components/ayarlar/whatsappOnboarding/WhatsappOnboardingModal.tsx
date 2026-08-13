@@ -54,11 +54,13 @@ export function WhatsappOnboardingModal(props: Props): ReactElement | null {
   const { open, mode, onClose, onStartEmbeddedSignup, connectBusy } = props
   const [view, setView] = useState<OnboardingView>(() => initialView(mode))
   const [guideStep, setGuideStep] = useState(0)
+  const [chatsVerified, setChatsVerified] = useState(false)
 
   useEffect(() => {
     if (!open) return
     setView(initialView(mode))
-    setGuideStep(mode === 'consumer_guide' || mode === 'recovery' ? 0 : 0)
+    setGuideStep(0)
+    setChatsVerified(false)
   }, [open, mode])
 
   if (!open) return null
@@ -68,9 +70,19 @@ export function WhatsappOnboardingModal(props: Props): ReactElement | null {
     await onStartEmbeddedSignup()
   }
 
+  function resetGuideProgress(): void {
+    setGuideStep(0)
+    setChatsVerified(false)
+  }
+
   function goChooser(): void {
     setView('chooser')
-    setGuideStep(0)
+    resetGuideProgress()
+  }
+
+  function openConsumerGuide(): void {
+    resetGuideProgress()
+    setView('consumer_guide')
   }
 
   return (
@@ -135,10 +147,7 @@ export function WhatsappOnboardingModal(props: Props): ReactElement | null {
             <ChoiceRow
               data-testid="wa-help-consumer"
               title="Normal WhatsApp’tan Business’a Geçiş"
-              onClick={() => {
-                setGuideStep(0)
-                setView('consumer_guide')
-              }}
+              onClick={openConsumerGuide}
             />
             <ChoiceRow
               data-testid="wa-help-business"
@@ -170,7 +179,7 @@ export function WhatsappOnboardingModal(props: Props): ReactElement | null {
         ) : null}
 
         {view === 'consumer_intro' ? (
-          <ConsumerIntro onStartGuide={() => { setGuideStep(0); setView('consumer_guide') }} onBack={goChooser} />
+          <ConsumerIntro onStartGuide={openConsumerGuide} onBack={goChooser} />
         ) : null}
 
         {view === 'consumer_guide' ? (
@@ -178,6 +187,8 @@ export function WhatsappOnboardingModal(props: Props): ReactElement | null {
             stepIndex={guideStep}
             onStepChange={setGuideStep}
             connectBusy={connectBusy}
+            chatsVerified={chatsVerified}
+            onChatsVerifiedChange={setChatsVerified}
             onConnect={() => void startConnect()}
           />
         ) : null}
@@ -225,10 +236,7 @@ export function WhatsappOnboardingModal(props: Props): ReactElement | null {
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
-                onClick={() => {
-                  setGuideStep(0)
-                  setView('consumer_guide')
-                }}
+                onClick={openConsumerGuide}
                 data-testid="wa-recovery-guide"
               >
                 Geçiş Rehberini Aç

@@ -1,10 +1,15 @@
 import type { ReactElement } from 'react'
+import { useEffect } from 'react'
 import { WHATSAPP_HELP_LINKS } from '../../../config/whatsappHelpLinks'
 import { Button } from '../../ui'
 import { ChoiceRow, SafetyNotice } from './ChoiceRow'
 import { PhoneMenuPath, PhoneMock } from './PhoneMock'
 import { GUIDE_PHASES, phaseForGuideStep } from './types'
 import { cn } from '../../../lib/cn'
+
+/** 0-based index of “WhatsApp Business’ın çalıştığını kontrol edin” (adım 5/6). */
+const VERIFY_STEP_INDEX = 4
+const CONNECT_STEP_INDEX = 5
 
 export type GuideStep = {
   title: string
@@ -103,15 +108,48 @@ type Props = {
   onStepChange: (next: number) => void
   onConnect: () => void
   connectBusy?: boolean
+  chatsVerified: boolean
+  onChatsVerifiedChange: (verified: boolean) => void
 }
 
 export function ConsumerToBusinessGuide(props: Props): ReactElement {
-  const { stepIndex, onStepChange, onConnect, connectBusy } = props
+  const {
+    stepIndex,
+    onStepChange,
+    onConnect,
+    connectBusy,
+    chatsVerified,
+    onChatsVerifiedChange
+  } = props
   const total = STEPS.length
   const clamped = Math.min(Math.max(stepIndex, 0), total - 1)
   const step = STEPS[clamped]!
   const phase = phaseForGuideStep(clamped)
-  const isLast = clamped === total - 1
+  const isLast = clamped === CONNECT_STEP_INDEX
+  const isVerifyStep = clamped === VERIFY_STEP_INDEX
+  const canAdvanceFromVerify = chatsVerified
+
+  useEffect(() => {
+    if (clamped >= CONNECT_STEP_INDEX && !chatsVerified) {
+      onStepChange(VERIFY_STEP_INDEX)
+    }
+  }, [clamped, chatsVerified, onStepChange])
+
+  function requestStepChange(next: number): void {
+    if (next >= CONNECT_STEP_INDEX && !chatsVerified) {
+      onStepChange(VERIFY_STEP_INDEX)
+      return
+    }
+    onStepChange(next)
+  }
+
+  function handleConnect(): void {
+    if (!chatsVerified) {
+      onStepChange(VERIFY_STEP_INDEX)
+      return
+    }
+    onConnect()
+  }
 
   return (
     <div className="space-y-4" data-testid="wa-consumer-guide">
@@ -197,6 +235,35 @@ export function ConsumerToBusinessGuide(props: Props): ReactElement {
                 Resmi aktarım rehberi
               </a>
             ) : null}
+            {isVerifyStep ? (
+              <div className="mt-3 space-y-2" data-testid="wa-chats-verify">
+                <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-border bg-white px-3 py-2.5 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
+                    checked={chatsVerified}
+                    onChange={(e) => onChatsVerifiedChange(e.target.checked)}
+                    data-testid="wa-chats-verify-checkbox"
+                  />
+                  <span className="min-w-0 leading-snug">
+                    Eski sohbetlerimi WhatsApp Business içinde görüyorum ve mesaj gönderebiliyorum.
+                  </span>
+                </label>
+                <p className="rounded-lg border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-xs leading-relaxed text-amber-950">
+                  Sohbetleriniz görünmüyorsa devam etmeyin.{' '}
+                  <a
+                    className="font-medium text-primary underline-offset-2 hover:underline"
+                    href={WHATSAPP_HELP_LINKS.faqMoveMessengerToBusiness}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    data-testid="wa-chats-verify-transfer-link"
+                  >
+                    Resmî aktarım rehberini yeniden açın
+                  </a>{' '}
+                  veya destek alın.
+                </p>
+              </div>
+            ) : null}
           </div>
           <div>{step.illustration}</div>
         </div>
@@ -207,7 +274,7 @@ export function ConsumerToBusinessGuide(props: Props): ReactElement {
             variant="ghost"
             size="sm"
             disabled={clamped === 0}
-            onClick={() => onStepChange(clamped - 1)}
+            onClick={() => requestStepChange(clamped - 1)}
             data-testid="wa-guide-back"
           >
             Geri
@@ -215,14 +282,26 @@ export function ConsumerToBusinessGuide(props: Props): ReactElement {
           {isLast ? (
             <Button
               type="button"
-              disabled={connectBusy}
-              onClick={onConnect}
+              disabled={connectBusy || !chatsVerified}
+              onClick={handleConnect}
               data-testid="wa-guide-connect"
+              title={!chatsVerified ? 'Önce sohbet aktarımını onaylayın' : undefined}
             >
               {connectBusy ? 'Bağlanıyor…' : 'WhatsApp Business’a Geçtim, Bağlantıya Devam Et'}
             </Button>
           ) : (
-            <Button type="button" onClick={() => onStepChange(clamped + 1)} data-testid="wa-guide-next">
+            <Button
+              type="button"
+              disabled={isVerifyStep && !canAdvanceFromVerify}
+              onClick={() => requestStepChange(clamped + 1)}
+              data-testid="wa-guide-next"
+              aria-disabled={isVerifyStep && !canAdvanceFromVerify}
+              title={
+                isVerifyStep && !canAdvanceFromVerify
+                  ? 'Devam etmek için sohbet aktarımını onaylayın'
+                  : undefined
+              }
+            >
               İleri
             </Button>
           )}
