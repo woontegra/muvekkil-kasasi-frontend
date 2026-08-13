@@ -18,6 +18,11 @@ import { isSuperAdminRole } from '../../../lib/adminRoles'
 import { useToast } from '../../../toast'
 import { AlertBox, Badge, Button, useConfirm } from '../../ui'
 import { AyarlarPanelShell } from '../shared'
+import {
+  classifySignupFailure,
+  WhatsappOnboardingModal,
+  type WhatsappOnboardingOpenMode
+} from '../whatsappOnboarding'
 
 declare global {
   interface Window {
@@ -107,7 +112,10 @@ export function WhatsappBaglantiPanel(): ReactElement {
   const { confirm } = useConfirm()
   const qc = useQueryClient()
   const [busy, setBusy] = useState(false)
+  const [onboardingOpen, setOnboardingOpen] = useState(false)
+  const [onboardingMode, setOnboardingMode] = useState<WhatsappOnboardingOpenMode>('connect')
   const pendingIdsRef = useRef<{ wabaId: string; phoneNumberId: string } | null>(null)
+  const signupErrorHintRef = useRef(false)
 
   const durumQuery = useQuery({
     queryKey: [...WHATSAPP_BAGLANTI_QUERY_KEY, 'durum'],
@@ -123,6 +131,11 @@ export function WhatsappBaglantiPanel(): ReactElement {
   const invalidate = useCallback(() => {
     void qc.invalidateQueries({ queryKey: WHATSAPP_BAGLANTI_QUERY_KEY })
   }, [qc])
+
+  const openOnboarding = useCallback((mode: WhatsappOnboardingOpenMode) => {
+    setOnboardingMode(mode)
+    setOnboardingOpen(true)
+  }, [])
 
   useEffect(() => {
     function onMessage(event: MessageEvent): void {
@@ -150,6 +163,14 @@ export function WhatsappBaglantiPanel(): ReactElement {
             pendingIdsRef.current = { wabaId, phoneNumberId: phoneNumberId || '' }
           }
         }
+        if (data.event === 'ERROR') {
+          const errText = String(
+            data.data?.error_message ?? data.data?.message ?? data.error_message ?? data.event ?? ''
+          )
+          // Meta ERROR — kullanıcıyı ham popup’ta bırakmamak için kurtarma bayrağı
+          signupErrorHintRef.current = true
+          void errText
+        }
       } catch {
         /* ignore non-JSON */
       }
@@ -164,7 +185,13 @@ export function WhatsappBaglantiPanel(): ReactElement {
       toast.success('WhatsApp Business bağlantısı tamamlandı.')
       invalidate()
     },
-    onError: (e) => toast.error(friendlyClientErrorMessage(e))
+    onError: (e) => {
+      if (classifySignupFailure(e) === 'consumer_not_ready') {
+        openOnboarding('recovery')
+        return
+      }
+      toast.error(friendlyClientErrorMessage(e))
+    }
   })
 
   async function launchEmbeddedSignup(): Promise<void> {
@@ -176,6 +203,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
     }
     setBusy(true)
     pendingIdsRef.current = null
+    signupErrorHintRef.current = false
     try {
       await loadFacebookSdk(cfg.appId, cfg.graphVersion.startsWith('v') ? cfg.graphVersion : `v${cfg.graphVersion}`)
       await new Promise<void>((resolve, reject) => {
@@ -183,6 +211,10 @@ export function WhatsappBaglantiPanel(): ReactElement {
           (response) => {
             const code = response.authResponse?.code
             if (!code) {
+              if (signupErrorHintRef.current) {
+                reject(new Error('Bu numara henüz WhatsApp Business’a hazır olmayabilir.'))
+                return
+              }
               reject(new Error('Meta oturumu tamamlanmadı veya iptal edildi.'))
               return
             }
@@ -216,7 +248,14 @@ export function WhatsappBaglantiPanel(): ReactElement {
         )
       })
     } catch (e) {
-      toast.error(friendlyClientErrorMessage(e))
+      const kind = classifySignupFailure(e)
+      if (kind === 'consumer_not_ready') {
+        openOnboarding('recovery')
+      } else if (kind === 'cancelled') {
+        toast.error('Bağlantı tamamlanmadı. İsterseniz tekrar deneyebilir veya kurulum rehberine bakabilirsiniz.')
+      } else {
+        toast.error(friendlyClientErrorMessage(e))
+      }
     } finally {
       setBusy(false)
     }
@@ -308,13 +347,25 @@ export function WhatsappBaglantiPanel(): ReactElement {
             Bağlı değilken manuel <span className="font-medium">wa.me</span> akışı kullanılabilir.
           </p>
           {isYonetici ? (
-            <Button
-              type="button"
-              onClick={() => void launchEmbeddedSignup()}
-              disabled={busy || completeMu.isPending || configQuery.isLoading}
-            >
-              {busy || completeMu.isPending ? 'Bağlanıyor…' : 'WhatsApp Business’ı Bağla'}
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                onClick={() => openOnboarding('connect')}
+                disabled={busy || completeMu.isPending || configQuery.isLoading}
+                data-testid="wa-connect-cta"
+              >
+                {busy || completeMu.isPending ? 'Bağlanıyor…' : 'WhatsApp Business’ı Bağla'}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => openOnboarding('guide')}
+                data-testid="wa-how-to-connect"
+              >
+                Nasıl Bağlanır?
+              </Button>
+            </div>
           ) : (
             <p className="text-sm text-ink-muted">Bağlantı yalnızca büro sahibi / yönetici tarafından yapılabilir.</p>
           )}
@@ -362,10 +413,45 @@ export function WhatsappBaglantiPanel(): ReactElement {
               <Button type="button" variant="danger" onClick={() => void onKaldir()}>
                 Bağlantıyı kaldır
               </Button>
+              <Button type="button" variant="ghost" size="sm" onClick={() => openOnboarding('guide')} data-testid="wa-how-to-connect">
+                WhatsApp Kurulum Rehberi
+              </Button>
             </div>
           ) : null}
         </div>
       )}
+
+      <div className="mt-6 rounded-lg border border-border bg-surface-muted/40 px-3 py-3" data-testid="wa-help-section">
+        <p className="text-sm font-semibold text-ink">Yardıma mı ihtiyacınız var?</p>
+        <p className="mt-0.5 text-xs text-ink-muted">Adım adım kurulum rehberi — destek beklemeden ilerleyin.</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => openOnboarding('guide')}>
+            WhatsApp Kurulum Rehberi
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => openOnboarding('consumer_guide')}>
+            Normal WhatsApp’tan Business’a Geçiş
+          </Button>
+          {isYonetici ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={busy || completeMu.isPending || !configQuery.data?.configured}
+              onClick={() => void launchEmbeddedSignup()}
+            >
+              Bağlantıyı Tekrar Dene
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <WhatsappOnboardingModal
+        open={onboardingOpen}
+        mode={onboardingMode}
+        onClose={() => setOnboardingOpen(false)}
+        onStartEmbeddedSignup={() => void launchEmbeddedSignup()}
+        connectBusy={busy || completeMu.isPending}
+      />
     </AyarlarPanelShell>
   )
 }
