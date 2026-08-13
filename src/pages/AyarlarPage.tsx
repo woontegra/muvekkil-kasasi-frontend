@@ -9,11 +9,14 @@ import { HesapDonemiPanel } from '../components/ayarlar/panels/HesapDonemiPanel'
 import { KullaniciGuvenlikPanel } from '../components/ayarlar/panels/KullaniciGuvenlikPanel'
 import { LisansKullanimPanel } from '../components/ayarlar/panels/LisansKullanimPanel'
 import { SistemBilgisiPanel } from '../components/ayarlar/panels/SistemBilgisiPanel'
+import { WhatsappBaglantiPanel } from '../components/ayarlar/panels/WhatsappBaglantiPanel'
+import { WhatsappHatirlatmalariPanel } from '../components/ayarlar/panels/WhatsappHatirlatmalariPanel'
 import { VeriAktarimiPanel } from '../components/ayarlar/panels/VeriVeDenetimPanels'
 import {
   buildAyarlarNavItems,
   firstAllowedSection,
   isAyarlarSectionAllowed,
+  resolveAyarlarAccess,
   type AyarlarSectionId
 } from '../components/ayarlar/ayarlarSections'
 import { PageHeader } from '../components/ui'
@@ -23,6 +26,7 @@ function parseSection(raw: string | null): AyarlarSectionId | null {
   if (
     raw === 'buro' ||
     raw === 'hesap-donemi' ||
+    raw === 'whatsapp' ||
     raw === 'kullanici' ||
     raw === 'veri' ||
     raw === 'denetim' ||
@@ -35,18 +39,13 @@ function parseSection(raw: string | null): AyarlarSectionId | null {
 }
 
 export function AyarlarPage(): ReactElement {
+  // Yalnızca tenant oturumu — useAdminAuth / SUPER_ADMIN burada kullanılmaz.
   const { session } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const [auditModalOpen, setAuditModalOpen] = useState(false)
 
-  const isBuroSahibi = session?.user.role === 'BURO_SAHIBI'
-  const isYonetici = session?.user.role === 'BURO_SAHIBI' || session?.user.role === 'AVUKAT_YONETICI'
-  const canViewAudit = isYonetici
-
-  const access = useMemo(
-    () => ({ isBuroSahibi, isYonetici, canViewAudit }),
-    [isBuroSahibi, isYonetici, canViewAudit]
-  )
+  const access = useMemo(() => resolveAyarlarAccess(session?.user.role), [session?.user.role])
+  const { isBuroSahibi, isYonetici, canViewAudit } = access
 
   const navItems = useMemo(() => buildAyarlarNavItems(access), [access])
   const defaultSection = useMemo(() => firstAllowedSection(access), [access])
@@ -82,6 +81,12 @@ export function AyarlarPage(): ReactElement {
         <div className="min-w-0 flex-1">
           {activeSection === 'buro' ? <BuroBilgileriPanel /> : null}
           {activeSection === 'hesap-donemi' && isYonetici ? <HesapDonemiPanel /> : null}
+          {activeSection === 'whatsapp' ? (
+            <div className="space-y-5">
+              <WhatsappBaglantiPanel />
+              {isYonetici ? <WhatsappHatirlatmalariPanel /> : null}
+            </div>
+          ) : null}
           {activeSection === 'kullanici' ? <KullaniciGuvenlikPanel /> : null}
           {activeSection === 'veri' && isBuroSahibi ? <VeriAktarimiPanel /> : null}
           {activeSection === 'denetim' && canViewAudit ? (

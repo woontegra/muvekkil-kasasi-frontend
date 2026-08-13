@@ -48,7 +48,7 @@ export async function previewManualWhatsApp(taksitId: string): Promise<ManualWha
 
 export async function prepareManualWhatsApp(
   taksitId: string,
-  body: { mesaj: string; idempotencyKey: string }
+  body: { mesaj: string; idempotencyKey: string; openDeepLink?: boolean }
 ): Promise<{
   ok: true
   status: 'READY' | 'DUPLICATE' | 'FAILED'

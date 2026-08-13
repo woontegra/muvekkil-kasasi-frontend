@@ -27,9 +27,9 @@ test.describe('Tek giriş Admin Paneli', () => {
 
   test('normal login sonrası kart görünür ve /admin ikinci login istemez', async ({ page }) => {
     await page.goto('/login')
-    await page.getByLabel(/e-posta|kullanıcı/i).fill(user!)
-    await page.getByLabel(/parola|şifre/i).fill(pass!)
-    await page.getByRole('button', { name: /giriş/i }).click()
+    await page.getByLabel(/e-posta veya kullanıcı/i).fill(user!)
+    await page.getByRole('textbox', { name: /^Şifre$/i }).fill(pass!)
+    await page.getByRole('button', { name: /giriş yap/i }).click()
 
     await expect(page).toHaveURL(/\/app/, { timeout: 20_000 })
     await expect(page).not.toHaveURL(/\/admin\/login/)

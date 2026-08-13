@@ -16,7 +16,7 @@ test.describe('Production smoke — tek giriş / admin kart', () => {
   test('info@ tek giriş, Admin Paneli, /admin ikinci login yok', async ({ page }) => {
     await page.goto('/login')
     await page.getByLabel(/e-posta|kullanıcı/i).fill(infoUser!)
-    await page.getByLabel(/parola|şifre/i).fill(infoPass!)
+    await page.getByRole('textbox', { name: /^Şifre$/i }).fill(infoPass!)
     await page.getByRole('button', { name: /giriş/i }).click()
     await expect(page).toHaveURL(/\/app/, { timeout: 30_000 })
 
@@ -38,7 +38,7 @@ test.describe('Production smoke — normal kullanıcı', () => {
   test('BURO_SAHIBI Admin Paneli kartı görmez', async ({ page }) => {
     await page.goto('/login')
     await page.getByLabel(/e-posta|kullanıcı/i).fill(e2eUser!)
-    await page.getByLabel(/parola|şifre/i).fill(e2ePass!)
+    await page.getByRole('textbox', { name: /^Şifre$/i }).fill(e2ePass!)
     await page.getByRole('button', { name: /giriş/i }).click()
     await expect(page).toHaveURL(/\/app/, { timeout: 30_000 })
     await expect(page.getByRole('button', { name: /Admin Paneli/i })).toHaveCount(0)
