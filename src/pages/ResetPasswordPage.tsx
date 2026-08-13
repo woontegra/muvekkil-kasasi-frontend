@@ -40,10 +40,11 @@ export function ResetPasswordPage(): ReactElement {
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    if (resetToken && window.location.search.includes('token=')) {
-      navigate('/reset-password', { replace: true })
+    // Token'ı adres çubuğundan kaldır; React Router navigate remount ederse state token kaybolur.
+    if (resetToken && typeof window !== 'undefined' && window.location.search.includes('token=')) {
+      window.history.replaceState(null, '', '/reset-password')
     }
-  }, [resetToken, navigate])
+  }, [resetToken])
 
   useEffect(() => {
     if (!loading && session) navigate(APP_BASE, { replace: true })
