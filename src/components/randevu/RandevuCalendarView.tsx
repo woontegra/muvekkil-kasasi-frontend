@@ -96,6 +96,9 @@ function AppointmentCard({
           {muvekkil ? (
             <p className="mt-0.5 truncate text-[10px] font-medium text-primary">{muvekkil}</p>
           ) : null}
+          {randevu.hatirlatmaOzet ? (
+            <p className="mt-0.5 truncate text-[9px] text-ink-muted">{randevu.hatirlatmaOzet}</p>
+          ) : null}
         </div>
       </div>
     </button>

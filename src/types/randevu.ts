@@ -17,6 +17,7 @@ export type RandevuDto = {
   dosyaBaslik: string | null
   sorumluAdSoyad: string | null
   olusturanAdSoyad: string
+  hatirlatmaOzet?: string | null
 }
 
 export type RandevuListResponse = {
@@ -39,6 +40,15 @@ export type RandevuWritePayload = {
   muvekkilId?: string | null
   dosyaId?: string | null
   sorumluUserId?: string | null
+  hatirlatmaPlan?: {
+    mode: 'VARSAYILAN' | 'OZEL' | 'KAPALI'
+    kurallar?: Array<{
+      ruleKey: string
+      aktifMi: boolean
+      offsetDk: number
+      metaSablonId?: string | null
+    }>
+  }
 }
 
 export type CalendarView = 'day' | 'week' | 'month'

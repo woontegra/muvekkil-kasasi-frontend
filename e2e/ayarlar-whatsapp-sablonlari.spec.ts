@@ -9,7 +9,8 @@ const EXPECTED_TEMPLATE_NAMES = [
   'Gecikmiş Ödeme Hatırlatma',
   'Kısmi Ödeme Sonrası Kalan Tutar',
   'Genel Taksit Hatırlatma',
-  'Ödeme Alındı Bilgilendirmesi'
+  'Ödeme Alındı Bilgilendirmesi',
+  'Randevu Hatırlatma'
 ]
 
 async function loginAs(page: import('@playwright/test').Page, user: string, pass: string): Promise<void> {

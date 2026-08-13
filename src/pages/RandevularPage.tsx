@@ -198,6 +198,7 @@ export function BugunkuRandevularCard(): ReactElement {
               <div className="min-w-0">
                 <p className="truncate font-medium text-ink">{r.baslik}</p>
                 {r.muvekkilAd ? <p className="truncate text-xs text-ink-muted">{r.muvekkilAd}</p> : null}
+                {r.hatirlatmaOzet ? <p className="truncate text-[10px] text-ink-subtle">{r.hatirlatmaOzet}</p> : null}
               </div>
             </li>
           ))}
@@ -243,6 +244,7 @@ export function MuvekkilRandevularSection({ muvekkilId }: { muvekkilId: string }
               <p className="text-xs text-ink-muted">
                 {new Date(r.baslangicAt).toLocaleDateString('tr-TR')} · {formatTimeTR(r.baslangicAt)} – {formatTimeTR(r.bitisAt)}
               </p>
+              {r.hatirlatmaOzet ? <p className="text-[10px] text-ink-subtle">{r.hatirlatmaOzet}</p> : null}
             </div>
             {r.dosyaBaslik ? <span className="text-xs text-ink-muted">{r.dosyaBaslik}</span> : null}
           </li>

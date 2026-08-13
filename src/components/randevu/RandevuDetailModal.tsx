@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import { deleteRandevu, RANDEVULAR_QUERY_KEY } from '../../api/randevular'
+import { getRandevuHatirlatmaPlan } from '../../api/bildirimPlan'
 import { APP_BASE } from '../../config/appPaths'
 import { formatDateTRLong, formatTimeTR } from '../../lib/randevuCalendar'
 import type { RandevuDto } from '../../types/randevu'
@@ -30,6 +31,11 @@ export function RandevuDetailModal({ randevu, onClose, onEdit, onDeleted }: Prop
   const toast = useToast()
   const { confirm } = useConfirm()
   const queryClient = useQueryClient()
+
+  const planQ = useQuery({
+    queryKey: ['randevu-hatirlatma-plan', randevu.id],
+    queryFn: () => getRandevuHatirlatmaPlan(randevu.id)
+  })
 
   const deleteMu = useMutation({
     mutationFn: () => deleteRandevu(randevu.id),
@@ -98,7 +104,30 @@ export function RandevuDetailModal({ randevu, onClose, onEdit, onDeleted }: Prop
             </RandevuDetailField>
             <RandevuDetailField label="Sorumlu">{randevu.sorumluAdSoyad?.trim() || '—'}</RandevuDetailField>
             <RandevuDetailField label="Konum">{randevu.konum?.trim() || '—'}</RandevuDetailField>
+            <RandevuDetailField label="WhatsApp Hatırlatması">
+              {randevu.hatirlatmaOzet ?? planQ.data?.ozet ?? '—'}
+            </RandevuDetailField>
           </dl>
+
+          {planQ.data?.planlananHatirlatmalar?.length ? (
+            <div className="rounded-lg border border-border/70 bg-surface-muted/25 px-4 py-3">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
+                Planlanan hatırlatmalar
+              </p>
+              <ul className="mt-2 space-y-1 text-sm text-ink-muted">
+                {planQ.data.planlananHatirlatmalar.map((h) => (
+                  <li key={`${h.offsetDk}-${h.planlananAt}`}>
+                    {new Date(h.planlananAt).toLocaleString('tr-TR', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           {aciklama ? (
             <div className="rounded-lg border border-border/70 bg-surface-muted/25 px-4 py-3">

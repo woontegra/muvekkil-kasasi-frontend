@@ -34,6 +34,7 @@ import {
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import { VekaletTaksitOdemeModal } from '../components/vekalet/VekaletTaksitOdemeModal'
 import { VekaletTaksitPlaniModal } from '../components/vekalet/VekaletTaksitPlaniModal'
+import { TaksitHatirlatmaPlanModal } from '../components/vekalet/TaksitHatirlatmaPlanModal'
 import { ApiError, resolveOdemeApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { useAuth } from '../contexts/AuthContext'
@@ -119,6 +120,7 @@ type VekModalState =
   | { type: 'taksit-odeme'; t: VekaletTaksitiDto }
   | { type: 'odeme-gecmisi'; t: VekaletTaksitiDto }
   | { type: 'odeme-edit'; t: VekaletTaksitiDto; odeme: VekaletTaksitOdemeDto }
+  | { type: 'hatirlatma'; t: VekaletTaksitiDto }
 
 const vekaletIconBtnClass =
   'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-white text-sm hover:bg-surface-muted disabled:opacity-50'
@@ -880,6 +882,14 @@ export function DosyaDetailPage(): ReactElement {
           onSubmit={(body) => odemeTaksitMu.mutate({ id: vekModal.t.id, body })}
         />
       ) : null}
+      {vekModal?.type === 'hatirlatma' ? (
+        <TaksitHatirlatmaPlanModal
+          taksitId={vekModal.t.id}
+          taksitNo={vekModal.t.taksitNo}
+          onClose={() => setVekModal(null)}
+          onSaved={() => void queryClient.invalidateQueries({ queryKey: ['vekalet', dosyaId] })}
+        />
+      ) : null}
       {vekModal?.type === 'odeme-gecmisi' ? (
         <VekaletOdemeGecmisiModal
           taksit={vekModal.t}
@@ -1403,6 +1413,9 @@ export function DosyaDetailPage(): ReactElement {
                                   <Badge variant={taksitDurumBadge(row.durum)} className="!normal-case">
                                     {taksitDurumLabel(row.durum)}
                                   </Badge>
+                                  {t.hatirlatmaOzet ? (
+                                    <p className="mt-0.5 text-[10px] text-ink-muted">{t.hatirlatmaOzet}</p>
+                                  ) : null}
                                 </TD>
                                 <TD className="whitespace-nowrap text-ink-muted !py-1.5">{formatDateTR(row.sonOdemeTarihi ?? undefined)}</TD>
                                 <TD className="font-mono text-[11px] !py-1.5">{row.sonMakbuzNo?.trim() ? row.sonMakbuzNo : '—'}</TD>
@@ -1423,6 +1436,14 @@ export function DosyaDetailPage(): ReactElement {
                                         ₺
                                       </button>
                                     ) : null}
+                                    <button
+                                      type="button"
+                                      className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
+                                      title="Hatırlatma planı"
+                                      onClick={() => setVekModal({ type: 'hatirlatma', t })}
+                                    >
+                                      🔔
+                                    </button>
                                     <button
                                       type="button"
                                       className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}

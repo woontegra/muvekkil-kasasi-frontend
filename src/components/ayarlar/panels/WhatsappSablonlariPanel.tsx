@@ -165,7 +165,27 @@ export function WhatsappSablonlariPanel(): ReactElement {
   })
 
   const catalog = q.data?.catalog ?? []
+  const tahsilatCatalog = catalog.filter((c) => (c.templateGroup ?? 'TAHSILAT') === 'TAHSILAT')
+  const randevuCatalog = catalog.filter((c) => c.templateGroup === 'RANDEVU')
   const stats = computeStats(catalog)
+
+  function renderSection(title: string, items: HazirSablonKatalogItem[]): ReactElement {
+    return (
+      <div className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{title}</p>
+        {items.map((item) => (
+          <TemplateCard
+            key={item.libraryKey}
+            item={item}
+            canManage={canManage}
+            submitting={submitMu.isPending}
+            onInspect={() => setInspectItem(item)}
+            onSubmit={(key) => submitMu.mutate(key)}
+          />
+        ))}
+      </div>
+    )
+  }
 
   return (
     <AyarlarPanelShell
@@ -211,17 +231,9 @@ export function WhatsappSablonlariPanel(): ReactElement {
       ) : q.isError ? (
         <AlertBox variant="danger">{friendlyClientErrorMessage(q.error)}</AlertBox>
       ) : (
-        <div className="space-y-2">
-          {catalog.map((item) => (
-            <TemplateCard
-              key={item.libraryKey}
-              item={item}
-              canManage={canManage}
-              submitting={submitMu.isPending}
-              onInspect={() => setInspectItem(item)}
-              onSubmit={(key) => submitMu.mutate(key)}
-            />
-          ))}
+        <div className="space-y-5">
+          {renderSection('Tahsilat şablonları', tahsilatCatalog)}
+          {randevuCatalog.length ? renderSection('Randevu şablonları', randevuCatalog) : null}
         </div>
       )}
 

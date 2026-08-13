@@ -16,6 +16,7 @@ import {
 import type { RandevuDto, RandevuWritePayload } from '../../types/randevu'
 import { useToast } from '../../toast'
 import { AlertBox, Button, Input, ModalScrim, Textarea } from '../ui'
+import { RandevuHatirlatmaField, type RandevuHatirlatmaPlanInput } from './RandevuHatirlatmaField'
 import {
   RANDEVU_FORM_MODAL_WIDTH,
   RandevuFormField,
@@ -70,6 +71,7 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
   const [muvekkilQ, setMuvekkilQ] = useState('')
   const [debouncedMuvekkilQ, setDebouncedMuvekkilQ] = useState('')
   const [formError, setFormError] = useState<string | null>(null)
+  const [hatirlatmaPlan, setHatirlatmaPlan] = useState<RandevuHatirlatmaPlanInput>({ mode: 'VARSAYILAN' })
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedMuvekkilQ(muvekkilQ.trim()), 300)
@@ -116,7 +118,8 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
       aciklama: aciklama.trim() || null,
       muvekkilId: muvekkilId || null,
       dosyaId: dosyaId || null,
-      sorumluUserId: sorumluUserId || null
+      sorumluUserId: sorumluUserId || null,
+      hatirlatmaPlan: muvekkilId ? hatirlatmaPlan : undefined
     }
   }
 
@@ -296,6 +299,13 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
             <RandevuFormField label="Açıklama">
               <Textarea value={aciklama} onChange={(e) => setAciklama(e.target.value)} rows={3} />
             </RandevuFormField>
+
+            <RandevuHatirlatmaField
+              muvekkilSecili={Boolean(muvekkilId)}
+              randevuId={isEdit ? randevu?.id : undefined}
+              value={hatirlatmaPlan}
+              onChange={setHatirlatmaPlan}
+            />
           </RandevuModalBody>
 
           <RandevuModalFooter

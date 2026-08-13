@@ -91,6 +91,7 @@ export type HazirSablonKatalogItem = {
   canSubmitToMeta: boolean
   canUseInAutomation: boolean
   local: Record<string, unknown> | null
+  templateGroup?: 'TAHSILAT' | 'RANDEVU'
 }
 
 export async function getHazirSablonKutuphanesi(): Promise<{

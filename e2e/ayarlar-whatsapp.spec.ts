@@ -37,6 +37,7 @@ async function expectWhatsAppAyarlari(page: import('@playwright/test').Page): Pr
   await openAyarlarSection(page, /^WhatsApp$/i, 'whatsapp')
   await expect(page.getByText(/WhatsApp Bağlantısı/i)).toBeVisible()
   await expect(page.getByText(/Otomatik WhatsApp Hatırlatmaları/i)).toBeVisible()
+  await expect(page.getByText(/Randevu Hatırlatmaları/i)).toBeVisible()
   await expect(page.getByText(/Hazır Şablon Kütüphanesi/i)).toHaveCount(0)
   await expect(page.getByText(/Toplam hazır şablon:/i)).toHaveCount(0)
 }
