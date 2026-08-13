@@ -83,25 +83,17 @@ export type TahsilatBildirimAyarDto = {
 
 
 export type TahsilatBildirimKuraliDto = {
-
   id: string
-
   tenantId: string
-
   kuralTuru: BildirimKuralTuru
-
   aktifMi: boolean
-
   gunOffset: number
-
   gonderimSaatiDk: number
-
   kanal: BildirimKanali
-
+  metaSablonId?: string | null
+  libraryKey?: string | null
   createdAt: string
-
   updatedAt: string
-
 }
 
 

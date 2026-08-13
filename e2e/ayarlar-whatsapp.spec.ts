@@ -30,6 +30,7 @@ async function expectWhatsAppAyarlari(page: import('@playwright/test').Page): Pr
 
   await expect(page).toHaveURL(/bolum=whatsapp/)
   await expect(page.getByText(/WhatsApp Bağlantısı/i)).toBeVisible()
+  await expect(page.getByText(/Hazır Şablon Kütüphanesi/i)).toBeVisible()
 }
 
 test.describe('Ayarlar → WhatsApp (tenant rolü)', () => {

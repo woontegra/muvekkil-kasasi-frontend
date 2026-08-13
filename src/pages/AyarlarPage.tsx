@@ -10,6 +10,7 @@ import { KullaniciGuvenlikPanel } from '../components/ayarlar/panels/KullaniciGu
 import { LisansKullanimPanel } from '../components/ayarlar/panels/LisansKullanimPanel'
 import { SistemBilgisiPanel } from '../components/ayarlar/panels/SistemBilgisiPanel'
 import { WhatsappBaglantiPanel } from '../components/ayarlar/panels/WhatsappBaglantiPanel'
+import { WhatsappHazirSablonKutuphanesiPanel } from '../components/ayarlar/panels/WhatsappHazirSablonKutuphanesiPanel'
 import { WhatsappHatirlatmalariPanel } from '../components/ayarlar/panels/WhatsappHatirlatmalariPanel'
 import { VeriAktarimiPanel } from '../components/ayarlar/panels/VeriVeDenetimPanels'
 import {
@@ -84,6 +85,7 @@ export function AyarlarPage(): ReactElement {
           {activeSection === 'whatsapp' ? (
             <div className="space-y-5">
               <WhatsappBaglantiPanel />
+              <WhatsappHazirSablonKutuphanesiPanel />
               {isYonetici ? <WhatsappHatirlatmalariPanel /> : null}
             </div>
           ) : null}

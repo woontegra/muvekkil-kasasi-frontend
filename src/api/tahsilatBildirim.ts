@@ -53,6 +53,16 @@ export async function updateTahsilatBildirimKural(
   )
 }
 
+export async function assignTahsilatBildirimKuralMetaSablon(
+  id: string,
+  metaSablonId: string | null
+): Promise<{ ok: true; metaSablonId?: string | null; libraryKey?: string | null }> {
+  return apiFetch(`/api/v1/tahsilat-bildirim/kurallar/${encodeURIComponent(id)}/meta-sablon`, {
+    method: 'PATCH',
+    body: JSON.stringify({ metaSablonId })
+  })
+}
+
 export async function updateTahsilatBildirimSablon(
   id: string,
   body: UpdateTahsilatBildirimSablonPayload

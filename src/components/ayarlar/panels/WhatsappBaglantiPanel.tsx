@@ -12,7 +12,9 @@ import {
 } from '../../../api/whatsappBaglanti'
 import { friendlyClientErrorMessage } from '../../../api/client'
 import { useAuth } from '../../../contexts/AuthContext'
+import { useAdminAuth } from '../../../contexts/AdminAuthContext'
 import { isYoneticiRole } from '../../../lib/isYonetici'
+import { isSuperAdminRole } from '../../../lib/adminRoles'
 import { useToast } from '../../../toast'
 import { AlertBox, Badge, Button, useConfirm } from '../../ui'
 import { AyarlarPanelShell } from '../shared'
@@ -97,6 +99,9 @@ function loadFacebookSdk(appId: string, graphVersion: string): Promise<void> {
 
 export function WhatsappBaglantiPanel(): ReactElement {
   const { session } = useAuth()
+  const { admin: platformAdmin, isAuthenticated: platformAdminOk } = useAdminAuth()
+  const showSharedTestBadges =
+    platformAdminOk && isSuperAdminRole(platformAdmin?.rol) && platformAdmin?.aktifMi === true
   const isYonetici = isYoneticiRole(session?.user.role)
   const toast = useToast()
   const { confirm } = useConfirm()
@@ -283,6 +288,16 @@ export function WhatsappBaglantiPanel(): ReactElement {
           <Badge variant="primary" className="normal-case tracking-normal">
             Webhook override aktif
           </Badge>
+        ) : null}
+        {showSharedTestBadges && connected && d?.sharedWebhookTestConnection ? (
+          <>
+            <Badge variant="success" className="normal-case tracking-normal">
+              WhatsApp API bağlı
+            </Badge>
+            <Badge variant="default" className="normal-case tracking-normal">
+              Webhook paylaşılmış/test bağlantısı
+            </Badge>
+          </>
         ) : null}
       </div>
 

@@ -21,6 +21,8 @@ export type WhatsAppBaglantiDurumResponse = {
   cloudApiEnabled?: boolean
   aktifProvider?: string
   gercekGonderimAktif?: boolean
+  /** BAGLI + webhook override yok — SuperAdmin UI için paylaşılan/test bağlantısı. */
+  sharedWebhookTestConnection?: boolean
   templateOzet?: {
     onayli: number
     bekleyen: number
@@ -70,4 +72,57 @@ export async function senkronWhatsAppSablonlari(): Promise<{
 
 export async function kaldirWhatsAppBaglanti(): Promise<{ ok: true; baglanti: Record<string, unknown> }> {
   return apiFetch('/api/v1/whatsapp-baglanti/baglantiyi-kaldir', { method: 'POST', body: '{}' })
+}
+
+export type HazirSablonKatalogItem = {
+  libraryKey: string
+  displayName: string
+  shortDescription: string
+  suggestedUse: string
+  category: string
+  language: string
+  metaTemplateName: string
+  bodyPreview: string
+  variables: string[]
+  suggestedKuralTuru: string | null
+  statusCode: string
+  statusLabel: string
+  rejectionReason: string | null
+  canSubmitToMeta: boolean
+  canUseInAutomation: boolean
+  local: Record<string, unknown> | null
+}
+
+export async function getHazirSablonKutuphanesi(): Promise<{
+  ok: true
+  catalog: HazirSablonKatalogItem[]
+  connectionReady: boolean
+}> {
+  return apiFetch('/api/v1/whatsapp-baglanti/hazir-sablon-kutuphanesi')
+}
+
+export async function metaOnayinaGonderHazirSablon(libraryKey: string): Promise<{
+  ok: true
+  alreadyExists?: boolean
+  template?: Record<string, unknown>
+  note?: string
+}> {
+  return apiFetch(
+    `/api/v1/whatsapp-baglanti/hazir-sablon-kutuphanesi/${encodeURIComponent(libraryKey)}/meta-onayina-gonder`,
+    { method: 'POST', body: '{}' }
+  )
+}
+
+export async function getOnayliWhatsAppSablonlari(): Promise<{
+  ok: true
+  templates: Array<{
+    id: string
+    libraryKey: string | null
+    metaName: string
+    language: string
+    statusNormalized: string
+    statusLabel: string
+  }>
+}> {
+  return apiFetch('/api/v1/whatsapp-baglanti/onayli-sablonlar')
 }

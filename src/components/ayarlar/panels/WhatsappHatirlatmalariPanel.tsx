@@ -3,6 +3,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  assignTahsilatBildirimKuralMetaSablon,
   getTahsilatBildirimAyarlar,
   invalidateTahsilatBildirim,
   planlaTahsilatBildirimleri,
@@ -11,6 +12,7 @@ import {
   updateTahsilatBildirimKural,
   updateTahsilatBildirimSablon
 } from '../../../api/tahsilatBildirim'
+import { getOnayliWhatsAppSablonlari } from '../../../api/whatsappBaglanti'
 import { friendlyClientErrorMessage } from '../../../api/client'
 import { APP_BASE } from '../../../config/appPaths'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -137,6 +139,25 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     queryFn: getTahsilatBildirimAyarlar,
     enabled: isYonetici,
     staleTime: 30_000
+  })
+
+  const onayliSablonQ = useQuery({
+    queryKey: [...TAHSILAT_BILDIRIM_QUERY_KEY, 'onayli-meta-sablonlar'],
+    queryFn: getOnayliWhatsAppSablonlari,
+    enabled: isYonetici,
+    staleTime: 30_000
+  })
+
+  const assignMetaMu = useMutation({
+    mutationFn: (input: { kuralId: string; metaSablonId: string | null }) =>
+      assignTahsilatBildirimKuralMetaSablon(input.kuralId, input.metaSablonId),
+    onSuccess: () => {
+      invalidateTahsilatBildirim(qc)
+      toast.success('Otomasyon şablonu güncellendi.')
+    },
+    onError: (err) => {
+      toast.error(friendlyClientErrorMessage(err, 'Şablon atanamadı.'))
+    }
   })
 
   const [otomasyonAktif, setOtomasyonAktif] = useState(false)
@@ -454,6 +475,32 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                     />
                     Bu hatırlatmayı kullan
                   </label>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-muted">Onaylı Meta şablon</label>
+                  <select
+                    className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink"
+                    value={k.metaSablonId ?? ''}
+                    disabled={assignMetaMu.isPending || onayliSablonQ.isLoading}
+                    onChange={(e) => {
+                      const v = e.target.value
+                      assignMetaMu.mutate({
+                        kuralId: k.id,
+                        metaSablonId: v ? v : null
+                      })
+                    }}
+                  >
+                    <option value="">Şablon seçilmedi (otomasyon Cloud göndermez)</option>
+                    {(onayliSablonQ.data?.templates ?? []).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.statusLabel}: {t.metaName} ({t.language})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[11px] text-ink-muted">
+                    Yalnızca onaylı şablonlar listelenir. Onaylanmadan gerçek otomasyon Cloud gönderimi yapılmaz.
+                  </p>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
