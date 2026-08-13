@@ -11,26 +11,34 @@ async function loginAs(page: import('@playwright/test').Page, user: string, pass
   await expect(page).toHaveURL(/\/app(\/|$)/, { timeout: 30_000 })
 }
 
-async function expectWhatsAppAyarlari(page: import('@playwright/test').Page): Promise<void> {
+async function openAyarlarSection(
+  page: import('@playwright/test').Page,
+  sectionLabel: RegExp,
+  sectionId: string
+): Promise<void> {
   await page.goto('/app/ayarlar')
   await expect(page.getByRole('heading', { name: /^Ayarlar$/i })).toBeVisible({ timeout: 20_000 })
 
-  const navWhatsApp = page.getByRole('navigation', { name: /Ayar kategorileri/i }).getByRole('button', {
-    name: /^WhatsApp$/i
+  const navItem = page.getByRole('navigation', { name: /Ayar kategorileri/i }).getByRole('button', {
+    name: sectionLabel
   })
-  const mobileSelect = page.locator('select').filter({ has: page.locator('option', { hasText: 'WhatsApp' }) })
+  const mobileSelect = page.locator('select').filter({ has: page.locator('option', { hasText: sectionLabel }) })
 
-  if (await navWhatsApp.isVisible().catch(() => false)) {
-    await expect(navWhatsApp).toBeVisible()
-    await navWhatsApp.click()
+  if (await navItem.isVisible().catch(() => false)) {
+    await navItem.click()
   } else {
-    await expect(mobileSelect).toBeVisible()
-    await mobileSelect.selectOption('whatsapp')
+    await mobileSelect.selectOption(sectionId)
   }
 
-  await expect(page).toHaveURL(/bolum=whatsapp/)
+  await expect(page).toHaveURL(new RegExp(`bolum=${sectionId}`))
+}
+
+async function expectWhatsAppAyarlari(page: import('@playwright/test').Page): Promise<void> {
+  await openAyarlarSection(page, /^WhatsApp$/i, 'whatsapp')
   await expect(page.getByText(/WhatsApp Bağlantısı/i)).toBeVisible()
-  await expect(page.getByText(/Hazır Şablon Kütüphanesi/i)).toBeVisible()
+  await expect(page.getByText(/Otomatik WhatsApp Hatırlatmaları/i)).toBeVisible()
+  await expect(page.getByText(/Hazır Şablon Kütüphanesi/i)).toHaveCount(0)
+  await expect(page.getByText(/Toplam hazır şablon:/i)).toHaveCount(0)
 }
 
 test.describe('Ayarlar → WhatsApp (tenant rolü)', () => {

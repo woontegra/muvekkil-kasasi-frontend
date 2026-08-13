@@ -10,7 +10,7 @@ import { KullaniciGuvenlikPanel } from '../components/ayarlar/panels/KullaniciGu
 import { LisansKullanimPanel } from '../components/ayarlar/panels/LisansKullanimPanel'
 import { SistemBilgisiPanel } from '../components/ayarlar/panels/SistemBilgisiPanel'
 import { WhatsappBaglantiPanel } from '../components/ayarlar/panels/WhatsappBaglantiPanel'
-import { WhatsappHazirSablonKutuphanesiPanel } from '../components/ayarlar/panels/WhatsappHazirSablonKutuphanesiPanel'
+import { WhatsappSablonlariPanel } from '../components/ayarlar/panels/WhatsappSablonlariPanel'
 import { WhatsappHatirlatmalariPanel } from '../components/ayarlar/panels/WhatsappHatirlatmalariPanel'
 import { VeriAktarimiPanel } from '../components/ayarlar/panels/VeriVeDenetimPanels'
 import {
@@ -28,6 +28,7 @@ function parseSection(raw: string | null): AyarlarSectionId | null {
     raw === 'buro' ||
     raw === 'hesap-donemi' ||
     raw === 'whatsapp' ||
+    raw === 'whatsapp-sablonlari' ||
     raw === 'kullanici' ||
     raw === 'veri' ||
     raw === 'denetim' ||
@@ -85,10 +86,10 @@ export function AyarlarPage(): ReactElement {
           {activeSection === 'whatsapp' ? (
             <div className="space-y-5">
               <WhatsappBaglantiPanel />
-              <WhatsappHazirSablonKutuphanesiPanel />
               {isYonetici ? <WhatsappHatirlatmalariPanel /> : null}
             </div>
           ) : null}
+          {activeSection === 'whatsapp-sablonlari' ? <WhatsappSablonlariPanel /> : null}
           {activeSection === 'kullanici' ? <KullaniciGuvenlikPanel /> : null}
           {activeSection === 'veri' && isBuroSahibi ? <VeriAktarimiPanel /> : null}
           {activeSection === 'denetim' && canViewAudit ? (

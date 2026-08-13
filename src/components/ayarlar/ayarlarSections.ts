@@ -6,6 +6,7 @@ export type AyarlarSectionId =
   | 'buro'
   | 'hesap-donemi'
   | 'whatsapp'
+  | 'whatsapp-sablonlari'
   | 'kullanici'
   | 'veri'
   | 'denetim'
@@ -56,6 +57,7 @@ export function buildAyarlarNavItems(opts: AyarlarAccess): AyarlarNavItem[] {
   // Platform admin bayrağı yok — yalnızca tenant WhatsApp görünürlüğü.
   if (opts.canViewWhatsApp) {
     items.push({ id: 'whatsapp', label: 'WhatsApp' })
+    items.push({ id: 'whatsapp-sablonlari', label: 'WhatsApp Şablonları' })
   }
 
   items.push({ id: 'kullanici', label: 'Kullanıcı & Güvenlik' })
@@ -78,7 +80,7 @@ export function buildAyarlarNavItems(opts: AyarlarAccess): AyarlarNavItem[] {
 
 export function isAyarlarSectionAllowed(id: AyarlarSectionId, opts: AyarlarAccess): boolean {
   if (id === 'hesap-donemi') return opts.isYonetici
-  if (id === 'whatsapp') return opts.canViewWhatsApp
+  if (id === 'whatsapp' || id === 'whatsapp-sablonlari') return opts.canViewWhatsApp
   if (id === 'veri') return opts.isBuroSahibi
   if (id === 'denetim') return opts.canViewAudit
   return true

@@ -9,24 +9,26 @@ import {
   planlaTahsilatBildirimleri,
   TAHSILAT_BILDIRIM_QUERY_KEY,
   updateTahsilatBildirimAyarlar,
-  updateTahsilatBildirimKural,
-  updateTahsilatBildirimSablon
+  updateTahsilatBildirimKural
 } from '../../../api/tahsilatBildirim'
 import { getOnayliWhatsAppSablonlari } from '../../../api/whatsappBaglanti'
 import { friendlyClientErrorMessage } from '../../../api/client'
 import { APP_BASE } from '../../../config/appPaths'
 import { useAuth } from '../../../contexts/AuthContext'
 import { isYoneticiRole } from '../../../lib/isYonetici'
-import { cn } from '../../../lib/cn'
 import { useToast } from '../../../toast'
-import type {
-  BildirimKuralTuru,
-  TahsilatBildirimKuraliDto,
-  TahsilatBildirimSablonuDto
-} from '../../../types/tahsilatBildirim'
+import type { BildirimKuralTuru, TahsilatBildirimKuraliDto } from '../../../types/tahsilatBildirim'
 import { bildirimKuralTuruLabel } from '../../../types/tahsilatBildirim'
-import { AlertBox, Badge, Button, Input, Textarea, useConfirm } from '../../ui'
+import { AlertBox, Badge, Button, Input, useConfirm } from '../../ui'
 import { AyarlarPanelShell } from '../shared'
+
+const SABLONLAR_PATH = `${APP_BASE}/ayarlar?bolum=whatsapp-sablonlari`
+
+const KURAL_LIBRARY_KEYS: Record<BildirimKuralTuru, readonly string[]> = {
+  VADEDEN_ONCE: ['TAHSILAT_VADE_ONCESI'],
+  VADE_GUNU: ['TAHSILAT_VADE_GUNU'],
+  VADE_SONRASI: ['TAHSILAT_GECIKMIS']
+}
 
 function minutesToHHmm(dk: number): string {
   const clamped = Math.max(0, Math.min(1439, Math.floor(dk)))
@@ -44,13 +46,6 @@ function hhmmToMinutes(value: string): number | null {
   return h * 60 + min
 }
 
-function templateMissingVars(metin: string): string[] {
-  const missing: string[] = []
-  if (!metin.includes('{kalanTutar}')) missing.push('Kalan tutar')
-  if (!metin.includes('{muvekkilAdi}')) missing.push('Müvekkil adı')
-  return missing
-}
-
 const KURAL_ORDER: BildirimKuralTuru[] = ['VADEDEN_ONCE', 'VADE_GUNU', 'VADE_SONRASI']
 
 const KURAL_ACCORDION_TITLE: Record<BildirimKuralTuru, string> = {
@@ -59,21 +54,18 @@ const KURAL_ACCORDION_TITLE: Record<BildirimKuralTuru, string> = {
   VADE_SONRASI: 'Vadesinden sonra'
 }
 
-const MESAJ_BILGILERI: Array<{ label: string; token: string }> = [
-  { label: 'Müvekkil adı', token: '{muvekkilAdi}' },
-  { label: 'Dosya bilgisi', token: '{dosyaBilgisi}' },
-  { label: 'Vade tarihi', token: '{vadeTarihi}' },
-  { label: 'Kalan tutar', token: '{kalanTutar}' },
-  { label: 'Taksit tutarı', token: '{taksitTutari}' },
-  { label: 'Ödenen tutar', token: '{odenenTutar}' },
-  { label: 'Gecikme günü', token: '{gecikmeGunu}' },
-  { label: 'Büro adı', token: '{buroAdi}' }
-]
-
 type RuleDraft = {
   aktifMi: boolean
   gunOffset: number
   gonderimSaati: string
+}
+
+type OnayliSablon = {
+  id: string
+  libraryKey: string | null
+  metaName: string
+  language: string
+  statusLabel: string
 }
 
 function kuralGunAlani(kuralTuru: BildirimKuralTuru): {
@@ -99,6 +91,11 @@ function kuralGunAlani(kuralTuru: BildirimKuralTuru): {
     showInput: false,
     hint: 'Mesaj vade günü gönderilir.'
   }
+}
+
+function sablonlarForKural(templates: OnayliSablon[], kuralTuru: BildirimKuralTuru): OnayliSablon[] {
+  const allowed = new Set(KURAL_LIBRARY_KEYS[kuralTuru])
+  return templates.filter((t) => t.libraryKey != null && allowed.has(t.libraryKey))
 }
 
 function AccordionSection(props: {
@@ -132,7 +129,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   const toast = useToast()
   const { confirm } = useConfirm()
   const qc = useQueryClient()
-  const sablonRefs = useRef<Record<string, HTMLTextAreaElement | null>>({})
 
   const ayarlarQ = useQuery({
     queryKey: [...TAHSILAT_BILDIRIM_QUERY_KEY, 'ayarlar'],
@@ -164,7 +160,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   const [izinliBas, setIzinliBas] = useState('10:00')
   const [izinliBit, setIzinliBit] = useState('20:00')
   const [ruleDrafts, setRuleDrafts] = useState<Record<string, RuleDraft>>({})
-  const [sablonDrafts, setSablonDrafts] = useState<Record<string, string>>({})
   const [openAccordions, setOpenAccordions] = useState<Record<BildirimKuralTuru, boolean>>({
     VADEDEN_ONCE: true,
     VADE_GUNU: false,
@@ -176,7 +171,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   useEffect(() => {
     const data = ayarlarQ.data
     if (!data) return
-    const stamp = `${data.ayar.updatedAt}|${data.kurallar.map((k) => `${k.id}:${k.updatedAt}`).join(',')}|${data.sablonlar.map((s) => `${s.id}:${s.updatedAt}`).join(',')}`
+    const stamp = `${data.ayar.updatedAt}|${data.kurallar.map((k) => `${k.id}:${k.updatedAt}`).join(',')}`
     if (hydratedAyarUpdatedAtRef.current === stamp) return
     if (dirtyRef.current && hydratedAyarUpdatedAtRef.current != null) return
     hydratedAyarUpdatedAtRef.current = stamp
@@ -193,11 +188,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
       }
     }
     setRuleDrafts(rd)
-    const sd: Record<string, string> = {}
-    for (const s of data.sablonlar) {
-      sd[s.id] = s.metin
-    }
-    setSablonDrafts(sd)
   }, [ayarlarQ.data])
 
   const kurallarSirali = useMemo(() => {
@@ -205,13 +195,10 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     return [...list].sort((a, b) => KURAL_ORDER.indexOf(a.kuralTuru) - KURAL_ORDER.indexOf(b.kuralTuru))
   }, [ayarlarQ.data?.kurallar])
 
-  const sablonByKural = useMemo(() => {
-    const map = new Map<BildirimKuralTuru, TahsilatBildirimSablonuDto>()
-    for (const s of ayarlarQ.data?.sablonlar ?? []) {
-      map.set(s.kuralTuru, s)
-    }
-    return map
-  }, [ayarlarQ.data?.sablonlar])
+  const onayliSablonlar = useMemo(
+    () => (onayliSablonQ.data?.templates ?? []) as OnayliSablon[],
+    [onayliSablonQ.data?.templates]
+  )
 
   const saveMu = useMutation({
     mutationFn: async () => {
@@ -243,14 +230,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
           gunOffset: k.kuralTuru === 'VADE_GUNU' ? 0 : d.gunOffset,
           gonderimSaatiDk
         })
-      }
-
-      const templates = ayarlarQ.data?.sablonlar ?? []
-      for (const s of templates) {
-        const metin = (sablonDrafts[s.id] ?? s.metin).trim()
-        if (metin !== s.metin.trim()) {
-          await updateTahsilatBildirimSablon(s.id, { metin })
-        }
       }
     },
     onSuccess: () => {
@@ -293,31 +272,12 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     }))
   }
 
-  const insertToken = (sablonId: string, token: string): void => {
-    markDirty()
-    const el = sablonRefs.current[sablonId]
-    const current = sablonDrafts[sablonId] ?? ''
-    if (!el) {
-      setSablonDrafts((prev) => ({ ...prev, [sablonId]: `${current}${token}` }))
-      return
-    }
-    const start = el.selectionStart ?? current.length
-    const end = el.selectionEnd ?? current.length
-    const next = `${current.slice(0, start)}${token}${current.slice(end)}`
-    setSablonDrafts((prev) => ({ ...prev, [sablonId]: next }))
-    window.requestAnimationFrame(() => {
-      el.focus()
-      const pos = start + token.length
-      el.setSelectionRange(pos, pos)
-    })
-  }
-
   const handleOtomasyonToggle = async (next: boolean): Promise<void> => {
     if (next && !otomasyonAktif) {
       const ok = await confirm({
         title: 'Otomatik hatırlatmaları açmak istiyor musunuz?',
         message:
-          'Açıldığında sistem, kurallara göre tahsilat hatırlatmalarını planlar. Mesajları WhatsApp üzerinden siz gönderirsiniz.',
+          'Açıldığında sistem, kurallara göre tahsilat hatırlatmalarını planlar. Onaylı WhatsApp şablonu seçili kurallar Cloud üzerinden gönderilir.',
         confirmLabel: 'Hatırlatmaları aç',
         cancelLabel: 'Vazgeç'
       })
@@ -331,8 +291,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     if (otomasyonAktif && !ayarlarQ.data?.ayar.otomasyonAktif) {
       const ok = await confirm({
         title: 'Ayarları kaydetmek istiyor musunuz?',
-        message:
-          'Otomatik hatırlatmalar açık olarak kaydedilecek. Kurallar ve mesaj metinleri de birlikte güncellenir.',
+        message: 'Otomatik hatırlatmalar açık olarak kaydedilecek. Kural zamanlamaları da birlikte güncellenir.',
         confirmLabel: 'Kaydet ve aç',
         cancelLabel: 'Vazgeç'
       })
@@ -341,16 +300,10 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     saveMu.mutate()
   }
 
-  const ruleTime = (tur: BildirimKuralTuru): string => {
-    const k = kurallarSirali.find((r) => r.kuralTuru === tur)
-    if (!k) return '—'
-    return ruleDrafts[k.id]?.gonderimSaati ?? '—'
-  }
-
   return (
     <AyarlarPanelShell
-      title="WhatsApp Hatırlatmaları"
-      description="Hatırlatma mesajları program tarafından hazırlanır. Mesajı göndermek için WhatsApp'ta Aç butonunu kullanabilirsiniz."
+      title="Otomatik WhatsApp Hatırlatmaları"
+      description="Vekalet taksitleri için otomatik hatırlatma kurallarını ve onaylı WhatsApp şablonlarını yönetin."
     >
       {ayarlarQ.isLoading ? <p className="text-sm text-ink-muted">Ayarlar yükleniyor…</p> : null}
       {ayarlarQ.isError ? (
@@ -361,18 +314,9 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
 
       <div className="space-y-4">
         <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
-          <p className="text-sm font-semibold text-ink">Gönderim yöntemi</p>
-          <p className="mt-1 text-sm font-medium text-ink">Manuel WhatsApp</p>
-          <p className="mt-2 text-sm text-ink-muted">
-            Hatırlatmalar program tarafından hazırlanır. Gönderim WhatsApp üzerinden sizin tarafınızdan tamamlanır.
-          </p>
-          <p className="mt-1 text-xs text-ink-subtle">Gönderim, sizin WhatsApp hesabınız üzerinden tamamlanır.</p>
-        </div>
-
-        <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-ink">Otomatik hatırlatmalar</p>
+              <p className="text-sm font-semibold text-ink">Otomasyon</p>
               <p className="mt-1 text-sm text-ink-muted">
                 Vekalet taksitleri için kurallara göre hatırlatma planlaması yapılır.
               </p>
@@ -394,31 +338,9 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
           </div>
         </div>
 
-        <p className="text-sm leading-relaxed text-ink-muted">
-          Mesajlar yalnızca açıkça izin verdiğiniz müvekkillere gönderilir. Detaylı liste için{' '}
-          <Link to={`${APP_BASE}/bildirim-merkezi`} className="font-semibold text-primary hover:underline">
-            Bildirim Merkezi
-          </Link>
-          .
-        </p>
-
         <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Gönderim saatleri</p>
-          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-3">
-            <div className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-surface-muted/20 px-3 py-2">
-              <span className="text-ink-muted">Vadesinden önce</span>
-              <span className="font-mono font-semibold text-ink">{ruleTime('VADEDEN_ONCE')}</span>
-            </div>
-            <div className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-surface-muted/20 px-3 py-2">
-              <span className="text-ink-muted">Vade günü</span>
-              <span className="font-mono font-semibold text-ink">{ruleTime('VADE_GUNU')}</span>
-            </div>
-            <div className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-surface-muted/20 px-3 py-2">
-              <span className="text-ink-muted">Vade sonrası</span>
-              <span className="font-mono font-semibold text-ink">{ruleTime('VADE_SONRASI')}</span>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Gönderim saat aralığı</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Input
               label="Mesajların gönderilmeye başlayabileceği saat"
               value={izinliBas}
@@ -447,11 +369,9 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
             const d = ruleDrafts[k.id]
             if (!d) return null
             const gunAlani = kuralGunAlani(k.kuralTuru)
-            const sablon = sablonByKural.get(k.kuralTuru)
-            const metin = sablon ? (sablonDrafts[sablon.id] ?? sablon.metin) : ''
-            const missing = templateMissingVars(metin)
             const accordionTitle = KURAL_ACCORDION_TITLE[k.kuralTuru]
             const isOpen = openAccordions[k.kuralTuru]
+            const kuralSablonlari = sablonlarForKural(onayliSablonlar, k.kuralTuru)
 
             return (
               <AccordionSection
@@ -475,32 +395,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                     />
                     Bu hatırlatmayı kullan
                   </label>
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-ink-muted">Onaylı Meta şablon</label>
-                  <select
-                    className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink"
-                    value={k.metaSablonId ?? ''}
-                    disabled={assignMetaMu.isPending || onayliSablonQ.isLoading}
-                    onChange={(e) => {
-                      const v = e.target.value
-                      assignMetaMu.mutate({
-                        kuralId: k.id,
-                        metaSablonId: v ? v : null
-                      })
-                    }}
-                  >
-                    <option value="">Şablon seçilmedi (otomasyon Cloud göndermez)</option>
-                    {(onayliSablonQ.data?.templates ?? []).map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.statusLabel}: {t.metaName} ({t.language})
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-[11px] text-ink-muted">
-                    Yalnızca onaylı şablonlar listelenir. Onaylanmadan gerçek otomasyon Cloud gönderimi yapılmaz.
-                  </p>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -530,49 +424,37 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                   />
                 </div>
 
-                {sablon ? (
-                  <div className="space-y-2">
-                    <Textarea
-                      ref={(el) => {
-                        sablonRefs.current[sablon.id] = el
-                      }}
-                      label="Gönderilecek mesaj"
-                      rows={4}
-                      value={metin}
-                      onChange={(e) => {
-                        markDirty()
-                        setSablonDrafts((prev) => ({ ...prev, [sablon.id]: e.target.value }))
-                      }}
-                      disabled={saveMu.isPending}
-                    />
-                    <div>
-                      <p className="mb-1.5 text-xs font-semibold text-ink-muted">Mesajda kullanabileceğiniz otomatik bilgiler</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {MESAJ_BILGILERI.map((item) => (
-                          <button
-                            key={item.token}
-                            type="button"
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded-md border border-border bg-white px-2 py-1 text-left text-xs font-medium text-ink shadow-sm',
-                              'hover:border-primary/40 hover:bg-primary-soft/40 disabled:opacity-50'
-                            )}
-                            disabled={saveMu.isPending}
-                            title={`${item.label} ekle (${item.token})`}
-                            onClick={() => insertToken(sablon.id, item.token)}
-                          >
-                            <span>{item.label}</span>
-                            <span className="font-normal text-ink-subtle">{item.token}</span>
-                          </button>
-                        ))}
-                      </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-ink-muted">WhatsApp şablonu</label>
+                  {kuralSablonlari.length === 0 ? (
+                    <div className="flex flex-wrap items-center gap-2 rounded-md border border-border/70 bg-surface-muted/20 px-3 py-2.5 text-sm text-ink-muted">
+                      <span>Henüz onaylanmış WhatsApp şablonunuz bulunmuyor.</span>
+                      <Link to={SABLONLAR_PATH} className="text-xs font-semibold text-primary hover:underline">
+                        Şablonlara Git
+                      </Link>
                     </div>
-                    {missing.length > 0 ? (
-                      <p className="text-xs text-warning-ink">
-                        Uyarı: mesajda {missing.join(' ve ')} bulunamadı. Bu bilgilerin mesajda kalması önerilir.
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
+                  ) : (
+                    <select
+                      className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink"
+                      value={k.metaSablonId ?? ''}
+                      disabled={assignMetaMu.isPending || onayliSablonQ.isLoading}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        assignMetaMu.mutate({
+                          kuralId: k.id,
+                          metaSablonId: v ? v : null
+                        })
+                      }}
+                    >
+                      <option value="">Şablon seçilmedi</option>
+                      {kuralSablonlari.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.metaName} ({t.language})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
               </AccordionSection>
             )
           })}

@@ -16,16 +16,20 @@ for (const role of roles) {
   const ids = buildAyarlarNavItems(access).map((i) => i.id)
   assert.equal(access.canViewWhatsApp, true, `${role} canViewWhatsApp`)
   assert.ok(ids.includes('whatsapp'), `${role} nav whatsapp`)
+  assert.ok(ids.includes('whatsapp-sablonlari'), `${role} nav whatsapp-sablonlari`)
   assert.equal(access.canManageWhatsApp, role !== 'KATIP_PERSONEL', `${role} manage`)
 }
 
-// Platform admin oturumu AyarlarPage'e parametre olarak geçmez; tenant role BURO_SAHIBI kalır.
 const linkedOwner = resolveAyarlarAccess('BURO_SAHIBI')
 assert.equal(linkedOwner.canViewWhatsApp, true)
 assert.equal(linkedOwner.canManageWhatsApp, true)
-assert.ok(buildAyarlarNavItems(linkedOwner).some((i) => i.id === 'whatsapp'))
+const linkedNav = buildAyarlarNavItems(linkedOwner)
+assert.ok(linkedNav.some((i) => i.id === 'whatsapp'))
+assert.ok(linkedNav.some((i) => i.id === 'whatsapp-sablonlari'))
+const whatsappIdx = linkedNav.findIndex((i) => i.id === 'whatsapp')
+const sablonIdx = linkedNav.findIndex((i) => i.id === 'whatsapp-sablonlari')
+assert.ok(sablonIdx === whatsappIdx + 1, 'whatsapp-sablonlari hemen whatsapp altında')
 
-// Tanımsız rol → sekme yok (session yok / bozuk payload)
 assert.equal(resolveAyarlarAccess(undefined).canViewWhatsApp, false)
 
 console.log('ayarlar-whatsapp-access-quality: OK')
