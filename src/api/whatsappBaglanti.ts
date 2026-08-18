@@ -123,7 +123,124 @@ export async function getOnayliWhatsAppSablonlari(): Promise<{
     language: string
     statusNormalized: string
     statusLabel: string
+    usageArea?: string | null
   }>
 }> {
   return apiFetch('/api/v1/whatsapp-baglanti/onayli-sablonlar')
+}
+
+export async function getOnayliWhatsAppSablonlariByKural(
+  kuralTuru: 'VADEDEN_ONCE' | 'VADE_GUNU' | 'VADE_SONRASI'
+): Promise<{
+  ok: true
+  templates: Array<{
+    id: string
+    libraryKey: string | null
+    metaName: string
+    language: string
+    statusNormalized: string
+    statusLabel: string
+    usageArea?: string | null
+  }>
+}> {
+  return apiFetch(`/api/v1/whatsapp-baglanti/onayli-sablonlar?kuralTuru=${encodeURIComponent(kuralTuru)}`)
+}
+
+export type OzelSablonDegisken = {
+  index: number
+  systemField:
+    | 'muvekkilAdi'
+    | 'dosyaNumarasi'
+    | 'taksitTutari'
+    | 'kalanTutar'
+    | 'vadeTarihi'
+    | 'odenenTutar'
+    | 'odemeTarihi'
+    | 'randevuTarihi'
+    | 'randevuSaati'
+    | 'buroAdi'
+    | 'buroTelefon'
+  exampleValue: string
+}
+
+export type OzelSablonDto = {
+  id: string
+  displayName: string
+  metaName: string
+  usageArea: string
+  category: 'UTILITY' | 'MARKETING'
+  language: 'tr'
+  bodyText: string
+  footerText: string | null
+  variables: OzelSablonDegisken[]
+  statusNormalized: string
+  rejectionReason: string | null
+  createdAt?: string | null
+  submittedAt?: string | null
+  approvedAt?: string | null
+  lastSyncedAt?: string | null
+  isEditable: boolean
+  isDeletable: boolean
+  canSubmitToMeta: boolean
+}
+
+export type CreateOzelSablonPayload = {
+  displayName: string
+  metaName: string
+  usageArea: 'VADEDEN_ONCE' | 'VADE_GUNU' | 'VADE_SONRASI' | 'KISMI_ODEME_SONRASI' | 'ODEME_ALINDI' | 'RANDEVU_HATIRLATMA' | 'MANUEL'
+  category: 'UTILITY' | 'MARKETING'
+  language: 'tr'
+  bodyText: string
+  footerText?: string | null
+  variables: OzelSablonDegisken[]
+}
+
+export async function getOzelWhatsAppSablonlari(): Promise<{ ok: true; templates: OzelSablonDto[] }> {
+  return apiFetch('/api/v1/whatsapp-baglanti/ozel-sablonlar')
+}
+
+export async function createOzelWhatsAppSablonu(
+  body: CreateOzelSablonPayload
+): Promise<{ ok: true; template: OzelSablonDto }> {
+  return apiFetch('/api/v1/whatsapp-baglanti/ozel-sablonlar', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+}
+
+export async function updateOzelWhatsAppSablonu(
+  id: string,
+  body: CreateOzelSablonPayload
+): Promise<{ ok: true; template: OzelSablonDto }> {
+  return apiFetch(`/api/v1/whatsapp-baglanti/ozel-sablonlar/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify(body)
+  })
+}
+
+export async function deleteOzelWhatsAppSablonu(id: string): Promise<{ ok: true; deletedId: string }> {
+  return apiFetch(`/api/v1/whatsapp-baglanti/ozel-sablonlar/${encodeURIComponent(id)}`, {
+    method: 'DELETE'
+  })
+}
+
+export async function submitOzelWhatsAppSablonu(id: string): Promise<{ ok: true; template: OzelSablonDto }> {
+  return apiFetch(`/api/v1/whatsapp-baglanti/ozel-sablonlar/${encodeURIComponent(id)}/meta-onayina-gonder`, {
+    method: 'POST',
+    body: '{}'
+  })
+}
+
+export async function copyHazirTemplateAsOzel(libraryKey: string): Promise<{ ok: true; template: OzelSablonDto }> {
+  return apiFetch(
+    `/api/v1/whatsapp-baglanti/hazir-sablon-kutuphanesi/${encodeURIComponent(libraryKey)}/kopyala-ozellestir`,
+    { method: 'POST', body: '{}' }
+  )
+}
+
+export async function copyOzelTemplateAsDraft(id: string): Promise<{ ok: true; template: OzelSablonDto }> {
+  return apiFetch(`/api/v1/whatsapp-baglanti/ozel-sablonlar/${encodeURIComponent(id)}/kopyala-ozellestir`, {
+    method: 'POST',
+    body: '{}'
+  })
 }

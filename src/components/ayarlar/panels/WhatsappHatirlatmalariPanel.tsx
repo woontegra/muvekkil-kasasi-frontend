@@ -11,7 +11,7 @@ import {
   updateTahsilatBildirimAyarlar,
   updateTahsilatBildirimKural
 } from '../../../api/tahsilatBildirim'
-import { getOnayliWhatsAppSablonlari } from '../../../api/whatsappBaglanti'
+import { getOnayliWhatsAppSablonlariByKural } from '../../../api/whatsappBaglanti'
 import { friendlyClientErrorMessage } from '../../../api/client'
 import { APP_BASE } from '../../../config/appPaths'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -66,6 +66,7 @@ type OnayliSablon = {
   metaName: string
   language: string
   statusLabel: string
+  usageArea?: string | null
 }
 
 function kuralGunAlani(kuralTuru: BildirimKuralTuru): {
@@ -94,6 +95,7 @@ function kuralGunAlani(kuralTuru: BildirimKuralTuru): {
 }
 
 function sablonlarForKural(templates: OnayliSablon[], kuralTuru: BildirimKuralTuru): OnayliSablon[] {
+  if (templates.some((t) => t.usageArea != null)) return templates
   const allowed = new Set(KURAL_LIBRARY_KEYS[kuralTuru])
   return templates.filter((t) => t.libraryKey != null && allowed.has(t.libraryKey))
 }
@@ -138,8 +140,19 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   })
 
   const onayliSablonQ = useQuery({
-    queryKey: [...TAHSILAT_BILDIRIM_QUERY_KEY, 'onayli-meta-sablonlar'],
-    queryFn: getOnayliWhatsAppSablonlari,
+    queryKey: [...TAHSILAT_BILDIRIM_QUERY_KEY, 'onayli-meta-sablonlar-kurallar'],
+    queryFn: async () => {
+      const [before, today, after] = await Promise.all([
+        getOnayliWhatsAppSablonlariByKural('VADEDEN_ONCE'),
+        getOnayliWhatsAppSablonlariByKural('VADE_GUNU'),
+        getOnayliWhatsAppSablonlariByKural('VADE_SONRASI')
+      ])
+      return {
+        VADEDEN_ONCE: before.templates as OnayliSablon[],
+        VADE_GUNU: today.templates as OnayliSablon[],
+        VADE_SONRASI: after.templates as OnayliSablon[]
+      }
+    },
     enabled: isYonetici,
     staleTime: 30_000
   })
@@ -194,11 +207,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     const list = ayarlarQ.data?.kurallar ?? []
     return [...list].sort((a, b) => KURAL_ORDER.indexOf(a.kuralTuru) - KURAL_ORDER.indexOf(b.kuralTuru))
   }, [ayarlarQ.data?.kurallar])
-
-  const onayliSablonlar = useMemo(
-    () => (onayliSablonQ.data?.templates ?? []) as OnayliSablon[],
-    [onayliSablonQ.data?.templates]
-  )
 
   const saveMu = useMutation({
     mutationFn: async () => {
@@ -371,7 +379,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
             const gunAlani = kuralGunAlani(k.kuralTuru)
             const accordionTitle = KURAL_ACCORDION_TITLE[k.kuralTuru]
             const isOpen = openAccordions[k.kuralTuru]
-            const kuralSablonlari = sablonlarForKural(onayliSablonlar, k.kuralTuru)
+            const kuralSablonlari = sablonlarForKural(onayliSablonQ.data?.[k.kuralTuru] ?? [], k.kuralTuru)
 
             return (
               <AccordionSection

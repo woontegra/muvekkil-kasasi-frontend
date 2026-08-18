@@ -65,7 +65,10 @@ export function WhatsappRandevuHatirlatmalariPanel(): ReactElement | null {
 
   const approvedAll = onayliQ.data?.templates ?? []
   const approved = approvedAll.filter(
-    (t) => t.libraryKey === 'RANDEVU_HATIRLATMA' || t.metaName.toLowerCase().includes('randevu')
+    (t) =>
+      t.libraryKey === 'RANDEVU_HATIRLATMA' ||
+      t.usageArea === 'RANDEVU_HATIRLATMA' ||
+      t.metaName.toLowerCase().includes('randevu')
   )
 
   return (
