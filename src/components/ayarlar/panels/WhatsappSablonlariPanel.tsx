@@ -29,6 +29,8 @@ import {
   emptySablonFormValues,
   slugifyMetaName,
   systemFieldLabel,
+  validateBodyVariableEdges,
+  BODY_VARIABLE_EDGE_MESSAGE,
   type SablonFormValues
 } from './sablonFormShared'
 
@@ -455,6 +457,14 @@ export function WhatsappSablonlariPanel(): ReactElement {
   }
 
   async function submitCustom(id: string): Promise<void> {
+    const item = customTemplates.find((t) => t.id === id)
+    if (item) {
+      const edge = validateBodyVariableEdges(item.bodyText)
+      if (!edge.ok) {
+        toast.error(edge.message || BODY_VARIABLE_EDGE_MESSAGE)
+        return
+      }
+    }
     const ok = await confirm({
       title: 'Meta onayına gönderilsin mi?',
       message: 'Gönderim sonrası içerik ve Meta adı kilitlenir. Değişiklik için kopya oluşturmanız gerekir.',

@@ -48,6 +48,37 @@ export function slugifyMetaName(value: string): string {
   return lower.replace(/[^a-z0-9\s_]/g, '').trim().replace(/\s+/g, '_').replace(/_+/g, '_')
 }
 
+export const BODY_VARIABLE_EDGE_MESSAGE =
+  'Mesaj metni bir değişkenle başlayamaz veya bitemez. Değişkenlerden önce ve sonra sabit bir açıklama ekleyin.'
+
+function hasMeaningfulFixedText(segment: string): boolean {
+  return /[\p{L}\p{N}]/u.test(segment)
+}
+
+/** Meta kuralı: BODY değişkenle başlayamaz/bitemez (frontend uyarı). */
+export function validateBodyVariableEdges(bodyText: string): { ok: true } | { ok: false; message: string } {
+  const trimmed = bodyText.trim()
+  if (!trimmed) return { ok: true }
+
+  if (/^\{\{\d+\}\}/.test(trimmed) || /\{\{\d+\}\}$/.test(trimmed)) {
+    return { ok: false, message: BODY_VARIABLE_EDGE_MESSAGE }
+  }
+
+  const matches = [...trimmed.matchAll(/\{\{\d+\}\}/g)]
+  if (matches.length === 0) return { ok: true }
+
+  const first = matches[0]!
+  const last = matches[matches.length - 1]!
+  const before = trimmed.slice(0, first.index ?? 0)
+  const after = trimmed.slice((last.index ?? 0) + last[0].length)
+
+  if (!hasMeaningfulFixedText(before) || !hasMeaningfulFixedText(after)) {
+    return { ok: false, message: BODY_VARIABLE_EDGE_MESSAGE }
+  }
+
+  return { ok: true }
+}
+
 export function emptySablonFormValues(): SablonFormValues {
   return {
     displayName: '',

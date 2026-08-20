@@ -6,6 +6,7 @@ import {
   SYSTEM_FIELDS,
   systemFieldLabel,
   slugifyMetaName,
+  validateBodyVariableEdges,
   type SablonFormValues
 } from './sablonFormShared'
 
@@ -113,6 +114,9 @@ function ClassificationSection(props: SectionProps): ReactElement {
 
 function MessageSection(props: SectionProps & { compactHint?: boolean }): ReactElement {
   const { values, readOnly } = props
+  const edgeCheck = !readOnly && !props.compactHint ? validateBodyVariableEdges(values.bodyText) : { ok: true as const }
+  const edgeError = edgeCheck.ok ? null : edgeCheck.message
+
   return (
     <SectionFrame framed={props.framed}>
       <div className="space-y-2">
@@ -121,18 +125,25 @@ function MessageSection(props: SectionProps & { compactHint?: boolean }): ReactE
             {props.compactHint ? 'Mesaj metni · örnek mesaj' : 'Mesaj metni'}
           </label>
           <textarea
-            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:bg-surface-muted/40"
+            className={cn(
+              'w-full rounded-md border bg-white px-3 py-2 text-sm text-ink outline-none focus:ring-2 disabled:bg-surface-muted/40',
+              edgeError
+                ? 'border-danger focus:border-danger focus:ring-danger/20'
+                : 'border-border focus:border-primary focus:ring-primary/15'
+            )}
             rows={4}
             value={values.bodyText}
             readOnly={readOnly}
             disabled={readOnly}
+            aria-invalid={edgeError ? true : undefined}
             onChange={(e) => props.onChange({ bodyText: e.target.value })}
           />
         </div>
+        {edgeError ? <p className="text-xs text-danger">{edgeError}</p> : null}
         <p className="text-xs leading-relaxed text-ink-subtle">
           {props.compactHint
             ? 'Mesaj açık, kısa ve gönderim amacıyla uyumlu olmalıdır. Tehdit, baskı veya yanıltıcı ifade kullanmayın.'
-            : 'Değişken kodlarını elle yazmak zorunda değilsiniz; aşağıdaki sistem alanlarından ekleyebilirsiniz.'}
+            : 'Değişken kodlarını elle yazmak zorunda değilsiniz; aşağıdaki sistem alanlarından ekleyebilirsiniz. Meta gönderimi için metin değişkenle başlayıp bitmemelidir.'}
         </p>
       </div>
     </SectionFrame>
