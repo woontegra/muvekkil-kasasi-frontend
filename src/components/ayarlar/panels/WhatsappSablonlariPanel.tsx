@@ -285,13 +285,23 @@ export function WhatsappSablonlariPanel(): ReactElement {
       await qc.invalidateQueries({ queryKey: LIBRARY_QUERY_KEY })
       await qc.invalidateQueries({ queryKey: WHATSAPP_BAGLANTI_QUERY_KEY })
     },
-    onError: (e) => toast.error(friendlyClientErrorMessage(e))
+    onError: (e) =>
+      toast.error(
+        friendlyClientErrorMessage(
+          e,
+          'Şablon Meta hesabında oluşturulamadı. Lütfen bağlantıyı kontrol edip tekrar deneyin.'
+        )
+      )
   })
 
   const syncMu = useMutation({
     mutationFn: senkronWhatsAppSablonlari,
     onSuccess: async (res) => {
-      toast.success(`${res.synced} şablon senkronize edildi.`)
+      const ghost =
+        typeof res.reconciledGhosts === 'number' && res.reconciledGhosts > 0
+          ? ` ${res.reconciledGhosts} hayalet inceleme kaydı temizlendi.`
+          : ''
+      toast.success(`${res.synced} şablon senkronize edildi.${ghost}`)
       await qc.invalidateQueries({ queryKey: LIBRARY_QUERY_KEY })
       await qc.invalidateQueries({ queryKey: OZEL_QUERY_KEY })
     },
@@ -331,7 +341,13 @@ export function WhatsappSablonlariPanel(): ReactElement {
       await qc.invalidateQueries({ queryKey: OZEL_QUERY_KEY })
       await qc.invalidateQueries({ queryKey: LIBRARY_QUERY_KEY })
     },
-    onError: (e) => toast.error(friendlyClientErrorMessage(e))
+    onError: (e) =>
+      toast.error(
+        friendlyClientErrorMessage(
+          e,
+          'Şablon Meta hesabında oluşturulamadı. Lütfen bağlantıyı kontrol edip tekrar deneyin.'
+        )
+      )
   })
   const copyMu = useMutation({
     mutationFn: (libraryKey: string) => copyHazirTemplateAsOzel(libraryKey),

@@ -65,6 +65,8 @@ export async function dogrulaWhatsAppBaglanti(): Promise<{ ok: true; baglanti: R
 export async function senkronWhatsAppSablonlari(): Promise<{
   ok: true
   synced: number
+  reconciledGhosts?: number
+  paginationComplete?: boolean
   templates?: unknown[]
 }> {
   return apiFetch('/api/v1/whatsapp-baglanti/sablon-senkron', { method: 'POST', body: '{}' })
