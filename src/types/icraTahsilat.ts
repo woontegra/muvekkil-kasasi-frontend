@@ -142,6 +142,8 @@ export type CreateIcraTahsilatPayload = {
   tahsilatTarihi?: string
   odemeYontemi: OfisKasaOdemeYontemiApi
   tahsilatiYapanPersonelId?: string | null
+  /** Personel seçilmediyse oturum kullanıcısı (backend resolveTahsilatiYapanPersonel). */
+  tahsilatiYapanUserId?: string | null
   aciklama?: string | null
 }
 

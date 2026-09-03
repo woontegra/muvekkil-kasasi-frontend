@@ -52,6 +52,10 @@ import type {
 import { ICRA_ALACAK_DURUM_LABEL, ICRA_ALACAK_TURU_LABEL } from '../types/icraTahsilat'
 import type { OfisKasaOdemeYontemiApi } from '../types/ofisKasasi'
 import { formatCurrencyTR, formatDateTR, moneyInputFromAmount, parsePosTutar } from '../utils/formatters'
+import {
+  buildCreateIcraTahsilatPayload,
+  validateCreateIcraTahsilatForm
+} from '../lib/icraTahsilatCreateForm'
 
 const ODEME_OPTIONS: { value: OfisKasaOdemeYontemiApi; label: string }[] = [
   { value: 'NAKIT', label: 'Nakit' },
@@ -332,6 +336,7 @@ function ListeRow(props: { row: IcraTahsilatListeSatirDto; index: number; onOpen
 }
 
 function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }): ReactElement {
+  const { session } = useAuth()
   const [alacakTuru, setAlacakTuru] = useState<IcraAlacakTuruApi>('KARSI_TARAF_VEKALET')
   const [borcluAd, setBorcluAd] = useState('')
   const [muvekkilId, setMuvekkilId] = useState('')
@@ -351,6 +356,44 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
   const pesinatMod = tahsilatTipi === 'PESINAT_TAKSIT'
   const personelZorunlu = pesinMod || pesinatMod
 
+  const formInput = useMemo(
+    () => ({
+      alacakTuru,
+      borcluAd,
+      muvekkilId,
+      dosyaId,
+      toplamTutarRaw: toplamTutar,
+      tahsilatTipi,
+      pesinatTutarRaw: pesinatTutar,
+      taksitSayisiRaw: taksitSayisi,
+      ilkVade,
+      tahsilatTarihi,
+      odemeYontemi,
+      personelId,
+      currentUserId: session?.user.id ?? null,
+      aciklama
+    }),
+    [
+      alacakTuru,
+      borcluAd,
+      muvekkilId,
+      dosyaId,
+      toplamTutar,
+      tahsilatTipi,
+      pesinatTutar,
+      taksitSayisi,
+      ilkVade,
+      tahsilatTarihi,
+      odemeYontemi,
+      personelId,
+      session?.user.id,
+      aciklama
+    ]
+  )
+
+  const formIssues = useMemo(() => validateCreateIcraTahsilatForm(formInput), [formInput])
+  const canSave = formIssues.length === 0
+
   const muvekkilQ = useQuery({ queryKey: ['muvekkiller', 'icra'], queryFn: () => listMuvekkiller({ page: 1, limit: 100 }) })
   const dosyaQ = useQuery({
     queryKey: ['dosyalar', muvekkilId],
@@ -364,50 +407,23 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
     onError: (e) => setErr(e instanceof Error ? e.message : 'Kayıt başarısız')
   })
 
+  function onTahsilatTipiChange(next: IcraTahsilatTipiApi): void {
+    setTahsilatTipi(next)
+    setErr(null)
+    if (next !== 'PESINAT_TAKSIT') {
+      setPesinatTutar('')
+    }
+  }
+
   function submit(e: FormEvent): void {
     e.preventDefault()
     setErr(null)
-    const toplam = parsePosTutar(toplamTutar)
-    if (toplam == null) {
-      setErr('Geçerli toplam tutar girin.')
+    const built = buildCreateIcraTahsilatPayload(formInput)
+    if (!built.ok) {
+      setErr(built.issues[0]?.message ?? 'Formu kontrol edin.')
       return
     }
-    if (personelZorunlu && !personelId) {
-      setErr('Tahsilatı yapan personel seçin.')
-      return
-    }
-    if (pesinatMod) {
-      const pesinat = parsePosTutar(pesinatTutar)
-      if (pesinat == null) {
-        setErr('Peşinat tutarı zorunludur.')
-        return
-      }
-      if (pesinat > toplam) {
-        setErr('Peşinat toplam tutarı aşamaz.')
-        return
-      }
-    }
-    const taksit = pesinMod ? 0 : Number(taksitSayisi)
-    if (!pesinMod && (!Number.isFinite(taksit) || taksit < 1)) {
-      setErr('Taksit sayısı en az 1 olmalıdır.')
-      return
-    }
-    saveMu.mutate({
-      alacakTuru,
-      borcluAd: borcluAd.trim(),
-      muvekkilId: muvekkilId || null,
-      dosyaId: dosyaId || null,
-      toplamTutar: toplam,
-      tahsilatTipi,
-      pesinatVar: pesinatMod,
-      pesinatTutar: pesinatMod ? parsePosTutar(pesinatTutar)! : 0,
-      taksitSayisi: taksit,
-      ilkVadeTarihi: pesinMod ? undefined : dateInputToIso(ilkVade),
-      tahsilatTarihi: personelZorunlu ? dateInputToIso(tahsilatTarihi) : undefined,
-      odemeYontemi,
-      tahsilatiYapanPersonelId: personelId || null,
-      aciklama: aciklama.trim() || null
-    })
+    saveMu.mutate(built.payload)
   }
 
   return (
@@ -417,6 +433,11 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
         <CardBody>
           <form className="grid gap-4 md:grid-cols-2" onSubmit={submit}>
             {err ? <p className="col-span-full text-sm text-danger">{err}</p> : null}
+            {!canSave && !err ? (
+              <p className="col-span-full text-xs text-ink-muted">
+                Kaydet için: {formIssues.map((i) => i.message).join(' · ')}
+              </p>
+            ) : null}
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Alacak türü</label>
               <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={alacakTuru} onChange={(e) => setAlacakTuru(e.target.value as IcraAlacakTuruApi)}>
@@ -430,7 +451,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
               <select
                 className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm"
                 value={tahsilatTipi}
-                onChange={(e) => setTahsilatTipi(e.target.value as IcraTahsilatTipiApi)}
+                onChange={(e) => onTahsilatTipiChange(e.target.value as IcraTahsilatTipiApi)}
               >
                 <option value="PESIN_TAHSIL">Peşin tahsil edildi</option>
                 <option value="PESINAT_TAKSIT">Peşinat + taksit</option>
@@ -478,7 +499,11 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
             <TahsilatiYapanPersonelSelect
               value={personelId}
               onChange={setPersonelId}
-              hint={personelZorunlu ? undefined : 'Peşinatsız alacakta isteğe bağlıdır; taksit ödemelerinde zorunludur.'}
+              hint={
+                personelZorunlu
+                  ? 'Boş / “(ben)” bırakılırsa tahsilat oturum açan kullanıcıya yazılır; personel kaydı aranmaz.'
+                  : 'Peşinatsız alacakta isteğe bağlıdır; taksit ödemelerinde zorunludur.'
+              }
             />
             <div className="col-span-full">
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama / not</label>
@@ -486,7 +511,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
             </div>
             <div className="col-span-full flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={props.onClose}>Vazgeç</Button>
-              <Button type="submit" disabled={saveMu.isPending || (personelZorunlu && !personelId)}>
+              <Button type="submit" disabled={saveMu.isPending || !canSave}>
                 {saveMu.isPending ? 'Kaydediliyor…' : 'Kaydet'}
               </Button>
             </div>
