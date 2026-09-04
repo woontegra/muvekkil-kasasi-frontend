@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import type { FormEvent, ReactElement, ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { useMemo, useState } from 'react'
 import { invalidateDashboardSummary } from '../api/dashboard'
 import {
@@ -25,7 +25,6 @@ import {
   MoneyInput,
   StatCard,
   Table,
-  TableEmptyRow,
   TBody,
   TD,
   TH,
@@ -36,6 +35,12 @@ import {
   useConfirm,
   DraggablePanel
 } from '../components/ui'
+import {
+  MobileActionBar,
+  MobileFilterPanel,
+  MobileRecordCard,
+  ResponsiveDataView
+} from '../components/responsive'
 import { useToast } from '../toast'
 import { cn } from '../lib/cn'
 import type {
@@ -213,12 +218,6 @@ export function OfisKasasiPage(): ReactElement {
     return Array.from(s).sort((a, b) => a.localeCompare(b, 'tr'))
   }, [])
 
-  function onFilterSubmit(e: FormEvent): void {
-    e.preventDefault()
-    setPage(1)
-    void listQuery.refetch()
-  }
-
   return (
     <div className="w-full space-y-5">
       <div>
@@ -294,12 +293,26 @@ export function OfisKasasiPage(): ReactElement {
           )}
         </CardHeader>
         <CardBody className="space-y-4 p-4">
-          <form onSubmit={onFilterSubmit} className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-            <Input label="Arama" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Belge, açıklama…" />
+          <MobileFilterPanel
+            activeCount={[q, islemTipi, kategori, onayDurumu, startDate, endDate].filter(Boolean).length}
+            onApply={() => setPage(1)}
+            onReset={() => {
+              setQ('')
+              setIslemTipi('')
+              setOnayDurumu('')
+              setKategori('')
+              setStartDate('')
+              setEndDate('')
+              setPage(1)
+            }}
+            primary={
+              <Input label="Arama" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Belge, açıklama…" />
+            }
+          >
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">İşlem tipi</label>
               <select
-                className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-surface-elevated"
+                className="h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated"
                 value={islemTipi}
                 onChange={(e) => setIslemTipi(e.target.value as '' | OfisKasaIslemTipiApi)}
               >
@@ -312,7 +325,7 @@ export function OfisKasasiPage(): ReactElement {
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Kategori</label>
               <select
-                className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-surface-elevated"
+                className="h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated"
                 value={kategori}
                 onChange={(e) => setKategori(e.target.value)}
               >
@@ -327,7 +340,7 @@ export function OfisKasasiPage(): ReactElement {
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Onay</label>
               <select
-                className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-surface-elevated"
+                className="h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated"
                 value={onayDurumu}
                 onChange={(e) => setOnayDurumu(e.target.value as '' | OfisKasaOnayDurumuApi)}
               >
@@ -339,165 +352,241 @@ export function OfisKasasiPage(): ReactElement {
             </div>
             <Input label="Başlangıç" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <Input label="Bitiş" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-            <div className="flex items-end gap-2 md:col-span-2 lg:col-span-3 xl:col-span-6">
-              <Button type="submit" variant="secondary" size="sm">
-                Uygula
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setQ('')
-                  setIslemTipi('')
-                  setOnayDurumu('')
-                  setKategori('')
-                  setStartDate('')
-                  setEndDate('')
-                  setPage(1)
-                }}
-              >
-                Sıfırla
-              </Button>
-            </div>
-          </form>
+          </MobileFilterPanel>
 
-          <div className="overflow-x-auto rounded-lg border border-border">
-            <Table>
-              <THead>
-                <TR>
-                  <TH>Tarih</TH>
-                  <TH>Tip</TH>
-                  <TH>Kategori</TH>
-                  <TH>Açıklama</TH>
-                  <TH className="text-right">Tutar</TH>
-                  <TH>Ödeme</TH>
-                  <TH>Belge no</TH>
-                  <TH>Onay</TH>
-                  <TH className="min-w-[200px] text-right">İşlem</TH>
-                </TR>
-              </THead>
-              <TBody>
-                {listQuery.isLoading ? (
-                  <TableEmptyRow colSpan={9}>Yükleniyor…</TableEmptyRow>
-                ) : items.length === 0 ? (
-                  <TableEmptyRow colSpan={9}>Kayıt yok.</TableEmptyRow>
-                ) : (
-                  items.map((h) => {
-                    const onaysiz = h.onayDurumu === 'ONAYSIZ'
-                    const onayli = h.onayDurumu === 'ONAYLI'
-                    const reddedildi = h.onayDurumu === 'REDDEDILDI'
-                    const signed = signedTutar(h)
-                    return (
-                      <TR key={h.id} className={cn(h.islemTipi === 'DUZELTME' && 'bg-amber-50/30 dark:bg-amber-950/15')}>
-                        <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
-                        <TD className="text-sm font-medium">{tipLabel(h.islemTipi)}</TD>
-                        <TD className="max-w-[160px] text-sm">
-                          {h.kategori}
-                          {h.ozelKategoriAdi?.trim() ? (
-                            <span className="mt-0.5 block text-[11px] text-ink-muted">({h.ozelKategoriAdi})</span>
-                          ) : null}
-                        </TD>
-                        <TD className="max-w-[200px] text-sm text-ink-muted">{h.aciklama?.trim() || '—'}</TD>
-                        <TD
-                          className={cn(
-                            'text-right text-sm font-semibold tabular-nums',
-                            signed < 0 ? 'text-danger' : 'text-ink'
-                          )}
-                        >
-                          {formatCurrencyTR(signed)}
-                        </TD>
-                        <TD className="text-xs text-ink-muted">{odemeLabel(h.odemeYontemi)}</TD>
-                        <TD className="font-mono text-xs">{h.belgeNo}</TD>
-                        <TD>
-                          <Badge
-                            variant={onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'}
-                            className="!normal-case"
+          <ResponsiveDataView
+            isLoading={listQuery.isLoading}
+            loading={<p className="py-6 text-center text-sm text-ink-muted">Yükleniyor…</p>}
+            isEmpty={!listQuery.isLoading && items.length === 0}
+            empty={<p className="py-6 text-center text-sm text-ink-muted">Kayıt yok.</p>}
+            table={
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Tarih</TH>
+                      <TH>Tip</TH>
+                      <TH>Kategori</TH>
+                      <TH>Açıklama</TH>
+                      <TH className="text-right">Tutar</TH>
+                      <TH>Ödeme</TH>
+                      <TH>Belge no</TH>
+                      <TH>Onay</TH>
+                      <TH className="min-w-[200px] text-right">İşlem</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {items.map((h) => {
+                      const onaysiz = h.onayDurumu === 'ONAYSIZ'
+                      const onayli = h.onayDurumu === 'ONAYLI'
+                      const reddedildi = h.onayDurumu === 'REDDEDILDI'
+                      const signed = signedTutar(h)
+                      return (
+                        <TR key={h.id} className={cn(h.islemTipi === 'DUZELTME' && 'bg-amber-50/30 dark:bg-amber-950/15')}>
+                          <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
+                          <TD className="text-sm font-medium">{tipLabel(h.islemTipi)}</TD>
+                          <TD className="max-w-[160px] text-sm">
+                            {h.kategori}
+                            {h.ozelKategoriAdi?.trim() ? (
+                              <span className="mt-0.5 block text-[11px] text-ink-muted">({h.ozelKategoriAdi})</span>
+                            ) : null}
+                          </TD>
+                          <TD className="max-w-[200px] text-sm text-ink-muted">{h.aciklama?.trim() || '—'}</TD>
+                          <TD
+                            className={cn(
+                              'text-right text-sm font-semibold tabular-nums',
+                              signed < 0 ? 'text-danger' : 'text-ink'
+                            )}
                           >
-                            {onayLabel(h.onayDurumu)}
-                          </Badge>
-                          {reddedildi && h.redSebebi?.trim() ? (
-                            <p className="mt-1 max-w-[140px] text-[11px] text-danger">{h.redSebebi}</p>
-                          ) : null}
-                        </TD>
-                        <TD className="min-w-[200px] align-middle text-right">
-                          <div className={cn(tableActionsFlexRow, 'gap-1.5')}>
-                            {onaysiz && yonetici ? (
-                              <>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="secondary"
-                                  className={cn('h-7 px-2 text-[11px]', tableActionButtonShrinkClass)}
-                                  disabled={approveMu.isPending}
-                                  onClick={() => approveMu.mutate(h.id)}
-                                >
-                                  Onayla
-                                </Button>
+                            {formatCurrencyTR(signed)}
+                          </TD>
+                          <TD className="text-xs text-ink-muted">{odemeLabel(h.odemeYontemi)}</TD>
+                          <TD className="font-mono text-xs">{h.belgeNo}</TD>
+                          <TD>
+                            <Badge
+                              variant={onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'}
+                              className="!normal-case"
+                            >
+                              {onayLabel(h.onayDurumu)}
+                            </Badge>
+                            {reddedildi && h.redSebebi?.trim() ? (
+                              <p className="mt-1 max-w-[140px] text-[11px] text-danger">{h.redSebebi}</p>
+                            ) : null}
+                          </TD>
+                          <TD className="min-w-[200px] align-middle text-right">
+                            <div className={cn(tableActionsFlexRow, 'gap-1.5')}>
+                              {onaysiz && yonetici ? (
+                                <>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    className={cn('h-7 px-2 text-[11px]', tableActionButtonShrinkClass)}
+                                    disabled={approveMu.isPending}
+                                    onClick={() => approveMu.mutate(h.id)}
+                                  >
+                                    Onayla
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className={cn('h-7 px-2 text-[11px]', tableActionButtonShrinkClass)}
+                                    onClick={() => setRejectFor(h)}
+                                  >
+                                    Reddet
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className={cn('h-7 px-2 text-[11px] text-danger', tableActionButtonShrinkClass)}
+                                    disabled={deleteMu.isPending}
+                                    onClick={() => {
+                                      void confirm({
+                                        title: 'Kayıt silinsin mi?',
+                                        message: 'Bu onaysız kaydı silmek istiyor musunuz?',
+                                        confirmLabel: 'Sil',
+                                        danger: true
+                                      }).then((ok) => {
+                                        if (ok) deleteMu.mutate(h.id)
+                                      })
+                                    }}
+                                  >
+                                    Sil
+                                  </Button>
+                                </>
+                              ) : null}
+                              {onayli && h.islemTipi !== 'DUZELTME' ? (
                                 <Button
                                   type="button"
                                   size="sm"
                                   variant="outline"
                                   className={cn('h-7 px-2 text-[11px]', tableActionButtonShrinkClass)}
-                                  onClick={() => setRejectFor(h)}
+                                  onClick={() => setDuzeltFor(h)}
                                 >
-                                  Reddet
+                                  Düzeltme
                                 </Button>
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  className={cn('h-7 px-2 text-[11px] text-danger', tableActionButtonShrinkClass)}
-                                  disabled={deleteMu.isPending}
-                                  onClick={() => {
-                                    void confirm({
-                                      title: 'Kayıt silinsin mi?',
-                                      message: 'Bu onaysız kaydı silmek istiyor musunuz?',
-                                      confirmLabel: 'Sil',
-                                      danger: true
-                                    }).then((ok) => {
-                                      if (ok) deleteMu.mutate(h.id)
-                                    })
-                                  }}
-                                >
-                                  Sil
-                                </Button>
-                              </>
-                            ) : null}
-                            {onayli && h.islemTipi !== 'DUZELTME' ? (
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                className={cn('h-7 px-2 text-[11px]', tableActionButtonShrinkClass)}
-                                onClick={() => setDuzeltFor(h)}
-                              >
-                                Düzeltme
-                              </Button>
-                            ) : null}
-                            {reddedildi ? <span className="text-[11px] text-ink-muted">—</span> : null}
-                          </div>
-                        </TD>
-                      </TR>
+                              ) : null}
+                              {reddedildi ? <span className="text-[11px] text-ink-muted">—</span> : null}
+                            </div>
+                          </TD>
+                        </TR>
+                      )
+                    })}
+                  </TBody>
+                </Table>
+              </div>
+            }
+            cards={
+              <>
+                {items.map((h) => {
+                  const onaysiz = h.onayDurumu === 'ONAYSIZ'
+                  const onayli = h.onayDurumu === 'ONAYLI'
+                  const reddedildi = h.onayDurumu === 'REDDEDILDI'
+                  const signed = signedTutar(h)
+                  const actions = []
+                  if (onaysiz && yonetici) {
+                    actions.push(
+                      {
+                        key: 'onay',
+                        label: 'Onayla',
+                        primary: true,
+                        variant: 'secondary' as const,
+                        disabled: approveMu.isPending,
+                        onClick: () => approveMu.mutate(h.id)
+                      },
+                      {
+                        key: 'red',
+                        label: 'Reddet',
+                        primary: true,
+                        variant: 'outline' as const,
+                        onClick: () => setRejectFor(h)
+                      },
+                      {
+                        key: 'sil',
+                        label: 'Sil',
+                        danger: true,
+                        disabled: deleteMu.isPending,
+                        onClick: () => {
+                          void confirm({
+                            title: 'Kayıt silinsin mi?',
+                            message: 'Bu onaysız kaydı silmek istiyor musunuz?',
+                            confirmLabel: 'Sil',
+                            danger: true
+                          }).then((ok) => {
+                            if (ok) deleteMu.mutate(h.id)
+                          })
+                        }
+                      }
                     )
-                  })
-                )}
-              </TBody>
-            </Table>
-          </div>
+                  }
+                  if (onayli && h.islemTipi !== 'DUZELTME') {
+                    actions.push({
+                      key: 'duzelt',
+                      label: 'Düzeltme',
+                      primary: true,
+                      variant: 'outline' as const,
+                      onClick: () => setDuzeltFor(h)
+                    })
+                  }
+                  return (
+                    <MobileRecordCard
+                      key={h.id}
+                      title={h.belgeNo}
+                      subtitle={h.aciklama?.trim() || tipLabel(h.islemTipi)}
+                      badge={
+                        <Badge
+                          variant={onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'}
+                          className="!normal-case"
+                        >
+                          {onayLabel(h.onayDurumu)}
+                        </Badge>
+                      }
+                      fields={[
+                        { label: 'Tarih', value: formatDateTR(h.tarih) },
+                        {
+                          label: 'Tutar',
+                          value: (
+                            <span className={signed < 0 ? 'text-danger' : undefined}>{formatCurrencyTR(signed)}</span>
+                          ),
+                          numeric: true
+                        },
+                        { label: 'Tip', value: tipLabel(h.islemTipi) },
+                        { label: 'Ödeme', value: odemeLabel(h.odemeYontemi) },
+                        {
+                          label: 'Kategori',
+                          value: h.ozelKategoriAdi?.trim() ? `${h.kategori} (${h.ozelKategoriAdi})` : h.kategori,
+                          full: true
+                        }
+                      ]}
+                      actions={
+                        actions.length > 0 ? (
+                          <MobileActionBar items={actions} />
+                        ) : reddedildi && h.redSebebi?.trim() ? (
+                          <p className="text-xs text-danger">{h.redSebebi}</p>
+                        ) : null
+                      }
+                    />
+                  )
+                })}
+              </>
+            }
+          />
 
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
             <span>
               Toplam <strong>{total}</strong> kayıt · sayfa {page}/{totalPages}
             </span>
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+            <div className="flex w-full gap-2 sm:w-auto">
+              <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-none" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                 Önceki
               </Button>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
+                className="flex-1 sm:flex-none"
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => p + 1)}
               >

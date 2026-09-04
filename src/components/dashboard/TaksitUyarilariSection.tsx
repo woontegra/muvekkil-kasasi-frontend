@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import { APP_BASE } from '../../config/appPaths'
+import { MobileRecordCard, ResponsiveDataView } from '../responsive'
 import {
   Badge,
   Card,
@@ -106,64 +107,105 @@ export function TaksitUyarilariSection(props: TaksitUyarilariSectionProps): Reac
 
         <div>
           <p className="mb-1.5 text-xs font-semibold text-ink-muted">Vadesi geçmiş taksitler</p>
-          {loading ? (
-            <p className="py-4 text-center text-sm text-ink-muted">Yükleniyor…</p>
-          ) : liste.length === 0 ? (
-            <EmptyState title="Henüz vadesi geçmiş taksit yok" description="Açık taksitler vadesinde veya gelecekte." />
-          ) : (
-            <div className="overflow-x-auto rounded-lg border border-border">
-              <Table className="text-xs">
-                <THead>
-                  <TR>
-                    <TH>Müvekkil</TH>
-                    <TH>Dosya</TH>
-                    <TH className="text-center">Taksit</TH>
-                    <TH className="text-center">Vade</TH>
-                    <TH className="text-right">Tutar</TH>
-                    <TH className="text-right">Ödenen</TH>
-                    <TH className="text-right">Kalan</TH>
-                    <TH className="text-center">Durum</TH>
-                    <TH className="w-[1%] text-center">İşlem</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {liste.map((row) => (
-                    <TR key={`${row.kaynak}-${row.id}`}>
-                      <TD className="max-w-[8rem] truncate font-medium" title={row.muvekkilAd}>
-                        {row.muvekkilAd}
-                      </TD>
-                      <TD className="max-w-[10rem] truncate text-ink-muted" title={row.dosyaBaslik}>
-                        {row.dosyaBaslik}
-                        {row.kaynak === 'ICRA' ? (
-                          <span className="ml-1 text-[10px] text-ink-subtle">(İcra)</span>
-                        ) : null}
-                      </TD>
-                      <TD className="text-center tabular-nums">{row.taksitEtiket}</TD>
-                      <TD className="text-center tabular-nums">{formatDateTR(row.vadeTarihi)}</TD>
-                      <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.tutar))}</TD>
-                      <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.odenen))}</TD>
-                      <TD className="text-right font-semibold tabular-nums">{formatCurrencyTR(Number(row.kalan))}</TD>
-                      <TD className="text-center">
-                        <Badge variant="danger" className="!normal-case">
-                          Gecikti
-                        </Badge>
-                      </TD>
-                      <TD className="text-center">
-                        <Link
-                          to={rowHref(row)}
-                          className={tableActionLinkAccentClass}
-                          title="Aç"
-                          aria-label={`${row.muvekkilAd} — dosyayı aç`}
-                        >
-                          ↗
-                        </Link>
-                      </TD>
+          <ResponsiveDataView
+            isLoading={loading}
+            loading={<p className="py-4 text-center text-sm text-ink-muted">Yükleniyor…</p>}
+            isEmpty={!loading && liste.length === 0}
+            empty={
+              <EmptyState title="Henüz vadesi geçmiş taksit yok" description="Açık taksitler vadesinde veya gelecekte." />
+            }
+            table={
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table className="text-xs">
+                  <THead>
+                    <TR>
+                      <TH>Müvekkil</TH>
+                      <TH>Dosya</TH>
+                      <TH className="text-center">Taksit</TH>
+                      <TH className="text-center">Vade</TH>
+                      <TH className="text-right">Tutar</TH>
+                      <TH className="text-right">Ödenen</TH>
+                      <TH className="text-right">Kalan</TH>
+                      <TH className="text-center">Durum</TH>
+                      <TH className="w-[1%] text-center">İşlem</TH>
                     </TR>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
-          )}
+                  </THead>
+                  <TBody>
+                    {liste.map((row) => (
+                      <TR key={`${row.kaynak}-${row.id}`}>
+                        <TD className="max-w-[8rem] truncate font-medium" title={row.muvekkilAd}>
+                          {row.muvekkilAd}
+                        </TD>
+                        <TD className="max-w-[10rem] truncate text-ink-muted" title={row.dosyaBaslik}>
+                          {row.dosyaBaslik}
+                          {row.kaynak === 'ICRA' ? (
+                            <span className="ml-1 text-[10px] text-ink-subtle">(İcra)</span>
+                          ) : null}
+                        </TD>
+                        <TD className="text-center tabular-nums">{row.taksitEtiket}</TD>
+                        <TD className="text-center tabular-nums">{formatDateTR(row.vadeTarihi)}</TD>
+                        <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.tutar))}</TD>
+                        <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.odenen))}</TD>
+                        <TD className="text-right font-semibold tabular-nums">{formatCurrencyTR(Number(row.kalan))}</TD>
+                        <TD className="text-center">
+                          <Badge variant="danger" className="!normal-case">
+                            Gecikti
+                          </Badge>
+                        </TD>
+                        <TD className="text-center">
+                          <Link
+                            to={rowHref(row)}
+                            className={tableActionLinkAccentClass}
+                            title="Aç"
+                            aria-label={`${row.muvekkilAd} — dosyayı aç`}
+                          >
+                            ↗
+                          </Link>
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+            }
+            cards={
+              <>
+                {liste.map((row) => (
+                  <MobileRecordCard
+                    key={`${row.kaynak}-${row.id}`}
+                    title={row.muvekkilAd}
+                    subtitle={
+                      <>
+                        {row.dosyaBaslik}
+                        {row.kaynak === 'ICRA' ? ' (İcra)' : ''}
+                      </>
+                    }
+                    badge={
+                      <Badge variant="danger" className="!normal-case">
+                        Gecikti
+                      </Badge>
+                    }
+                    fields={[
+                      { label: 'Taksit', value: row.taksitEtiket },
+                      { label: 'Vade', value: formatDateTR(row.vadeTarihi) },
+                      { label: 'Tutar', value: formatCurrencyTR(Number(row.tutar)), numeric: true },
+                      { label: 'Ödenen', value: formatCurrencyTR(Number(row.odenen)), numeric: true },
+                      { label: 'Kalan', value: formatCurrencyTR(Number(row.kalan)), numeric: true }
+                    ]}
+                    actions={
+                      <Link
+                        to={rowHref(row)}
+                        className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-white shadow-sm"
+                        aria-label={`${row.muvekkilAd} — dosyayı aç`}
+                      >
+                        Aç
+                      </Link>
+                    }
+                  />
+                ))}
+              </>
+            }
+          />
         </div>
       </CardBody>
     </Card>

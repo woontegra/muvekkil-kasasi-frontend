@@ -11,6 +11,7 @@ import { cn } from '../lib/cn'
 import { MuvekkilEditModal } from '../components/muvekkil/MuvekkilEditModal'
 import { MuvekkilKarlilikTab } from '../components/mali/MuvekkilKarlilikTab'
 import { MuvekkilRandevularSection } from '../pages/RandevularPage'
+import { MobileRecordCard, ResponsiveDataView } from '../components/responsive'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
 
 function ProfileStatCard({ label, value, className }: { label: string; value: ReactNode; className?: string }): ReactElement {
@@ -245,56 +246,90 @@ export function MuvekkilDetailPage(): ReactElement {
             </Button>
           </form>
         </CardHeader>
-        <CardBody className="p-0">
-          {dosyaQuery.isLoading ? (
-            <p className="px-4 py-10 text-center text-sm text-ink-muted">Dosyalar yükleniyor…</p>
-          ) : dosyaQuery.isError ? (
-            <div className="px-4 py-6">
-              <AlertBox variant="danger" title="Dosya listesi">
-                {dosyaQuery.error instanceof Error ? dosyaQuery.error.message : 'Liste alınamadı.'}
-              </AlertBox>
-            </div>
-          ) : dosyalar.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-ink-muted">
-              Bu müvekkile bağlı dosya yok veya aramanıza uygun kayıt bulunamadı. Yeni dosya ekleyebilirsiniz.
-            </p>
+        <CardBody className="p-4">
+          {dosyaQuery.isError ? (
+            <AlertBox variant="danger" title="Dosya listesi">
+              {dosyaQuery.error instanceof Error ? dosyaQuery.error.message : 'Liste alınamadı.'}
+            </AlertBox>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Tür</TH>
-                    <TH>Konu başlığı</TH>
-                    <TH>Mahkeme / icra</TH>
-                    <TH>Dosya no</TH>
-                    <TH>Durum</TH>
-                    <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {dosyalar.map((d) => (
-                    <TR key={d.id}>
-                      <TD className="whitespace-nowrap text-xs font-medium text-ink-muted">{dosyaTuruLabel(d.dosyaTuru)}</TD>
-                      <TD className="max-w-[220px] font-medium text-ink">{d.konuBasligi}</TD>
-                      <TD className="text-ink-muted">{mahkemeIcraSatir(d)}</TD>
-                      <TD className="tabular-nums text-ink-muted">{d.dosyaNo?.trim() ? d.dosyaNo : '—'}</TD>
-                      <TD>
-                        <Badge variant={dosyaDurumuBadgeVariant(d.durum)}>{dosyaDurumuLabel(d.durum)}</Badge>
-                      </TD>
-                      <TD className="text-right">
-                        <Link
-                          to={`${APP_BASE}/muvekkil/${id}/dosya/${d.id}`}
-                          className={tableActionLinkAccentClass}
-                          aria-label={`${d.konuBasligi}: dosyayı aç`}
-                        >
-                          Aç
-                        </Link>
-                      </TD>
-                    </TR>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
+            <ResponsiveDataView
+              isLoading={dosyaQuery.isLoading}
+              loading={<p className="py-10 text-center text-sm text-ink-muted">Dosyalar yükleniyor…</p>}
+              isEmpty={!dosyaQuery.isLoading && dosyalar.length === 0}
+              empty={
+                <p className="py-10 text-center text-sm text-ink-muted">
+                  Bu müvekkile bağlı dosya yok veya aramanıza uygun kayıt bulunamadı. Yeni dosya ekleyebilirsiniz.
+                </p>
+              }
+              table={
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <Table>
+                    <THead>
+                      <TR>
+                        <TH>Tür</TH>
+                        <TH>Konu başlığı</TH>
+                        <TH>Mahkeme / icra</TH>
+                        <TH>Dosya no</TH>
+                        <TH>Durum</TH>
+                        <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {dosyalar.map((d) => (
+                        <TR key={d.id}>
+                          <TD className="whitespace-nowrap text-xs font-medium text-ink-muted">{dosyaTuruLabel(d.dosyaTuru)}</TD>
+                          <TD className="max-w-[220px] font-medium text-ink">{d.konuBasligi}</TD>
+                          <TD className="text-ink-muted">{mahkemeIcraSatir(d)}</TD>
+                          <TD className="tabular-nums text-ink-muted">{d.dosyaNo?.trim() ? d.dosyaNo : '—'}</TD>
+                          <TD>
+                            <Badge variant={dosyaDurumuBadgeVariant(d.durum)}>{dosyaDurumuLabel(d.durum)}</Badge>
+                          </TD>
+                          <TD className="text-right">
+                            <Link
+                              to={`${APP_BASE}/muvekkil/${id}/dosya/${d.id}`}
+                              className={tableActionLinkAccentClass}
+                              aria-label={`${d.konuBasligi}: dosyayı aç`}
+                            >
+                              Aç
+                            </Link>
+                          </TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </div>
+              }
+              cards={
+                <>
+                  {dosyalar.map((d) => {
+                    const detailTo = `${APP_BASE}/muvekkil/${id}/dosya/${d.id}`
+                    return (
+                      <MobileRecordCard
+                        key={d.id}
+                        title={d.konuBasligi}
+                        subtitle={dosyaTuruLabel(d.dosyaTuru)}
+                        badge={<Badge variant={dosyaDurumuBadgeVariant(d.durum)}>{dosyaDurumuLabel(d.durum)}</Badge>}
+                        fields={[
+                          { label: 'Mahkeme / icra', value: mahkemeIcraSatir(d), full: true },
+                          { label: 'Dosya no', value: d.dosyaNo?.trim() ? d.dosyaNo : '—' }
+                        ]}
+                        onClick={() => navigate(detailTo)}
+                        actions={
+                          <Link
+                            to={detailTo}
+                            className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-white shadow-sm"
+                            onClick={(e) => e.stopPropagation()}
+                            aria-label={`${d.konuBasligi}: dosyayı aç`}
+                          >
+                            Aç
+                          </Link>
+                        }
+                      />
+                    )
+                  })}
+                </>
+              }
+            />
           )}
         </CardBody>
       </Card>

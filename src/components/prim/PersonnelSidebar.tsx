@@ -37,7 +37,7 @@ export function PersonnelSidebar(props: Props): ReactElement {
     : items
 
   return (
-    <aside className="flex max-h-[calc(100dvh-12rem)] w-[260px] shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-panel">
+    <aside className="flex max-h-[min(40vh,20rem)] w-full shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-panel md:max-h-[calc(100dvh-12rem)] md:w-[260px]">
       <div className="shrink-0 border-b border-border p-2.5">
         <h2 className="text-sm font-semibold text-ink">Personel</h2>
         <div className="mt-1.5">
@@ -46,11 +46,11 @@ export function PersonnelSidebar(props: Props): ReactElement {
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
             aria-label="Personel ara"
-            className="h-8 text-sm"
+            className="h-11 text-sm md:h-8"
           />
         </div>
         {canManage && onAddPersonel ? (
-          <Button type="button" size="sm" className="mt-1.5 h-8 w-full text-xs" onClick={onAddPersonel}>
+          <Button type="button" size="sm" className="mt-1.5 w-full text-xs md:h-8" onClick={onAddPersonel}>
             + Personel ekle
           </Button>
         ) : null}
@@ -70,7 +70,7 @@ export function PersonnelSidebar(props: Props): ReactElement {
                     type="button"
                     onClick={() => onSelect(p.primPersonelId)}
                     className={cn(
-                      'w-full rounded-md border px-2 py-1.5 text-left transition',
+                      'min-h-11 w-full rounded-md border px-2 py-2 text-left transition md:min-h-0 md:py-1.5',
                       active
                         ? 'border-primary/40 bg-primary-soft'
                         : 'border-transparent hover:border-border hover:bg-surface-muted/60'

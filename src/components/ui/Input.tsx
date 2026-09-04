@@ -35,7 +35,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         aria-invalid={error ? true : undefined}
         placeholder={isDate ? undefined : placeholder}
         className={cn(
-          'h-9 w-full rounded-md border bg-white px-3 text-sm text-ink shadow-inner outline-none transition',
+          'h-11 w-full min-w-0 rounded-md border bg-white px-3 text-sm text-ink shadow-inner outline-none transition md:h-9',
           'border-border placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/15',
           error && 'border-danger focus:border-danger focus:ring-danger/20',
           isDate && 'min-w-0 appearance-auto',

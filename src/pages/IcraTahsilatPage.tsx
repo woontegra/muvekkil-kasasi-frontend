@@ -19,6 +19,11 @@ import { IcraTahsilatReportSheet } from '../components/reports/IcraTahsilatRepor
 import { ReportPrintShell } from '../components/reports/ReportPrintShell'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import {
+  MobileFilterPanel,
+  MobileRecordCard,
+  ResponsiveDataView
+} from '../components/responsive'
+import {
   AlertBox,
   Badge,
   Button,
@@ -63,6 +68,9 @@ const ODEME_OPTIONS: { value: OfisKasaOdemeYontemiApi; label: string }[] = [
   { value: 'KREDI_KARTI', label: 'Kredi kartı' },
   { value: 'DIGER', label: 'Diğer' }
 ]
+
+const SELECT_TOUCH =
+  'h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated'
 
 function todayInputDate(): string {
   const d = new Date()
@@ -157,12 +165,6 @@ export function IcraTahsilatPage(): ReactElement {
   const total = listQ.data?.total ?? 0
   const totalPages = Math.max(1, Math.ceil(total / limit))
 
-  function onFilterSubmit(e: FormEvent): void {
-    e.preventDefault()
-    setPage(1)
-    void listQ.refetch()
-  }
-
   return (
     <div className="w-full space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -202,74 +204,138 @@ export function IcraTahsilatPage(): ReactElement {
           <CardTitle className="text-base">Filtreler</CardTitle>
         </CardHeader>
         <CardBody>
-          <form className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6" onSubmit={onFilterSubmit}>
+          <MobileFilterPanel
+            activeCount={[q, alacakTuru, durum, personelId, startDate, endDate].filter(Boolean).length}
+            onApply={() => {
+              setPage(1)
+              void listQ.refetch()
+            }}
+            onReset={() => {
+              setQ('')
+              setAlacakTuru('')
+              setDurum('')
+              setPersonelId('')
+              setStartDate('')
+              setEndDate('')
+              setPage(1)
+            }}
+            primary={
+              <Input label="Arama" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Borçlu, müvekkil, dosya…" />
+            }
+          >
             <Input label="Tarih başlangıç" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <Input label="Tarih bitiş" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Alacak türü</label>
-              <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={alacakTuru} onChange={(e) => setAlacakTuru(e.target.value as '' | IcraAlacakTuruApi)}>
+              <select
+                className={SELECT_TOUCH}
+                value={alacakTuru}
+                onChange={(e) => setAlacakTuru(e.target.value as '' | IcraAlacakTuruApi)}
+              >
                 <option value="">Tümü</option>
                 {(Object.keys(ICRA_ALACAK_TURU_LABEL) as IcraAlacakTuruApi[]).map((k) => (
-                  <option key={k} value={k}>{ICRA_ALACAK_TURU_LABEL[k]}</option>
+                  <option key={k} value={k}>
+                    {ICRA_ALACAK_TURU_LABEL[k]}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Durum</label>
-              <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={durum} onChange={(e) => setDurum(e.target.value as '' | IcraAlacakDurumApi)}>
+              <select
+                className={SELECT_TOUCH}
+                value={durum}
+                onChange={(e) => setDurum(e.target.value as '' | IcraAlacakDurumApi)}
+              >
                 <option value="">Tümü</option>
                 {(Object.keys(ICRA_ALACAK_DURUM_LABEL) as IcraAlacakDurumApi[]).map((k) => (
-                  <option key={k} value={k}>{ICRA_ALACAK_DURUM_LABEL[k]}</option>
+                  <option key={k} value={k}>
+                    {ICRA_ALACAK_DURUM_LABEL[k]}
+                  </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Tahsilatı yapan personel</label>
-              <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={personelId} onChange={(e) => setPersonelId(e.target.value)}>
+              <select className={SELECT_TOUCH} value={personelId} onChange={(e) => setPersonelId(e.target.value)}>
                 <option value="">Tümü</option>
                 {(personelQ.data?.items ?? []).map((p) => (
-                  <option key={p.id} value={p.id}>{p.adSoyad}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.adSoyad}
+                  </option>
                 ))}
               </select>
             </div>
-            <Input label="Arama" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Borçlu, müvekkil, dosya…" />
-            <div className="flex items-end">
-              <Button type="submit" variant="outline">Filtrele</Button>
-            </div>
-          </form>
+          </MobileFilterPanel>
         </CardBody>
       </Card>
 
       <Card>
-        <CardBody className="p-0">
-          <Table>
-            <THead>
-              <TR>
-                <TH className="w-10">#</TH>
-                <TH>Borçlu / karşı taraf</TH>
-                <TH>İlgili müvekkil / dosya</TH>
-                <TH>Alacak türü</TH>
-                <TH className="text-right">Toplam</TH>
-                <TH className="text-right">Ödenen</TH>
-                <TH className="text-right">Kalan</TH>
-                <TH>Son tahsilatı yapan</TH>
-                <TH className="text-center">Taksit</TH>
-                <TH>Son durum</TH>
-                <TH className="w-20">İşlem</TH>
-              </TR>
-            </THead>
-            <TBody>
-              {listQ.isLoading ? (
-                <TableEmptyRow colSpan={11}>Yükleniyor…</TableEmptyRow>
-              ) : items.length === 0 ? (
-                <TableEmptyRow colSpan={11}>Kayıt bulunamadı.</TableEmptyRow>
-              ) : (
-                items.map((row, idx) => (
-                  <ListeRow key={row.id} row={row} index={(page - 1) * limit + idx + 1} onOpen={() => setDetayId(row.id)} />
-                ))
-              )}
-            </TBody>
-          </Table>
+        <CardBody className="p-4">
+          <ResponsiveDataView
+            isLoading={listQ.isLoading}
+            loading={<p className="py-6 text-center text-sm text-ink-muted">Yükleniyor…</p>}
+            isEmpty={!listQ.isLoading && items.length === 0}
+            empty={<p className="py-6 text-center text-sm text-ink-muted">Kayıt bulunamadı.</p>}
+            table={
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH className="w-10">#</TH>
+                      <TH>Borçlu / karşı taraf</TH>
+                      <TH>İlgili müvekkil / dosya</TH>
+                      <TH>Alacak türü</TH>
+                      <TH className="text-right">Toplam</TH>
+                      <TH className="text-right">Ödenen</TH>
+                      <TH className="text-right">Kalan</TH>
+                      <TH>Son tahsilatı yapan</TH>
+                      <TH className="text-center">Taksit</TH>
+                      <TH>Son durum</TH>
+                      <TH className="w-20">İşlem</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    {items.map((row, idx) => (
+                      <ListeRow key={row.id} row={row} index={(page - 1) * limit + idx + 1} onOpen={() => setDetayId(row.id)} />
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+            }
+            cards={
+              <>
+                {items.map((row, idx) => {
+                  const ilgili = [row.muvekkilAd, row.dosyaBaslik].filter(Boolean).join(' · ') || '—'
+                  return (
+                    <MobileRecordCard
+                      key={row.id}
+                      title={row.borcluAd}
+                      subtitle={`#${(page - 1) * limit + idx + 1} · ${ilgili}`}
+                      badge={<Badge variant={durumBadge(row.durum)}>{row.durumLabel}</Badge>}
+                      fields={[
+                        { label: 'Alacak türü', value: row.alacakTuruLabel },
+                        { label: 'Taksit', value: String(row.taksitSayisi) },
+                        { label: 'Toplam', value: formatCurrencyTR(Number(row.toplamTutar)), numeric: true },
+                        { label: 'Ödenen', value: formatCurrencyTR(Number(row.odenenToplam)), numeric: true },
+                        { label: 'Kalan', value: formatCurrencyTR(Number(row.kalanTutar)), numeric: true },
+                        {
+                          label: 'Son tahsilatı yapan',
+                          value: row.sonTahsilatciAd ?? row.tahsilatiYapanAd ?? '—',
+                          full: true
+                        }
+                      ]}
+                      actions={
+                        <Button type="button" size="sm" variant="outline" className="min-h-11 w-full" onClick={() => setDetayId(row.id)}>
+                          Aç
+                        </Button>
+                      }
+                    />
+                  )
+                })}
+              </>
+            }
+          />
         </CardBody>
       </Card>
 
@@ -440,7 +506,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
             ) : null}
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Alacak türü</label>
-              <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={alacakTuru} onChange={(e) => setAlacakTuru(e.target.value as IcraAlacakTuruApi)}>
+              <select className={SELECT_TOUCH} value={alacakTuru} onChange={(e) => setAlacakTuru(e.target.value as IcraAlacakTuruApi)}>
                 {(Object.keys(ICRA_ALACAK_TURU_LABEL) as IcraAlacakTuruApi[]).map((k) => (
                   <option key={k} value={k}>{ICRA_ALACAK_TURU_LABEL[k]}</option>
                 ))}
@@ -449,7 +515,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Tahsilat tipi</label>
               <select
-                className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm"
+                className={SELECT_TOUCH}
                 value={tahsilatTipi}
                 onChange={(e) => onTahsilatTipiChange(e.target.value as IcraTahsilatTipiApi)}
               >
@@ -461,7 +527,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
             <Input label="Borçlu / karşı taraf adı" value={borcluAd} onChange={(e) => setBorcluAd(e.target.value)} required />
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">İlgili müvekkil (isteğe bağlı)</label>
-              <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={muvekkilId} onChange={(e) => { setMuvekkilId(e.target.value); setDosyaId('') }}>
+              <select className={SELECT_TOUCH} value={muvekkilId} onChange={(e) => { setMuvekkilId(e.target.value); setDosyaId('') }}>
                 <option value="">—</option>
                 {(muvekkilQ.data?.items ?? []).map((m) => (
                   <option key={m.id} value={m.id}>{m.gorunenAd}</option>
@@ -470,7 +536,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
             </div>
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">İlgili dosya (isteğe bağlı)</label>
-              <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={dosyaId} onChange={(e) => setDosyaId(e.target.value)} disabled={!muvekkilId}>
+              <select className={SELECT_TOUCH} value={dosyaId} onChange={(e) => setDosyaId(e.target.value)} disabled={!muvekkilId}>
                 <option value="">—</option>
                 {(dosyaQ.data?.items ?? []).map((d) => (
                   <option key={d.id} value={d.id}>{d.konuBasligi}</option>
@@ -492,7 +558,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
             ) : null}
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
-              <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value as OfisKasaOdemeYontemiApi)}>
+              <select className={SELECT_TOUCH} value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value as OfisKasaOdemeYontemiApi)}>
                 {ODEME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
@@ -732,7 +798,7 @@ function OdemeModal(props: { alacak: IcraTahsilatDetayDto; taksit: IcraTahsilatT
           <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
-            <select className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm" value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value as OfisKasaOdemeYontemiApi)}>
+            <select className={SELECT_TOUCH} value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value as OfisKasaOdemeYontemiApi)}>
               {ODEME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>

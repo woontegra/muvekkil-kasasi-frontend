@@ -12,18 +12,27 @@ export function AyarlarNav(props: Props): ReactElement {
   return (
     <>
       <div className="lg:hidden">
-        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">Ayar kategorisi</label>
-        <select
-          className="h-10 w-full rounded-md border border-border bg-white px-3 text-sm font-medium text-ink shadow-sm"
-          value={props.active}
-          onChange={(e) => props.onSelect(e.target.value as AyarlarSectionId)}
-        >
-          {props.items.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.label}
-            </option>
-          ))}
-        </select>
+        <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">Ayar kategorisi</p>
+        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+          {props.items.map((item) => {
+            const active = props.active === item.id
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={cn(
+                  'h-11 shrink-0 whitespace-nowrap rounded-full border px-3.5 text-sm font-semibold transition',
+                  active
+                    ? 'border-primary bg-primary text-primary-fg shadow-sm'
+                    : 'border-border bg-white text-ink-muted hover:bg-surface-muted hover:text-ink'
+                )}
+                onClick={() => props.onSelect(item.id)}
+              >
+                {item.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       <nav className="hidden w-[228px] shrink-0 lg:block" aria-label="Ayar kategorileri">

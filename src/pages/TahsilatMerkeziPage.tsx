@@ -19,6 +19,12 @@ import { WhatsAppHatirlatModal } from '../components/tahsilat/WhatsAppHatirlatMo
 import { SmsHatirlatModal } from '../components/tahsilat/SmsHatirlatModal'
 import { VekaletTaksitOdemeModal } from '../components/vekalet/VekaletTaksitOdemeModal'
 import {
+  MobileActionBar,
+  MobileFilterPanel,
+  MobileRecordCard,
+  ResponsiveDataView
+} from '../components/responsive'
+import {
   AlertBox,
   Badge,
   Button,
@@ -58,6 +64,9 @@ const DURUM_OPTIONS: { value: '' | TaksitComputedDurumApi; label: string }[] = [
   { value: 'ODENMEDI', label: 'Ödenmedi' },
   { value: 'KISMI_ODENDI', label: 'Kısmi ödendi' }
 ]
+
+const SELECT_TOUCH =
+  'h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 disabled:opacity-50 md:h-9 dark:bg-surface-elevated'
 
 function durumBadge(d: TaksitComputedDurumApi): 'default' | 'success' | 'warning' | 'danger' {
   if (d === 'ODENDI') return 'success'
@@ -259,12 +268,25 @@ export function TahsilatMerkeziPage(): ReactElement {
             ))}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <Input label="Ara" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Müvekkil, dosya…" />
+          <MobileFilterPanel
+            activeCount={[q, muvekkilId, dosyaId, durum, personelId, vadeBas, vadeBit].filter(Boolean).length}
+            onApply={() => setPage(1)}
+            onReset={() => {
+              setQ('')
+              setMuvekkilId('')
+              setDosyaId('')
+              setDurum('')
+              setPersonelId('')
+              setVadeBas('')
+              setVadeBit('')
+              setPage(1)
+            }}
+            primary={<Input label="Ara" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Müvekkil, dosya…" />}
+          >
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Müvekkil</label>
               <select
-                className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
+                className={SELECT_TOUCH}
                 value={muvekkilId}
                 onChange={(e) => setMuvekkilId(e.target.value)}
               >
@@ -285,7 +307,7 @@ export function TahsilatMerkeziPage(): ReactElement {
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme durumu</label>
               <select
-                className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
+                className={SELECT_TOUCH}
                 value={durum}
                 onChange={(e) => setDurum(e.target.value as '' | TaksitComputedDurumApi)}
               >
@@ -313,7 +335,7 @@ export function TahsilatMerkeziPage(): ReactElement {
             <div className="md:col-span-2">
               <TahsilatiYapanPersonelSelect value={personelId} onChange={setPersonelId} />
             </div>
-          </div>
+          </MobileFilterPanel>
 
           {listQ.isError ? (
             <AlertBox variant="danger" title="Liste yüklenemedi">
@@ -321,68 +343,164 @@ export function TahsilatMerkeziPage(): ReactElement {
             </AlertBox>
           ) : null}
 
-          {listQ.isLoading ? (
-            <p className="py-6 text-sm text-ink-muted">Tahsilat bekleyenler yükleniyor…</p>
-          ) : items.length === 0 ? (
-            <EmptyState
-              title="Kayıt yok"
-              description="Seçili görünüm ve filtrelere uygun açık taksit bulunamadı."
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Müvekkil</TH>
-                    <TH>Dosya</TH>
-                    <TH>Taksit</TH>
-                    <TH className="text-right">Tutar</TH>
-                    <TH className="text-right">Ödenen</TH>
-                    <TH className="text-right">Kalan</TH>
-                    <TH>Vade</TH>
-                    <TH>Süre</TH>
-                    <TH>Durum</TH>
-                    <TH>İşlem</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  <AnimatePresence initial={false}>
-                    {items.map((row) => (
-                      <ListeSatir
-                        key={row.id}
-                        row={row}
-                        onOdeme={() => {
-                          odemeMu.reset()
-                          setOdemeRow(row)
-                        }}
-                        onWhatsapp={() => setWhatsappRow(row)}
-                        onSms={() => setSmsRow(row)}
-                        onEkstreAc={() =>
-                          navigate(
-                            buildMaliKontrolNavigateUrl({
-                              muvekkilId: row.muvekkilId,
-                              dosyaId: row.dosyaId,
-                              tab: 'ekstre'
-                            })
+          <ResponsiveDataView
+            isLoading={listQ.isLoading}
+            loading={<p className="py-6 text-sm text-ink-muted">Tahsilat bekleyenler yükleniyor…</p>}
+            isEmpty={!listQ.isLoading && items.length === 0}
+            empty={
+              <EmptyState
+                title="Kayıt yok"
+                description="Seçili görünüm ve filtrelere uygun açık taksit bulunamadı."
+              />
+            }
+            table={
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Müvekkil</TH>
+                      <TH>Dosya</TH>
+                      <TH>Taksit</TH>
+                      <TH className="text-right">Tutar</TH>
+                      <TH className="text-right">Ödenen</TH>
+                      <TH className="text-right">Kalan</TH>
+                      <TH>Vade</TH>
+                      <TH>Süre</TH>
+                      <TH>Durum</TH>
+                      <TH>İşlem</TH>
+                    </TR>
+                  </THead>
+                  <TBody>
+                    <AnimatePresence initial={false}>
+                      {items.map((row) => (
+                        <ListeSatir
+                          key={row.id}
+                          row={row}
+                          onOdeme={() => {
+                            odemeMu.reset()
+                            setOdemeRow(row)
+                          }}
+                          onWhatsapp={() => setWhatsappRow(row)}
+                          onSms={() => setSmsRow(row)}
+                          onEkstreAc={() =>
+                            navigate(
+                              buildMaliKontrolNavigateUrl({
+                                muvekkilId: row.muvekkilId,
+                                dosyaId: row.dosyaId,
+                                tab: 'ekstre'
+                              })
+                            )
+                          }
+                          onDosya={() =>
+                            navigate(
+                              buildMaliKontrolNavigateUrl({
+                                muvekkilId: row.muvekkilId,
+                                dosyaId: row.dosyaId,
+                                tab: 'vekalet',
+                                taksitId: row.id
+                              })
+                            )
+                          }
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </TBody>
+                </Table>
+              </div>
+            }
+            cards={
+              <>
+                {items.map((row) => {
+                  const taksitLabel = row.taksitAciklama?.trim()
+                    ? `#${row.taksitNo} - ${row.taksitAciklama}`
+                    : `Taksit #${row.taksitNo}`
+                  return (
+                    <MobileRecordCard
+                      key={row.id}
+                      title={row.muvekkilAd}
+                      subtitle={
+                        <>
+                          {row.dosyaBaslik}
+                          {row.dosyaNo ? ` · ${row.dosyaNo}` : ''}
+                        </>
+                      }
+                      badge={<Badge variant={durumBadge(row.durum)}>{durumLabel(row.durum)}</Badge>}
+                      fields={[
+                        { label: 'Taksit', value: taksitLabel, full: true },
+                        { label: 'Tutar', value: formatCurrencyTR(Number(row.taksitTutari)), numeric: true },
+                        { label: 'Ödenen', value: formatCurrencyTR(Number(row.odenenToplam)), numeric: true },
+                        { label: 'Kalan', value: formatCurrencyTR(Number(row.kalanTutar)), numeric: true },
+                        { label: 'Vade', value: formatDateTR(`${row.vadeTarihi}T12:00:00.000Z`) },
+                        {
+                          label: 'Süre',
+                          value: (
+                            <span className={row.gunFarki < 0 ? 'font-medium text-danger' : undefined}>
+                              {gunFarkiLabel(row.gunFarki)}
+                            </span>
                           )
                         }
-                        onDosya={() =>
-                          navigate(
-                            buildMaliKontrolNavigateUrl({
-                              muvekkilId: row.muvekkilId,
-                              dosyaId: row.dosyaId,
-                              tab: 'vekalet',
-                              taksitId: row.id
-                            })
-                          )
-                        }
-                      />
-                    ))}
-                  </AnimatePresence>
-                </TBody>
-              </Table>
-            </div>
-          )}
+                      ]}
+                      actions={
+                        <MobileActionBar
+                          items={[
+                            {
+                              key: 'odeme',
+                              label: 'Ödeme Al',
+                              primary: true,
+                              onClick: () => {
+                                odemeMu.reset()
+                                setOdemeRow(row)
+                              }
+                            },
+                            {
+                              key: 'wa',
+                              label: 'WhatsApp’tan Gönder',
+                              primary: true,
+                              variant: 'outline',
+                              onClick: () => setWhatsappRow(row)
+                            },
+                            {
+                              key: 'sms',
+                              label: 'SMS Gönder',
+                              variant: 'outline',
+                              onClick: () => setSmsRow(row)
+                            },
+                            {
+                              key: 'ekstre',
+                              label: 'Ekstre Aç',
+                              variant: 'outline',
+                              onClick: () =>
+                                navigate(
+                                  buildMaliKontrolNavigateUrl({
+                                    muvekkilId: row.muvekkilId,
+                                    dosyaId: row.dosyaId,
+                                    tab: 'ekstre'
+                                  })
+                                )
+                            },
+                            {
+                              key: 'dosya',
+                              label: 'Dosyaya Git',
+                              variant: 'outline',
+                              onClick: () =>
+                                navigate(
+                                  buildMaliKontrolNavigateUrl({
+                                    muvekkilId: row.muvekkilId,
+                                    dosyaId: row.dosyaId,
+                                    tab: 'vekalet',
+                                    taksitId: row.id
+                                  })
+                                )
+                            }
+                          ]}
+                        />
+                      }
+                    />
+                  )
+                })}
+              </>
+            }
+          />
 
           {total > limit ? (
             <div className="flex items-center justify-between gap-2 text-sm">
@@ -444,7 +562,7 @@ function DosyaSelect(props: {
     <div>
       <label className="mb-1 block text-xs font-semibold text-ink-muted">Dosya</label>
       <select
-        className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm disabled:opacity-50 dark:bg-surface-elevated"
+        className={SELECT_TOUCH}
         value={props.dosyaId}
         disabled={props.disabled}
         onChange={(e) => props.onChange(e.target.value)}

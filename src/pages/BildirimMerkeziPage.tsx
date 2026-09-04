@@ -6,6 +6,11 @@ import { getTahsilatBildirimOzet, listTahsilatBildirimIsleri, TAHSILAT_BILDIRIM_
 import { friendlyClientErrorMessage } from '../api/client'
 import { BildirimJobWhatsAppActions } from '../components/bildirim/BildirimJobWhatsAppActions'
 import {
+  MobileActionBar,
+  MobileRecordCard,
+  ResponsiveDataView
+} from '../components/responsive'
+import {
   AlertBox,
   Badge,
   Button,
@@ -156,92 +161,157 @@ export function BildirimMerkeziPage(): ReactElement {
             </AlertBox>
           ) : null}
 
-          {listQ.isLoading ? (
-            <p className="text-sm text-ink-muted">Kayıtlar yükleniyor…</p>
-          ) : items.length === 0 ? (
-            <EmptyState
-              title="Kayıt yok"
-              description={`${BILDIRIM_GORUNUM_LABEL[tab]} görünümünde kayıt bulunamadı.`}
-              action={
-                <Link to={`${APP_BASE}/tahsilat-merkezi`} className="text-sm font-semibold text-primary hover:underline">
-                  Tahsilat Takibi&apos;ne git
-                </Link>
-              }
-            />
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Müvekkil</TH>
-                    <TH>Dosya</TH>
-                    <TH>Taksit</TH>
-                    <TH>Kalan</TH>
-                    <TH>Hatırlatma</TH>
-                    <TH>Kayıt tarihi</TH>
-                    <TH>Telefon</TH>
-                    <TH>Durum</TH>
-                    <TH>Açıklama</TH>
-                    <TH className="text-right">İşlem</TH>
-                  </TR>
-                </THead>
-                <TBody>
-                  {items.map((row) => (
-                    <TR key={row.id}>
-                      <TD className="max-w-[140px] truncate font-medium">{row.muvekkilAd ?? '—'}</TD>
-                      <TD className="max-w-[160px]">
-                        <div className="truncate font-medium">{row.dosyaBaslik ?? '—'}</div>
-                        {row.dosyaNo ? (
-                          <div className="truncate text-[11px] text-ink-subtle">{row.dosyaNo}</div>
-                        ) : null}
-                      </TD>
-                      <TD className="whitespace-nowrap tabular-nums">
-                        {row.taksitNo != null ? `#${row.taksitNo}` : '—'}
-                        {row.vadeTarihi ? (
-                          <div className="text-[11px] text-ink-subtle">{formatDateTR(row.vadeTarihi)}</div>
-                        ) : null}
-                      </TD>
-                      <TD className="whitespace-nowrap tabular-nums">
-                        {formatCurrencyTR(Number(row.kalanTutarSnapshot))}
-                      </TD>
-                      <TD className="whitespace-nowrap">{bildirimKuralTuruLabel(row.kuralTuru)}</TD>
-                      <TD className="whitespace-nowrap text-xs tabular-nums">
-                        {formatDateTimeTR(row.planlananAt)}
-                      </TD>
-                      <TD>{row.telefonMaskeli ?? '—'}</TD>
-                      <TD>
-                        <Badge variant={durumBadgeVariant(row.durum)}>{bildirimIsDurumLabel(row.durum)}</Badge>
-                      </TD>
-                      <TD className="max-w-[180px] truncate text-xs text-ink-muted" title={aciklamaText(row)}>
-                        {aciklamaText(row)}
-                      </TD>
-                      <TD className="text-right">
-                        <div className={tableActionsFlexRow}>
-                          <BildirimJobWhatsAppActions row={row} />
-                          <button
-                            type="button"
-                            className={tableActionLinkAccentClass}
-                            onClick={() =>
-                              navigate(
-                                buildMaliKontrolNavigateUrl({
-                                  muvekkilId: row.muvekkilId,
-                                  dosyaId: row.dosyaId,
-                                  tab: 'vekalet',
-                                  taksitId: row.taksitId
-                                })
-                              )
-                            }
-                          >
-                            Dosyaya Git
-                          </button>
-                        </div>
-                      </TD>
+          <ResponsiveDataView
+            isLoading={listQ.isLoading}
+            loading={<p className="text-sm text-ink-muted">Kayıtlar yükleniyor…</p>}
+            isEmpty={!listQ.isLoading && items.length === 0}
+            empty={
+              <EmptyState
+                title="Kayıt yok"
+                description={`${BILDIRIM_GORUNUM_LABEL[tab]} görünümünde kayıt bulunamadı.`}
+                action={
+                  <Link to={`${APP_BASE}/tahsilat-merkezi`} className="text-sm font-semibold text-primary hover:underline">
+                    Tahsilat Takibi&apos;ne git
+                  </Link>
+                }
+              />
+            }
+            table={
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <Table>
+                  <THead>
+                    <TR>
+                      <TH>Müvekkil</TH>
+                      <TH>Dosya</TH>
+                      <TH>Taksit</TH>
+                      <TH>Kalan</TH>
+                      <TH>Hatırlatma</TH>
+                      <TH>Kayıt tarihi</TH>
+                      <TH>Telefon</TH>
+                      <TH>Durum</TH>
+                      <TH>Açıklama</TH>
+                      <TH className="text-right">İşlem</TH>
                     </TR>
-                  ))}
-                </TBody>
-              </Table>
-            </div>
-          )}
+                  </THead>
+                  <TBody>
+                    {items.map((row) => (
+                      <TR key={row.id}>
+                        <TD className="max-w-[140px] truncate font-medium">{row.muvekkilAd ?? '—'}</TD>
+                        <TD className="max-w-[160px]">
+                          <div className="truncate font-medium">{row.dosyaBaslik ?? '—'}</div>
+                          {row.dosyaNo ? (
+                            <div className="truncate text-[11px] text-ink-subtle">{row.dosyaNo}</div>
+                          ) : null}
+                        </TD>
+                        <TD className="whitespace-nowrap tabular-nums">
+                          {row.taksitNo != null ? `#${row.taksitNo}` : '—'}
+                          {row.vadeTarihi ? (
+                            <div className="text-[11px] text-ink-subtle">{formatDateTR(row.vadeTarihi)}</div>
+                          ) : null}
+                        </TD>
+                        <TD className="whitespace-nowrap tabular-nums">
+                          {formatCurrencyTR(Number(row.kalanTutarSnapshot))}
+                        </TD>
+                        <TD className="whitespace-nowrap">{bildirimKuralTuruLabel(row.kuralTuru)}</TD>
+                        <TD className="whitespace-nowrap text-xs tabular-nums">
+                          {formatDateTimeTR(row.planlananAt)}
+                        </TD>
+                        <TD>{row.telefonMaskeli ?? '—'}</TD>
+                        <TD>
+                          <Badge variant={durumBadgeVariant(row.durum)}>{bildirimIsDurumLabel(row.durum)}</Badge>
+                        </TD>
+                        <TD className="max-w-[180px] truncate text-xs text-ink-muted" title={aciklamaText(row)}>
+                          {aciklamaText(row)}
+                        </TD>
+                        <TD className="text-right">
+                          <div className={tableActionsFlexRow}>
+                            <BildirimJobWhatsAppActions row={row} />
+                            <button
+                              type="button"
+                              className={tableActionLinkAccentClass}
+                              onClick={() =>
+                                navigate(
+                                  buildMaliKontrolNavigateUrl({
+                                    muvekkilId: row.muvekkilId,
+                                    dosyaId: row.dosyaId,
+                                    tab: 'vekalet',
+                                    taksitId: row.taksitId
+                                  })
+                                )
+                              }
+                            >
+                              Dosyaya Git
+                            </button>
+                          </div>
+                        </TD>
+                      </TR>
+                    ))}
+                  </TBody>
+                </Table>
+              </div>
+            }
+            cards={
+              <>
+                {items.map((row) => (
+                  <MobileRecordCard
+                    key={row.id}
+                    title={row.muvekkilAd ?? '—'}
+                    subtitle={
+                      <>
+                        {row.dosyaBaslik ?? '—'}
+                        {row.dosyaNo ? ` · ${row.dosyaNo}` : ''}
+                      </>
+                    }
+                    badge={<Badge variant={durumBadgeVariant(row.durum)}>{bildirimIsDurumLabel(row.durum)}</Badge>}
+                    fields={[
+                      {
+                        label: 'Taksit',
+                        value: (
+                          <>
+                            {row.taksitNo != null ? `#${row.taksitNo}` : '—'}
+                            {row.vadeTarihi ? ` · ${formatDateTR(row.vadeTarihi)}` : ''}
+                          </>
+                        )
+                      },
+                      {
+                        label: 'Kalan',
+                        value: formatCurrencyTR(Number(row.kalanTutarSnapshot)),
+                        numeric: true
+                      },
+                      { label: 'Hatırlatma', value: bildirimKuralTuruLabel(row.kuralTuru) },
+                      { label: 'Kayıt tarihi', value: formatDateTimeTR(row.planlananAt) },
+                      { label: 'Telefon', value: row.telefonMaskeli ?? '—' },
+                      { label: 'Açıklama', value: aciklamaText(row), full: true }
+                    ]}
+                    actions={
+                      <div className="space-y-2">
+                        <BildirimJobWhatsAppActions row={row} />
+                        <MobileActionBar
+                          items={[
+                            {
+                              key: 'dosya',
+                              label: 'Dosyaya Git',
+                              primary: true,
+                              variant: 'outline',
+                              onClick: () =>
+                                navigate(
+                                  buildMaliKontrolNavigateUrl({
+                                    muvekkilId: row.muvekkilId,
+                                    dosyaId: row.dosyaId,
+                                    tab: 'vekalet',
+                                    taksitId: row.taksitId
+                                  })
+                                )
+                            }
+                          ]}
+                        />
+                      </div>
+                    }
+                  />
+                ))}
+              </>
+            }
+          />
 
           {totalPages > 1 ? (
             <div className="flex flex-wrap items-center justify-between gap-2 pt-1">

@@ -60,7 +60,9 @@ export function ModalScrim(props: Props): ReactElement | null {
 
   if (typeof document === 'undefined') return null
 
-  const panelWidthClass = wide ? 'w-full max-w-4xl' : 'w-full max-w-2xl'
+  const panelWidthClass = wide
+    ? 'w-full max-w-4xl max-md:max-w-none'
+    : 'w-full max-w-2xl max-md:max-w-none'
 
   const panelBody =
     animatePanel && !reducedMotion ? (
@@ -81,6 +83,7 @@ export function ModalScrim(props: Props): ReactElement | null {
     <div
       className={cn(
         panelWidthClass,
+        'max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col',
         align === 'center' ? 'mx-auto' : undefined,
         innerClassName
       )}
@@ -89,7 +92,7 @@ export function ModalScrim(props: Props): ReactElement | null {
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
-      <DraggablePanel enabled={draggable} className="w-full">
+      <DraggablePanel enabled={draggable} className="w-full max-md:min-h-0 max-md:flex-1">
         {panelBody}
       </DraggablePanel>
     </div>
@@ -98,8 +101,12 @@ export function ModalScrim(props: Props): ReactElement | null {
   return createPortal(
     <motion.div
       className={cn(
-        'fixed inset-0 flex overflow-y-auto bg-black/35 p-4 backdrop-blur-[1px]',
-        align === 'top' ? 'items-start justify-center pt-[5vh]' : 'min-h-full items-center justify-center',
+        'fixed inset-0 flex overflow-y-auto bg-black/35 backdrop-blur-[1px]',
+        'p-0 md:p-4',
+        'max-md:flex-col max-md:items-stretch max-md:justify-stretch',
+        align === 'top'
+          ? 'items-start justify-center md:pt-[5vh]'
+          : 'min-h-full items-center justify-center',
         zIndexClass,
         className
       )}

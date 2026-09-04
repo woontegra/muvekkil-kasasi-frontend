@@ -10,6 +10,12 @@ import { generateStrongPassword } from '../lib/generatePassword'
 import { isValidKullaniciAdi, normalizeKullaniciAdi } from '../lib/normalizeKullaniciAdi'
 import { roleLabel } from '../lib/roleLabel'
 import {
+  MobileActionBar,
+  MobileFilterPanel,
+  MobileRecordCard,
+  ResponsiveDataView
+} from '../components/responsive'
+import {
   AlertBox,
   Button,
   Card,
@@ -21,7 +27,6 @@ import {
   PageHeader,
   Select,
   Table,
-  TableEmptyRow,
   TBody,
   TD,
   TH,
@@ -711,100 +716,176 @@ export function KullanicilarPage(): ReactElement {
         <CardHeader className="border-b border-border">
           <CardTitle className="text-base">Filtreler</CardTitle>
         </CardHeader>
-        <CardBody className="grid gap-3 px-4 py-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Input label="Arama" placeholder="Ad, kullanıcı adı, e-posta…" value={q} onChange={(e) => setQ(e.target.value)} />
-          <Select label="Rol" value={rolFilter} onChange={(e) => setRolFilter(e.target.value)}>
-            <option value="">Tüm roller</option>
-            <option value="BURO_SAHIBI">Büro sahibi</option>
-            <option value="AVUKAT_YONETICI">Avukat / Yönetici</option>
-            <option value="KATIP_PERSONEL">Katip / Personel</option>
-          </Select>
-          <Select label="Durum" value={aktifFilter} onChange={(e) => setAktifFilter(e.target.value as AktifFilter)}>
-            <option value="all">Tümü</option>
-            <option value="active">Aktif</option>
-            <option value="inactive">Pasif</option>
-          </Select>
-          <div className="flex items-end">
-            <p className="text-xs text-ink-muted">
-              Toplam <strong className="text-ink">{total}</strong> kullanıcı
-            </p>
-          </div>
+        <CardBody className="px-4 py-4">
+          <MobileFilterPanel
+            activeCount={[q, rolFilter, aktifFilter !== 'all' ? aktifFilter : ''].filter(Boolean).length}
+            onReset={() => {
+              setQ('')
+              setRolFilter('')
+              setAktifFilter('all')
+            }}
+            primary={
+              <Input label="Arama" placeholder="Ad, kullanıcı adı, e-posta…" value={q} onChange={(e) => setQ(e.target.value)} />
+            }
+          >
+            <Select label="Rol" value={rolFilter} onChange={(e) => setRolFilter(e.target.value)}>
+              <option value="">Tüm roller</option>
+              <option value="BURO_SAHIBI">Büro sahibi</option>
+              <option value="AVUKAT_YONETICI">Avukat / Yönetici</option>
+              <option value="KATIP_PERSONEL">Katip / Personel</option>
+            </Select>
+            <Select label="Durum" value={aktifFilter} onChange={(e) => setAktifFilter(e.target.value as AktifFilter)}>
+              <option value="all">Tümü</option>
+              <option value="active">Aktif</option>
+              <option value="inactive">Pasif</option>
+            </Select>
+            <div className="flex items-end">
+              <p className="text-xs text-ink-muted">
+                Toplam <strong className="text-ink">{total}</strong> kullanıcı
+              </p>
+            </div>
+          </MobileFilterPanel>
         </CardBody>
       </Card>
 
-      <div className="overflow-x-auto rounded-lg border border-border bg-panel shadow-sm">
-        <Table>
-          <THead>
-            <TR>
-              <TH>Ad soyad</TH>
-              <TH>Kullanıcı adı</TH>
-              <TH>E-posta</TH>
-              <TH>Telefon</TH>
-              <TH>Rol</TH>
-              <TH>Durum</TH>
-              <TH>Son giriş</TH>
-              <TH className="text-right">İşlem</TH>
-            </TR>
-          </THead>
-          <TBody>
-            {usersQuery.isLoading ? (
-              <TableEmptyRow colSpan={8}>Yükleniyor…</TableEmptyRow>
-            ) : items.length === 0 ? (
-              <TableEmptyRow colSpan={8}>Kayıt bulunamadı.</TableEmptyRow>
-            ) : (
-              items.map((u) => {
-                const self = u.id === session.user.id
-                return (
-                  <TR key={u.id}>
-                    <TD className="font-medium text-ink">{u.adSoyad}</TD>
-                    <TD className="font-mono text-xs">{u.kullaniciAdi}</TD>
-                    <TD className="text-sm">{u.eposta ?? '—'}</TD>
-                    <TD className="text-sm">{u.telefon ?? '—'}</TD>
-                    <TD className="text-sm">{roleLabel(u.role)}</TD>
-                    <TD className="text-sm">
-                      {u.aktifMi ? <span className="text-emerald-700">Aktif</span> : <span className="text-ink-muted">Pasif</span>}
-                    </TD>
-                    <TD className="whitespace-nowrap text-xs text-ink-muted">{formatDateTime(u.sonGirisTarihi)}</TD>
-                    <TD className="text-right">
-                      {isOwner ? (
-                        <div className="flex flex-wrap justify-end gap-1">
-                          <Button variant="outline" size="sm" type="button" onClick={() => setEditTarget(u)}>
-                            Düzenle
-                          </Button>
-                          {!self ? (
-                            <Button variant="outline" size="sm" type="button" onClick={() => setResetTarget(u)}>
-                              Şifre sıfırla
+      <ResponsiveDataView
+        isLoading={usersQuery.isLoading}
+        loading={<p className="py-8 text-center text-sm text-ink-muted">Yükleniyor…</p>}
+        isEmpty={!usersQuery.isLoading && items.length === 0}
+        empty={<p className="py-8 text-center text-sm text-ink-muted">Kayıt bulunamadı.</p>}
+        table={
+          <div className="overflow-x-auto rounded-lg border border-border bg-panel shadow-sm">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Ad soyad</TH>
+                  <TH>Kullanıcı adı</TH>
+                  <TH>E-posta</TH>
+                  <TH>Telefon</TH>
+                  <TH>Rol</TH>
+                  <TH>Durum</TH>
+                  <TH>Son giriş</TH>
+                  <TH className="text-right">İşlem</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {items.map((u) => {
+                  const self = u.id === session.user.id
+                  return (
+                    <TR key={u.id}>
+                      <TD className="font-medium text-ink">{u.adSoyad}</TD>
+                      <TD className="font-mono text-xs">{u.kullaniciAdi}</TD>
+                      <TD className="text-sm">{u.eposta ?? '—'}</TD>
+                      <TD className="text-sm">{u.telefon ?? '—'}</TD>
+                      <TD className="text-sm">{roleLabel(u.role)}</TD>
+                      <TD className="text-sm">
+                        {u.aktifMi ? <span className="text-emerald-700">Aktif</span> : <span className="text-ink-muted">Pasif</span>}
+                      </TD>
+                      <TD className="whitespace-nowrap text-xs text-ink-muted">{formatDateTime(u.sonGirisTarihi)}</TD>
+                      <TD className="text-right">
+                        {isOwner ? (
+                          <div className="flex flex-wrap justify-end gap-1">
+                            <Button variant="outline" size="sm" type="button" onClick={() => setEditTarget(u)}>
+                              Düzenle
                             </Button>
-                          ) : null}
-                          {!self ? (
-                            u.aktifMi ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                type="button"
-                                className="text-danger border-danger/40"
-                                onClick={() => setPendingDeactivate(u)}
-                              >
-                                Pasifleştir
+                            {!self ? (
+                              <Button variant="outline" size="sm" type="button" onClick={() => setResetTarget(u)}>
+                                Şifre sıfırla
                               </Button>
-                            ) : (
-                              <Button variant="outline" size="sm" type="button" onClick={() => setPendingActivate(u)}>
-                                Aktifleştir
-                              </Button>
-                            )
-                          ) : null}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-ink-subtle">—</span>
-                      )}
-                    </TD>
-                  </TR>
-                )
-              })
-            )}
-          </TBody>
-        </Table>
-      </div>
+                            ) : null}
+                            {!self ? (
+                              u.aktifMi ? (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  type="button"
+                                  className="text-danger border-danger/40"
+                                  onClick={() => setPendingDeactivate(u)}
+                                >
+                                  Pasifleştir
+                                </Button>
+                              ) : (
+                                <Button variant="outline" size="sm" type="button" onClick={() => setPendingActivate(u)}>
+                                  Aktifleştir
+                                </Button>
+                              )
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-ink-subtle">—</span>
+                        )}
+                      </TD>
+                    </TR>
+                  )
+                })}
+              </TBody>
+            </Table>
+          </div>
+        }
+        cards={
+          <>
+            {items.map((u) => {
+              const self = u.id === session.user.id
+              const actions = []
+              if (isOwner) {
+                actions.push({
+                  key: 'edit',
+                  label: 'Düzenle',
+                  primary: true,
+                  variant: 'outline' as const,
+                  onClick: () => setEditTarget(u)
+                })
+                if (!self) {
+                  actions.push({
+                    key: 'reset',
+                    label: 'Şifre sıfırla',
+                    primary: true,
+                    variant: 'outline' as const,
+                    onClick: () => setResetTarget(u)
+                  })
+                  if (u.aktifMi) {
+                    actions.push({
+                      key: 'deact',
+                      label: 'Pasifleştir',
+                      danger: true,
+                      variant: 'outline' as const,
+                      onClick: () => setPendingDeactivate(u)
+                    })
+                  } else {
+                    actions.push({
+                      key: 'act',
+                      label: 'Aktifleştir',
+                      variant: 'outline' as const,
+                      onClick: () => setPendingActivate(u)
+                    })
+                  }
+                }
+              }
+              return (
+                <MobileRecordCard
+                  key={u.id}
+                  title={u.adSoyad}
+                  subtitle={u.kullaniciAdi}
+                  badge={
+                    u.aktifMi ? (
+                      <span className="text-xs font-semibold text-emerald-700">Aktif</span>
+                    ) : (
+                      <span className="text-xs font-semibold text-ink-muted">Pasif</span>
+                    )
+                  }
+                  fields={[
+                    { label: 'E-posta', value: u.eposta ?? '—' },
+                    { label: 'Telefon', value: u.telefon ?? '—' },
+                    { label: 'Rol', value: roleLabel(u.role) },
+                    { label: 'Son giriş', value: formatDateTime(u.sonGirisTarihi) }
+                  ]}
+                  actions={actions.length > 0 ? <MobileActionBar items={actions} /> : null}
+                />
+              )
+            })}
+          </>
+        }
+      />
 
       {createOpen ? (
         <CreateUserModal

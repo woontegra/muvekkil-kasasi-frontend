@@ -148,7 +148,7 @@ export function PrimlerPage(): ReactElement {
         }
       />
 
-      <div className="flex min-h-[32rem] gap-3">
+      <div className="flex min-h-0 flex-col gap-3 md:min-h-[32rem] md:flex-row">
         <PersonnelSidebar
           items={personelList}
           selectedPersonelId={effectiveSelectedId}

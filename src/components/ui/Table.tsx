@@ -3,8 +3,9 @@ import { cn } from '../../lib/cn'
 
 export function Table({ className, ...rest }: HTMLAttributes<HTMLTableElement>): ReactElement {
   return (
-    <div className="w-full overflow-x-auto rounded-lg border border-border">
-      <table className={cn('w-full min-w-[520px] border-collapse text-left text-sm', className)} {...rest} />
+    <div className="w-full min-w-0 overflow-x-auto rounded-lg border border-border">
+      {/* min-width yalnızca masaüstü tablo görünümünde; mobil kart listesi ResponsiveDataView kullanır */}
+      <table className={cn('w-full border-collapse text-left text-sm md:min-w-[520px]', className)} {...rest} />
     </div>
   )
 }

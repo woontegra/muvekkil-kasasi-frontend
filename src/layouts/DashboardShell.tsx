@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { getDashboardSummary } from '../api/dashboard'
 import { getCurrentLicense } from '../api/license'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
@@ -11,13 +11,14 @@ import { roleLabel } from '../lib/roleLabel'
 import { Badge, Button, Card, CardBody, CardHeader, CardTitle, AlertBox } from '../components/ui'
 import { useSafeBackdropClose } from '../components/ui/useSafeBackdropClose'
 import { PageTransition } from '../motion'
-import { AppSidebar } from '../components/shell/AppSidebar'
+import { AppSidebar, MobileNavDrawer } from '../components/shell/AppSidebar'
 import { DemoTrialBanner, shouldShowDemoTrialBanner } from '../components/shell/DemoTrialBanner'
 import {
   LicenseRenewalBanner,
   shouldShowLicenseRenewalBanner
 } from '../components/shell/LicenseRenewalBanner'
 import { TopbarActionChip } from '../components/shell/TopbarActionChip'
+import { PROGRAM_LOGO_SRC } from '../branding'
 
 import type { AuthUserDto } from '../types/auth'
 
@@ -33,17 +34,6 @@ function userInitials(adSoyad: string | undefined): string {
 function normalizePath(pathname: string): string {
   const p = pathname.replace(/\/$/, '')
   return p || APP_BASE
-}
-
-/** Mobil menü seçimi: alt sayfalarda ana menü köküne eşle. */
-function selectedSidebarPath(pathname: string, role: AuthUserDto['role'] | undefined): string {
-  const p = normalizePath(pathname)
-  if (p === APP_BASE) return APP_BASE
-  if (p.startsWith(`${APP_BASE}/muvekkiller`)) return APP_BASE
-  if (p.startsWith(`${APP_BASE}/ayarlar`)) return `${APP_BASE}/ayarlar`
-  const nav = sidebarNavForRole(role)
-  const hit = nav.filter((item) => item.to !== APP_BASE).find((item) => p === item.to || p.startsWith(`${item.to}/`))
-  return hit?.to ?? APP_BASE
 }
 
 function mobilePageSubtitle(pathname: string, role: AuthUserDto['role'] | undefined): string {
@@ -64,10 +54,9 @@ function mobilePageSubtitle(pathname: string, role: AuthUserDto['role'] | undefi
 export function DashboardShell(): ReactElement {
   const { session, logout } = useAuth()
   const loc = useLocation()
-  const navigate = useNavigate()
   const [onayAcik, setOnayAcik] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
   const onayBackdropClose = useSafeBackdropClose(() => setOnayAcik(false))
-  const navItems = sidebarNavForRole(session?.user.role)
 
   const summaryQuery = useQuery({
     queryKey: ['dashboard-summary'],
@@ -101,52 +90,92 @@ export function DashboardShell(): ReactElement {
   return (
     <div className="flex h-[100dvh] max-h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
       <AppSidebar role={session?.user.role} />
+      <MobileNavDrawer
+        open={navOpen}
+        onClose={() => setNavOpen(false)}
+        role={session?.user.role}
+        buroAdi={session?.tenant.buroAdi}
+      />
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="app-shell-header box-border flex shrink-0 items-center justify-between gap-4 border-b border-border bg-panel px-4 shadow-sm md:px-5">
-          <div className="min-w-0 flex-1 md:hidden">
-            <p className="truncate text-xs font-bold leading-tight text-ink">{session?.tenant.buroAdi ?? '—'}</p>
-            <p className="truncate text-[11px] leading-tight text-ink-muted">{mobilePageSubtitle(loc.pathname, session?.user.role)}</p>
+        <header className="app-shell-header box-border flex shrink-0 items-center gap-2 border-b border-border bg-panel px-3 shadow-sm md:gap-4 md:px-5">
+          <button
+            type="button"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-white text-ink md:hidden"
+            aria-label="Menüyü aç"
+            onClick={() => setNavOpen(true)}
+          >
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+              <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </button>
+
+          <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
+            <img src={PROGRAM_LOGO_SRC} alt="" className="h-8 w-8 shrink-0 rounded-md object-contain" />
+            <div className="min-w-0">
+              <p className="truncate text-xs font-bold leading-tight text-ink">{session?.tenant.buroAdi ?? '—'}</p>
+              <p className="truncate text-[11px] leading-tight text-ink-muted">
+                {mobilePageSubtitle(loc.pathname, session?.user.role)}
+              </p>
+            </div>
           </div>
+
           <div className="hidden min-w-0 flex-1 md:block">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Büro</p>
             <p className="truncate text-sm font-bold leading-tight text-ink">{session?.tenant.buroAdi}</p>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3">
+          <div className="flex shrink-0 items-center gap-1.5 md:gap-3">
             {hasBadge ? (
-              <TopbarActionChip
-                type="button"
-                variant="default"
-                badge={onaySayisi}
-                onClick={() => setOnayAcik(true)}
-                aria-label={`Onay bekleyen, ${onaySayisi} kayıt`}
-              >
-                Onay bekleyen
-              </TopbarActionChip>
+              <>
+                <TopbarActionChip
+                  type="button"
+                  variant="default"
+                  badge={onaySayisi}
+                  className="hidden h-11 min-w-11 md:inline-flex md:h-8 md:min-w-0"
+                  onClick={() => setOnayAcik(true)}
+                  aria-label={`Onay bekleyen, ${onaySayisi} kayıt`}
+                >
+                  Onay bekleyen
+                </TopbarActionChip>
+                <button
+                  type="button"
+                  className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-white text-ink md:hidden"
+                  onClick={() => setOnayAcik(true)}
+                  aria-label={`Onay bekleyen, ${onaySayisi} kayıt`}
+                >
+                  <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 11l3 3L22 4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
+                  </svg>
+                  <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-danger px-1 text-[10px] font-bold text-white">
+                    {onaySayisi > 99 ? '99+' : onaySayisi}
+                  </span>
+                </button>
+              </>
             ) : null}
 
-            <div className="flex items-center gap-2 border-l border-border pl-3">
+            <div className="flex items-center gap-1.5 border-l border-border pl-1.5 md:gap-2 md:pl-3">
               <div
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-bold text-primary md:h-8 md:w-8"
                 aria-hidden
               >
                 {userInitials(session?.user.adSoyad)}
               </div>
-              <div className="hidden min-w-0 sm:block">
-                <p className="max-w-[200px] truncate text-sm font-semibold leading-tight text-ink">{session?.user.adSoyad}</p>
+              <div className="hidden min-w-0 lg:block">
+                <p className="max-w-[160px] truncate text-sm font-semibold leading-tight text-ink">{session?.user.adSoyad}</p>
                 <p className="text-[11px] leading-tight text-ink-muted">{session ? roleLabel(session.user.role) : '—'}</p>
               </div>
               <button
                 type="button"
                 onClick={() => logout()}
-                className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2 text-xs font-medium text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink"
+                className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-surface-muted hover:text-ink md:h-8 md:w-auto md:gap-1.5 md:px-2"
                 aria-label="Çıkış yap"
               >
                 <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
                 </svg>
-                <span className="hidden md:inline">Çıkış</span>
+                <span className="hidden text-xs font-medium md:inline">Çıkış</span>
               </button>
             </div>
           </div>
@@ -220,34 +249,13 @@ export function DashboardShell(): ReactElement {
           </div>
         ) : null}
 
-        <div className="shrink-0 border-b border-border bg-panel px-3 py-2 md:hidden">
-          <label htmlFor="nav-jump" className="sr-only">
-            Menü
-          </label>
-          <select
-            id="nav-jump"
-            className="h-9 w-full rounded-md border border-border bg-white px-2 text-sm font-medium text-ink"
-            value={selectedSidebarPath(loc.pathname, session?.user.role)}
-            onChange={(e) => {
-              const v = e.target.value
-              if (v) navigate(v)
-            }}
-          >
-            {navItems.map((item) => (
-              <option key={item.to} value={item.to}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
         <main className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain bg-canvas px-3 py-4 md:px-6 md:py-5">
           {licenseInfoEksik && lic ? (
             <div className="mb-4 flex flex-col gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-3 text-sm text-sky-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="min-w-0 font-medium">{lic.bilgiMesaji ?? 'Lisans bitiş tarihi henüz tanımlanmamış.'}</p>
               <Link
                 to={`${APP_BASE}/ayarlar`}
-                className="inline-flex shrink-0 items-center justify-center rounded-md border border-sky-400 bg-white px-3 py-1.5 text-xs font-bold text-sky-950 hover:bg-sky-100"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-sky-400 bg-white px-3 py-1.5 text-xs font-bold text-sky-950 hover:bg-sky-100 md:min-h-0"
               >
                 Detayları gör
               </Link>
@@ -264,7 +272,7 @@ export function DashboardShell(): ReactElement {
               </p>
               <Link
                 to={`${APP_BASE}/ayarlar`}
-                className="inline-flex shrink-0 items-center justify-center rounded-md border border-red-400 bg-white px-3 py-1.5 text-xs font-bold text-red-900 hover:bg-red-100"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-red-400 bg-white px-3 py-1.5 text-xs font-bold text-red-900 hover:bg-red-100 md:min-h-0"
               >
                 Detayları gör
               </Link>
@@ -277,7 +285,7 @@ export function DashboardShell(): ReactElement {
               </p>
               <Link
                 to={`${APP_BASE}/ayarlar`}
-                className="inline-flex shrink-0 items-center justify-center rounded-md border border-orange-500 bg-white px-3 py-1.5 text-xs font-bold text-orange-950 hover:bg-orange-100"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-orange-500 bg-white px-3 py-1.5 text-xs font-bold text-orange-950 hover:bg-orange-100 md:min-h-0"
               >
                 Lisansı yenile
               </Link>
@@ -288,7 +296,7 @@ export function DashboardShell(): ReactElement {
               <p className="min-w-0 font-medium">Lisansınızın bitmesine {licenseQuery.data?.kalanGun ?? '—'} gün kaldı.</p>
               <Link
                 to={`${APP_BASE}/ayarlar`}
-                className="inline-flex shrink-0 items-center justify-center rounded-md border border-amber-500/60 bg-white px-3 py-1.5 text-xs font-bold text-amber-950 hover:bg-amber-100"
+                className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-md border border-amber-500/60 bg-white px-3 py-1.5 text-xs font-bold text-amber-950 hover:bg-amber-100 md:min-h-0"
               >
                 Detayları gör
               </Link>

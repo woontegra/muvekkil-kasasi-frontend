@@ -32,6 +32,11 @@ import {
   upsertDosyaVekalet
 } from '../api/vekalet'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
+import {
+  MobileActionBar,
+  MobileRecordCard,
+  ResponsiveDataView
+} from '../components/responsive'
 import { VekaletTaksitOdemeModal } from '../components/vekalet/VekaletTaksitOdemeModal'
 import { VekaletTaksitPlaniModal } from '../components/vekalet/VekaletTaksitPlaniModal'
 import { TaksitHatirlatmaPlanModal } from '../components/vekalet/TaksitHatirlatmaPlanModal'
@@ -51,7 +56,6 @@ import {
   Input,
   MoneyInput,
   Table,
-  TableEmptyRow,
   TBody,
   TD,
   TH,
@@ -1133,145 +1137,247 @@ export function DosyaDetailPage(): ReactElement {
                     </p>
                   </div>
 
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <Table>
-                      <THead>
-                        <TR>
-                          <TH>Tarih</TH>
-                          <TH>Belge no</TH>
-                          <TH>Tip</TH>
-                          <TH>Açıklama / masraf</TH>
-                          <TH>Ödeme</TH>
-                          <TH>Onay</TH>
-                          <TH className="text-right">Tutar</TH>
-                          <TH>İşlem</TH>
-                        </TR>
-                      </THead>
-                      <TBody>
-                        {kasaItems.length === 0 ? (
-                          <TableEmptyRow colSpan={8}>Henüz kasa hareketi yok.</TableEmptyRow>
-                        ) : (
-                          kasaItems.map((h) => {
-                            const isDuz = h.tip === 'DUZELTME'
-                            const onaysiz = h.onayDurumu === 'ONAYSIZ'
-                            const onayli = h.onayDurumu === 'ONAYLI'
-                            const reddedildi = h.onayDurumu === 'REDDEDILDI'
-                            const kasaRowId = dosyaFocusElementId('kasa', h.id)
-                            return (
-                              <TR
-                                key={h.id}
-                                id={kasaRowId}
-                                className={cn(
-                                  isDuz && 'border-l-4 border-l-amber-500 bg-amber-50/40 dark:bg-amber-950/20',
-                                  onaysiz && !isDuz && 'bg-warning-soft/30',
-                                  isRowHighlighted(kasaRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
-                                )}
-                              >
-                                <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
-                                <TD className="font-mono text-xs tabular-nums text-ink">{h.belgeNo}</TD>
-                                <TD>
-                                  <div className="flex flex-wrap items-center gap-1">
-                                    <span className="text-sm font-medium">{tipLabel(h.tip)}</span>
-                                    {isDuz ? (
-                                      <Badge variant="warning" className="!normal-case">
-                                        Düzeltme
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-                                  {isDuz && h.orijinalBelgeNo ? (
-                                    <p className="mt-0.5 text-[11px] text-ink-muted">Orijinal: {h.orijinalBelgeNo}</p>
-                                  ) : null}
-                                </TD>
-                                <TD className="max-w-[220px] text-sm text-ink-muted">{aciklamaCell(h)}</TD>
-                                <TD className="text-xs text-ink-muted">{odemeLabel(h.odemeYontemi)}</TD>
-                                <TD>
-                                  <Badge
-                                    variant={
-                                      onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'
-                                    }
-                                    className="!normal-case"
-                                  >
-                                    {onayLabel(h.onayDurumu)}
-                                  </Badge>
-                                  {reddedildi && h.redSebebi?.trim() ? (
-                                    <p className="mt-1 max-w-[180px] text-[11px] text-danger">{h.redSebebi}</p>
-                                  ) : null}
-                                </TD>
-                                <TD
+                  <ResponsiveDataView
+                    isEmpty={kasaItems.length === 0}
+                    empty={<p className="py-6 text-center text-sm text-ink-muted">Henüz kasa hareketi yok.</p>}
+                    table={
+                      <div className="overflow-x-auto rounded-lg border border-border">
+                        <Table>
+                          <THead>
+                            <TR>
+                              <TH>Tarih</TH>
+                              <TH>Belge no</TH>
+                              <TH>Tip</TH>
+                              <TH>Açıklama / masraf</TH>
+                              <TH>Ödeme</TH>
+                              <TH>Onay</TH>
+                              <TH className="text-right">Tutar</TH>
+                              <TH>İşlem</TH>
+                            </TR>
+                          </THead>
+                          <TBody>
+                            {kasaItems.map((h) => {
+                              const isDuz = h.tip === 'DUZELTME'
+                              const onaysiz = h.onayDurumu === 'ONAYSIZ'
+                              const onayli = h.onayDurumu === 'ONAYLI'
+                              const reddedildi = h.onayDurumu === 'REDDEDILDI'
+                              const kasaRowId = dosyaFocusElementId('kasa', h.id)
+                              return (
+                                <TR
+                                  key={h.id}
+                                  id={kasaRowId}
                                   className={cn(
-                                    'text-right text-sm font-semibold tabular-nums',
-                                    signedDisplayAmount(h) < 0 ? 'text-danger' : 'text-ink'
+                                    isDuz && 'border-l-4 border-l-amber-500 bg-amber-50/40 dark:bg-amber-950/20',
+                                    onaysiz && !isDuz && 'bg-warning-soft/30',
+                                    isRowHighlighted(kasaRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
                                   )}
                                 >
-                                  {formatCurrencyTR(signedDisplayAmount(h))}
-                                </TD>
-                                <TD>
-                                  <div className="flex flex-wrap gap-1">
-                                    {onaysiz && canYoneticiIslem ? (
-                                      <>
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          variant="secondary"
-                                          className="h-7 px-2 text-[11px]"
-                                          disabled={approveMu.isPending}
-                                          onClick={() => approveMu.mutate(h.id)}
-                                        >
-                                          Onayla
-                                        </Button>
+                                  <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
+                                  <TD className="font-mono text-xs tabular-nums text-ink">{h.belgeNo}</TD>
+                                  <TD>
+                                    <div className="flex flex-wrap items-center gap-1">
+                                      <span className="text-sm font-medium">{tipLabel(h.tip)}</span>
+                                      {isDuz ? (
+                                        <Badge variant="warning" className="!normal-case">
+                                          Düzeltme
+                                        </Badge>
+                                      ) : null}
+                                    </div>
+                                    {isDuz && h.orijinalBelgeNo ? (
+                                      <p className="mt-0.5 text-[11px] text-ink-muted">Orijinal: {h.orijinalBelgeNo}</p>
+                                    ) : null}
+                                  </TD>
+                                  <TD className="max-w-[220px] text-sm text-ink-muted">{aciklamaCell(h)}</TD>
+                                  <TD className="text-xs text-ink-muted">{odemeLabel(h.odemeYontemi)}</TD>
+                                  <TD>
+                                    <Badge
+                                      variant={
+                                        onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'
+                                      }
+                                      className="!normal-case"
+                                    >
+                                      {onayLabel(h.onayDurumu)}
+                                    </Badge>
+                                    {reddedildi && h.redSebebi?.trim() ? (
+                                      <p className="mt-1 max-w-[180px] text-[11px] text-danger">{h.redSebebi}</p>
+                                    ) : null}
+                                  </TD>
+                                  <TD
+                                    className={cn(
+                                      'text-right text-sm font-semibold tabular-nums',
+                                      signedDisplayAmount(h) < 0 ? 'text-danger' : 'text-ink'
+                                    )}
+                                  >
+                                    {formatCurrencyTR(signedDisplayAmount(h))}
+                                  </TD>
+                                  <TD>
+                                    <div className="flex flex-wrap gap-1">
+                                      {onaysiz && canYoneticiIslem ? (
+                                        <>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="secondary"
+                                            className="h-7 px-2 text-[11px]"
+                                            disabled={approveMu.isPending}
+                                            onClick={() => approveMu.mutate(h.id)}
+                                          >
+                                            Onayla
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="outline"
+                                            className="h-7 px-2 text-[11px]"
+                                            onClick={() => setModal({ type: 'reject', hareket: h })}
+                                          >
+                                            Reddet
+                                          </Button>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="danger"
+                                            className="h-7 px-2 text-[11px]"
+                                            disabled={deleteMu.isPending}
+                                            onClick={() => {
+                                              void confirm({
+                                                title: 'Kayıt silinsin mi?',
+                                                message: 'Bu onaysız kaydı silmek istediğinize emin misiniz?',
+                                                confirmLabel: 'Sil',
+                                                danger: true
+                                              }).then((ok) => {
+                                                if (ok) deleteMu.mutate(h.id)
+                                              })
+                                            }}
+                                          >
+                                            Sil
+                                          </Button>
+                                        </>
+                                      ) : null}
+                                      {onayli && h.tip !== 'DUZELTME' ? (
                                         <Button
                                           type="button"
                                           size="sm"
                                           variant="outline"
                                           className="h-7 px-2 text-[11px]"
-                                          onClick={() => setModal({ type: 'reject', hareket: h })}
+                                          onClick={() => setModal({ type: 'duzeltme', hareket: h })}
                                         >
-                                          Reddet
+                                          Düzeltme ekle
                                         </Button>
-                                        <Button
-                                          type="button"
-                                          size="sm"
-                                          variant="danger"
-                                          className="h-7 px-2 text-[11px]"
-                                          disabled={deleteMu.isPending}
-                                          onClick={() => {
-                                            void confirm({
-                                              title: 'Kayıt silinsin mi?',
-                                              message: 'Bu onaysız kaydı silmek istediğinize emin misiniz?',
-                                              confirmLabel: 'Sil',
-                                              danger: true
-                                            }).then((ok) => {
-                                              if (ok) deleteMu.mutate(h.id)
-                                            })
-                                          }}
-                                        >
-                                          Sil
-                                        </Button>
-                                      </>
-                                    ) : null}
-                                    {onayli && h.tip !== 'DUZELTME' ? (
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-7 px-2 text-[11px]"
-                                        onClick={() => setModal({ type: 'duzeltme', hareket: h })}
-                                      >
-                                        Düzeltme ekle
-                                      </Button>
-                                    ) : null}
-                                    {onayli || reddedildi ? (
-                                      <span className="text-[10px] text-ink-subtle">Düzenleme kapalı</span>
-                                    ) : null}
-                                  </div>
-                                </TD>
-                              </TR>
+                                      ) : null}
+                                      {onayli || reddedildi ? (
+                                        <span className="text-[10px] text-ink-subtle">Düzenleme kapalı</span>
+                                      ) : null}
+                                    </div>
+                                  </TD>
+                                </TR>
+                              )
+                            })}
+                          </TBody>
+                        </Table>
+                      </div>
+                    }
+                    cards={
+                      <>
+                        {kasaItems.map((h) => {
+                          const isDuz = h.tip === 'DUZELTME'
+                          const onaysiz = h.onayDurumu === 'ONAYSIZ'
+                          const onayli = h.onayDurumu === 'ONAYLI'
+                          const reddedildi = h.onayDurumu === 'REDDEDILDI'
+                          const signed = signedDisplayAmount(h)
+                          const kasaRowId = dosyaFocusElementId('kasa', h.id)
+                          const actions = []
+                          if (onaysiz && canYoneticiIslem) {
+                            actions.push(
+                              {
+                                key: 'onay',
+                                label: 'Onayla',
+                                primary: true,
+                                variant: 'secondary' as const,
+                                disabled: approveMu.isPending,
+                                onClick: () => approveMu.mutate(h.id)
+                              },
+                              {
+                                key: 'red',
+                                label: 'Reddet',
+                                primary: true,
+                                variant: 'outline' as const,
+                                onClick: () => setModal({ type: 'reject', hareket: h })
+                              },
+                              {
+                                key: 'sil',
+                                label: 'Sil',
+                                danger: true,
+                                disabled: deleteMu.isPending,
+                                onClick: () => {
+                                  void confirm({
+                                    title: 'Kayıt silinsin mi?',
+                                    message: 'Bu onaysız kaydı silmek istediğinize emin misiniz?',
+                                    confirmLabel: 'Sil',
+                                    danger: true
+                                  }).then((ok) => {
+                                    if (ok) deleteMu.mutate(h.id)
+                                  })
+                                }
+                              }
                             )
-                          })
-                        )}
-                      </TBody>
-                    </Table>
-                  </div>
+                          }
+                          if (onayli && h.tip !== 'DUZELTME') {
+                            actions.push({
+                              key: 'duzelt',
+                              label: 'Düzeltme ekle',
+                              primary: true,
+                              variant: 'outline' as const,
+                              onClick: () => setModal({ type: 'duzeltme', hareket: h })
+                            })
+                          }
+                          return (
+                            <MobileRecordCard
+                              key={h.id}
+                              className={cn(isRowHighlighted(kasaRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS)}
+                              title={h.belgeNo}
+                              subtitle={aciklamaCell(h)}
+                              badge={
+                                <Badge
+                                  variant={
+                                    onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'
+                                  }
+                                  className="!normal-case"
+                                >
+                                  {onayLabel(h.onayDurumu)}
+                                </Badge>
+                              }
+                              fields={[
+                                { label: 'Tarih', value: formatDateTR(h.tarih) },
+                                {
+                                  label: 'Tutar',
+                                  value: (
+                                    <span className={signed < 0 ? 'text-danger' : undefined}>
+                                      {formatCurrencyTR(signed)}
+                                    </span>
+                                  ),
+                                  numeric: true
+                                },
+                                {
+                                  label: 'Tip',
+                                  value: isDuz ? `${tipLabel(h.tip)} (Düzeltme)` : tipLabel(h.tip)
+                                },
+                                { label: 'Ödeme', value: odemeLabel(h.odemeYontemi) }
+                              ]}
+                              footer={
+                                reddedildi && h.redSebebi?.trim() ? (
+                                  <span className="text-danger">{h.redSebebi}</span>
+                                ) : onayli || reddedildi ? (
+                                  'Düzenleme kapalı'
+                                ) : null
+                              }
+                              actions={actions.length > 0 ? <MobileActionBar items={actions} /> : null}
+                            />
+                          )
+                        })}
+                      </>
+                    }
+                  />
                 </>
               )}
             </div>
@@ -1369,164 +1475,310 @@ export function DosyaDetailPage(): ReactElement {
                       </p>
                     ) : null}
                   </div>
-                  <div className="overflow-x-auto rounded-lg border border-border text-xs">
-                    <Table>
-                      <THead>
-                        <TR>
-                          <TH className="!py-2">Taksit no</TH>
-                          <TH className="!py-2">Vade tarihi</TH>
-                          <TH className="!py-2 text-right">Taksit tutarı</TH>
-                          <TH className="!py-2 text-right">Ödenen</TH>
-                          <TH className="!py-2 text-right">Kalan</TH>
-                          <TH className="!py-2">Durum</TH>
-                          <TH className="!py-2">Son ödeme</TH>
-                          <TH className="!py-2">Makbuz son</TH>
-                          <TH className="!py-2">SMM</TH>
-                          <TH className="!py-2 text-right">İşlem</TH>
-                        </TR>
-                      </THead>
-                      <TBody>
-                        {vekaletData.taksitler.length === 0 ? (
-                          <TableEmptyRow colSpan={10}>Taksit kaydı yok.</TableEmptyRow>
-                        ) : (
-                          vekaletData.taksitler.map((t) => {
-                            const row = resolveTaksitRow(t)
-                            const iptal = t.odemeDurumu === 'IPTAL'
-                            const odenebilir = !iptal && Number(row.kalanTutar) > 0
-                            const silinebilir = !iptal && Number(row.odenenToplam) === 0
-                            const taksitRowId = dosyaFocusElementId('taksit', t.id)
-                            return (
-                              <TR
-                                key={t.id}
-                                id={taksitRowId}
-                                className={cn(
-                                  iptal && 'opacity-60',
-                                  isRowHighlighted(taksitRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
-                                )}
-                              >
-                                <TD className="tabular-nums font-medium !py-1.5">{t.taksitNo}</TD>
-                                <TD className="whitespace-nowrap text-ink-muted !py-1.5">{formatDateTR(t.vadeTarihi)}</TD>
-                                <TD className="text-right font-medium tabular-nums !py-1.5">{formatCurrencyTR(Number(row.taksitTutari))}</TD>
-                                <TD className="text-right tabular-nums !py-1.5">{formatCurrencyTR(Number(row.odenenToplam))}</TD>
-                                <TD className="text-right tabular-nums !py-1.5">{formatCurrencyTR(Number(row.kalanTutar))}</TD>
-                                <TD className="!py-1.5">
-                                  <Badge variant={taksitDurumBadge(row.durum)} className="!normal-case">
-                                    {taksitDurumLabel(row.durum)}
-                                  </Badge>
-                                  {t.hatirlatmaOzet ? (
-                                    <p className="mt-0.5 text-[10px] text-ink-muted">{t.hatirlatmaOzet}</p>
-                                  ) : null}
-                                </TD>
-                                <TD className="whitespace-nowrap text-ink-muted !py-1.5">{formatDateTR(row.sonOdemeTarihi ?? undefined)}</TD>
-                                <TD className="font-mono text-[11px] !py-1.5">{row.sonMakbuzNo?.trim() ? row.sonMakbuzNo : '—'}</TD>
-                                <TD className="!py-1.5">{smmDurumRozet(row.smmDurumu)}</TD>
-                                <TD className="!py-1.5">
-                                  <div className={tableActionsFlexRow}>
-                                    {odenebilir && canTaksitOdendi ? (
+                  <ResponsiveDataView
+                    isEmpty={vekaletData.taksitler.length === 0}
+                    empty={<p className="py-6 text-center text-sm text-ink-muted">Taksit kaydı yok.</p>}
+                    table={
+                      <div className="overflow-x-auto rounded-lg border border-border text-xs">
+                        <Table>
+                          <THead>
+                            <TR>
+                              <TH className="!py-2">Taksit no</TH>
+                              <TH className="!py-2">Vade tarihi</TH>
+                              <TH className="!py-2 text-right">Taksit tutarı</TH>
+                              <TH className="!py-2 text-right">Ödenen</TH>
+                              <TH className="!py-2 text-right">Kalan</TH>
+                              <TH className="!py-2">Durum</TH>
+                              <TH className="!py-2">Son ödeme</TH>
+                              <TH className="!py-2">Makbuz son</TH>
+                              <TH className="!py-2">SMM</TH>
+                              <TH className="!py-2 text-right">İşlem</TH>
+                            </TR>
+                          </THead>
+                          <TBody>
+                            {vekaletData.taksitler.map((t) => {
+                              const row = resolveTaksitRow(t)
+                              const iptal = t.odemeDurumu === 'IPTAL'
+                              const odenebilir = !iptal && Number(row.kalanTutar) > 0
+                              const silinebilir = !iptal && Number(row.odenenToplam) === 0
+                              const taksitRowId = dosyaFocusElementId('taksit', t.id)
+                              return (
+                                <TR
+                                  key={t.id}
+                                  id={taksitRowId}
+                                  className={cn(
+                                    iptal && 'opacity-60',
+                                    isRowHighlighted(taksitRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
+                                  )}
+                                >
+                                  <TD className="tabular-nums font-medium !py-1.5">{t.taksitNo}</TD>
+                                  <TD className="whitespace-nowrap text-ink-muted !py-1.5">{formatDateTR(t.vadeTarihi)}</TD>
+                                  <TD className="text-right font-medium tabular-nums !py-1.5">{formatCurrencyTR(Number(row.taksitTutari))}</TD>
+                                  <TD className="text-right tabular-nums !py-1.5">{formatCurrencyTR(Number(row.odenenToplam))}</TD>
+                                  <TD className="text-right tabular-nums !py-1.5">{formatCurrencyTR(Number(row.kalanTutar))}</TD>
+                                  <TD className="!py-1.5">
+                                    <Badge variant={taksitDurumBadge(row.durum)} className="!normal-case">
+                                      {taksitDurumLabel(row.durum)}
+                                    </Badge>
+                                    {t.hatirlatmaOzet ? (
+                                      <p className="mt-0.5 text-[10px] text-ink-muted">{t.hatirlatmaOzet}</p>
+                                    ) : null}
+                                  </TD>
+                                  <TD className="whitespace-nowrap text-ink-muted !py-1.5">{formatDateTR(row.sonOdemeTarihi ?? undefined)}</TD>
+                                  <TD className="font-mono text-[11px] !py-1.5">{row.sonMakbuzNo?.trim() ? row.sonMakbuzNo : '—'}</TD>
+                                  <TD className="!py-1.5">{smmDurumRozet(row.smmDurumu)}</TD>
+                                  <TD className="!py-1.5">
+                                    <div className={tableActionsFlexRow}>
+                                      {odenebilir && canTaksitOdendi ? (
+                                        <button
+                                          type="button"
+                                          className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
+                                          title="Ödeme al"
+                                          disabled={odemeTaksitMu.isPending}
+                                          onClick={() => {
+                                            odemeTaksitMu.reset()
+                                            setVekModal({ type: 'taksit-odeme', t })
+                                          }}
+                                        >
+                                          ₺
+                                        </button>
+                                      ) : null}
                                       <button
                                         type="button"
                                         className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
-                                        title="Ödeme al"
-                                        disabled={odemeTaksitMu.isPending}
-                                        onClick={() => {
-                                          odemeTaksitMu.reset()
-                                          setVekModal({ type: 'taksit-odeme', t })
-                                        }}
+                                        title="Hatırlatma planı"
+                                        onClick={() => setVekModal({ type: 'hatirlatma', t })}
                                       >
-                                        ₺
+                                        🔔
                                       </button>
-                                    ) : null}
-                                    <button
-                                      type="button"
-                                      className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
-                                      title="Hatırlatma planı"
-                                      onClick={() => setVekModal({ type: 'hatirlatma', t })}
-                                    >
-                                      🔔
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
-                                      title="Ödeme geçmişi"
-                                      onClick={() => setVekModal({ type: 'odeme-gecmisi', t })}
-                                    >
-                                      ⏱
-                                    </button>
-                                    {row.smmDurumu === 'BEKLIYOR' && canSmmIsaretle ? (
                                       <button
                                         type="button"
                                         className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
-                                        title="SMM Kesildi"
-                                        disabled={smmOdemeMu.isPending}
-                                        onClick={() => {
-                                          const odemeId = resolveSmmBekleyenOdemeId(t, vekaletData?.smmBekleyen ?? [])
-                                          if (odemeId) smmOdemeMu.mutate(odemeId)
-                                        }}
+                                        title="Ödeme geçmişi"
+                                        onClick={() => setVekModal({ type: 'odeme-gecmisi', t })}
                                       >
-                                        ✓
+                                        ⏱
                                       </button>
-                                    ) : null}
-                                    {Number(row.odenenToplam) > 0 ? (
-                                      <button
-                                        type="button"
-                                        className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
-                                        title="Makbuz"
-                                        onClick={async () => {
-                                          const odemeler = await listVekaletTaksitOdemeler(t.id)
-                                          const last = odemeler.items[0]
-                                          if (!last) return
-                                          const res = await getVekaletOdemeMakbuz(last.id)
-                                          setReceiptModal({
-                                            kind: 'vekalet-odeme',
-                                            makbuz: res.makbuz,
-                                            printRootId: `vek-odeme-${last.id}-${Date.now()}`,
-                                            printedAt: new Date().toISOString()
-                                          })
-                                        }}
-                                      >
-                                        🧾
-                                      </button>
-                                    ) : null}
-                                    {!iptal ? (
-                                      <button
-                                        type="button"
-                                        className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
-                                        title="Taksit düzenle"
-                                        disabled={updateTaksitMu.isPending}
-                                        onClick={() => setVekModal({ type: 'taksit-edit', t })}
-                                      >
-                                        ✎
-                                      </button>
-                                    ) : null}
-                                    {silinebilir && canTaksitEkle ? (
-                                      <button
-                                        type="button"
-                                        className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass, 'text-danger')}
-                                        title="Sil"
-                                        disabled={deleteTaksitMu.isPending}
-                                        onClick={() => {
-                                          void confirm({
-                                            title: 'Taksit silinsin mi?',
-                                            message: 'Bu taksiti silmek istediğinize emin misiniz?',
-                                            confirmLabel: 'Sil',
-                                            danger: true
-                                          }).then((ok) => {
-                                            if (ok) deleteTaksitMu.mutate(t.id)
-                                          })
-                                        }}
-                                      >
-                                        🗑
-                                      </button>
-                                    ) : null}
-                                  </div>
-                                </TD>
-                              </TR>
-                            )
-                          })
-                        )}
-                      </TBody>
-                    </Table>
-                  </div>
+                                      {row.smmDurumu === 'BEKLIYOR' && canSmmIsaretle ? (
+                                        <button
+                                          type="button"
+                                          className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
+                                          title="SMM Kesildi"
+                                          disabled={smmOdemeMu.isPending}
+                                          onClick={() => {
+                                            const odemeId = resolveSmmBekleyenOdemeId(t, vekaletData?.smmBekleyen ?? [])
+                                            if (odemeId) smmOdemeMu.mutate(odemeId)
+                                          }}
+                                        >
+                                          ✓
+                                        </button>
+                                      ) : null}
+                                      {Number(row.odenenToplam) > 0 ? (
+                                        <button
+                                          type="button"
+                                          className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
+                                          title="Makbuz"
+                                          onClick={async () => {
+                                            const odemeler = await listVekaletTaksitOdemeler(t.id)
+                                            const last = odemeler.items[0]
+                                            if (!last) return
+                                            const res = await getVekaletOdemeMakbuz(last.id)
+                                            setReceiptModal({
+                                              kind: 'vekalet-odeme',
+                                              makbuz: res.makbuz,
+                                              printRootId: `vek-odeme-${last.id}-${Date.now()}`,
+                                              printedAt: new Date().toISOString()
+                                            })
+                                          }}
+                                        >
+                                          🧾
+                                        </button>
+                                      ) : null}
+                                      {!iptal ? (
+                                        <button
+                                          type="button"
+                                          className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
+                                          title="Taksit düzenle"
+                                          disabled={updateTaksitMu.isPending}
+                                          onClick={() => setVekModal({ type: 'taksit-edit', t })}
+                                        >
+                                          ✎
+                                        </button>
+                                      ) : null}
+                                      {silinebilir && canTaksitEkle ? (
+                                        <button
+                                          type="button"
+                                          className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass, 'text-danger')}
+                                          title="Sil"
+                                          disabled={deleteTaksitMu.isPending}
+                                          onClick={() => {
+                                            void confirm({
+                                              title: 'Taksit silinsin mi?',
+                                              message: 'Bu taksiti silmek istediğinize emin misiniz?',
+                                              confirmLabel: 'Sil',
+                                              danger: true
+                                            }).then((ok) => {
+                                              if (ok) deleteTaksitMu.mutate(t.id)
+                                            })
+                                          }}
+                                        >
+                                          🗑
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                  </TD>
+                                </TR>
+                              )
+                            })}
+                          </TBody>
+                        </Table>
+                      </div>
+                    }
+                    cards={
+                      <>
+                        {vekaletData.taksitler.map((t) => {
+                          const row = resolveTaksitRow(t)
+                          const iptal = t.odemeDurumu === 'IPTAL'
+                          const odenebilir = !iptal && Number(row.kalanTutar) > 0
+                          const silinebilir = !iptal && Number(row.odenenToplam) === 0
+                          const taksitRowId = dosyaFocusElementId('taksit', t.id)
+                          const actions = []
+                          if (odenebilir && canTaksitOdendi) {
+                            actions.push({
+                              key: 'odeme',
+                              label: 'Ödeme al',
+                              primary: true,
+                              disabled: odemeTaksitMu.isPending,
+                              onClick: () => {
+                                odemeTaksitMu.reset()
+                                setVekModal({ type: 'taksit-odeme', t })
+                              }
+                            })
+                          }
+                          actions.push(
+                            {
+                              key: 'hatirlat',
+                              label: 'Hatırlatma',
+                              primary: true,
+                              variant: 'outline' as const,
+                              onClick: () => setVekModal({ type: 'hatirlatma', t })
+                            },
+                            {
+                              key: 'gecmis',
+                              label: 'Ödeme geçmişi',
+                              variant: 'outline' as const,
+                              onClick: () => setVekModal({ type: 'odeme-gecmisi', t })
+                            }
+                          )
+                          if (row.smmDurumu === 'BEKLIYOR' && canSmmIsaretle) {
+                            actions.push({
+                              key: 'smm',
+                              label: 'SMM kesildi',
+                              variant: 'outline' as const,
+                              disabled: smmOdemeMu.isPending,
+                              onClick: () => {
+                                const odemeId = resolveSmmBekleyenOdemeId(t, vekaletData?.smmBekleyen ?? [])
+                                if (odemeId) smmOdemeMu.mutate(odemeId)
+                              }
+                            })
+                          }
+                          if (Number(row.odenenToplam) > 0) {
+                            actions.push({
+                              key: 'makbuz',
+                              label: 'Makbuz',
+                              variant: 'outline' as const,
+                              onClick: () => {
+                                void (async () => {
+                                  const odemeler = await listVekaletTaksitOdemeler(t.id)
+                                  const last = odemeler.items[0]
+                                  if (!last) return
+                                  const res = await getVekaletOdemeMakbuz(last.id)
+                                  setReceiptModal({
+                                    kind: 'vekalet-odeme',
+                                    makbuz: res.makbuz,
+                                    printRootId: `vek-odeme-${last.id}-${Date.now()}`,
+                                    printedAt: new Date().toISOString()
+                                  })
+                                })()
+                              }
+                            })
+                          }
+                          if (!iptal) {
+                            actions.push({
+                              key: 'edit',
+                              label: 'Düzenle',
+                              variant: 'outline' as const,
+                              disabled: updateTaksitMu.isPending,
+                              onClick: () => setVekModal({ type: 'taksit-edit', t })
+                            })
+                          }
+                          if (silinebilir && canTaksitEkle) {
+                            actions.push({
+                              key: 'sil',
+                              label: 'Sil',
+                              danger: true,
+                              disabled: deleteTaksitMu.isPending,
+                              onClick: () => {
+                                void confirm({
+                                  title: 'Taksit silinsin mi?',
+                                  message: 'Bu taksiti silmek istediğinize emin misiniz?',
+                                  confirmLabel: 'Sil',
+                                  danger: true
+                                }).then((ok) => {
+                                  if (ok) deleteTaksitMu.mutate(t.id)
+                                })
+                              }
+                            })
+                          }
+                          return (
+                            <MobileRecordCard
+                              key={t.id}
+                              className={cn(
+                                iptal && 'opacity-60',
+                                isRowHighlighted(taksitRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
+                              )}
+                              title={`Taksit #${t.taksitNo}`}
+                              subtitle={t.hatirlatmaOzet ?? undefined}
+                              badge={
+                                <Badge variant={taksitDurumBadge(row.durum)} className="!normal-case">
+                                  {taksitDurumLabel(row.durum)}
+                                </Badge>
+                              }
+                              fields={[
+                                { label: 'Vade', value: formatDateTR(t.vadeTarihi) },
+                                { label: 'SMM', value: smmDurumRozet(row.smmDurumu) },
+                                {
+                                  label: 'Tutar',
+                                  value: formatCurrencyTR(Number(row.taksitTutari)),
+                                  numeric: true
+                                },
+                                {
+                                  label: 'Ödenen',
+                                  value: formatCurrencyTR(Number(row.odenenToplam)),
+                                  numeric: true
+                                },
+                                {
+                                  label: 'Kalan',
+                                  value: formatCurrencyTR(Number(row.kalanTutar)),
+                                  numeric: true
+                                },
+                                {
+                                  label: 'Son ödeme',
+                                  value: formatDateTR(row.sonOdemeTarihi ?? undefined)
+                                },
+                                {
+                                  label: 'Makbuz',
+                                  value: row.sonMakbuzNo?.trim() ? row.sonMakbuzNo : '—',
+                                  full: true
+                                }
+                              ]}
+                              actions={<MobileActionBar items={actions} />}
+                            />
+                          )
+                        })}
+                      </>
+                    }
+                  />
                 </>
               ) : (
                 <p className="text-sm text-ink-muted">Vekalet verisi yok.</p>
@@ -1547,57 +1799,106 @@ export function DosyaDetailPage(): ReactElement {
                   {vekaletListError}
                 </AlertBox>
               ) : vekaletData && vekaletData.smmBekleyen.length > 0 ? (
-                <div className="overflow-x-auto rounded-lg border border-border">
-                  <Table>
-                    <THead>
-                      <TR>
-                        <TH>Tahsilat tarihi</TH>
-                        <TH className="text-right">Tutar</TH>
-                        <TH>Makbuz no</TH>
-                        <TH>SMM durumu</TH>
-                        <TH>İşlem</TH>
-                      </TR>
-                    </THead>
-                    <TBody>
+                <ResponsiveDataView
+                  table={
+                    <div className="overflow-x-auto rounded-lg border border-border">
+                      <Table>
+                        <THead>
+                          <TR>
+                            <TH>Tahsilat tarihi</TH>
+                            <TH className="text-right">Tutar</TH>
+                            <TH>Makbuz no</TH>
+                            <TH>SMM durumu</TH>
+                            <TH>İşlem</TH>
+                          </TR>
+                        </THead>
+                        <TBody>
+                          {vekaletData.smmBekleyen.map((row) => {
+                            const r = row as { id: string; odemeTarihi?: string; tutar?: string; makbuzNo?: string }
+                            const odemeRowId = dosyaFocusElementId('odeme', r.id)
+                            return (
+                              <TR
+                                key={r.id}
+                                id={odemeRowId}
+                                className={cn(isRowHighlighted(odemeRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS)}
+                              >
+                                <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(r.odemeTarihi)}</TD>
+                                <TD className="text-right font-medium tabular-nums">{formatCurrencyTR(Number(r.tutar ?? 0))}</TD>
+                                <TD className="font-mono text-xs">{r.makbuzNo ?? '—'}</TD>
+                                <TD>
+                                  <Badge variant="danger" className="animate-pulse !normal-case bg-rose-100 text-rose-800">
+                                    SMM bekliyor
+                                  </Badge>
+                                </TD>
+                                <TD>
+                                  {canSmmIsaretle ? (
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      variant="secondary"
+                                      className="h-7 px-2 text-[11px]"
+                                      disabled={smmOdemeMu.isPending}
+                                      onClick={() => smmOdemeMu.mutate(r.id)}
+                                    >
+                                      SMM kesildi
+                                    </Button>
+                                  ) : (
+                                    <span className="text-[11px] text-ink-muted">Yetki yok</span>
+                                  )}
+                                </TD>
+                              </TR>
+                            )
+                          })}
+                        </TBody>
+                      </Table>
+                    </div>
+                  }
+                  cards={
+                    <>
                       {vekaletData.smmBekleyen.map((row) => {
                         const r = row as { id: string; odemeTarihi?: string; tutar?: string; makbuzNo?: string }
                         const odemeRowId = dosyaFocusElementId('odeme', r.id)
                         return (
-                          <TR
+                          <MobileRecordCard
                             key={r.id}
-                            id={odemeRowId}
                             className={cn(isRowHighlighted(odemeRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS)}
-                          >
-                            <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(r.odemeTarihi)}</TD>
-                            <TD className="text-right font-medium tabular-nums">{formatCurrencyTR(Number(r.tutar ?? 0))}</TD>
-                            <TD className="font-mono text-xs">{r.makbuzNo ?? '—'}</TD>
-                            <TD>
+                            title={r.makbuzNo ?? 'Makbuz yok'}
+                            badge={
                               <Badge variant="danger" className="animate-pulse !normal-case bg-rose-100 text-rose-800">
                                 SMM bekliyor
                               </Badge>
-                            </TD>
-                            <TD>
-                              {canSmmIsaretle ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="secondary"
-                                  className="h-7 px-2 text-[11px]"
-                                  disabled={smmOdemeMu.isPending}
-                                  onClick={() => smmOdemeMu.mutate(r.id)}
-                                >
-                                  SMM kesildi
-                                </Button>
+                            }
+                            fields={[
+                              { label: 'Tahsilat tarihi', value: formatDateTR(r.odemeTarihi) },
+                              {
+                                label: 'Tutar',
+                                value: formatCurrencyTR(Number(r.tutar ?? 0)),
+                                numeric: true
+                              }
+                            ]}
+                            actions={
+                              canSmmIsaretle ? (
+                                <MobileActionBar
+                                  items={[
+                                    {
+                                      key: 'smm',
+                                      label: 'SMM kesildi',
+                                      primary: true,
+                                      disabled: smmOdemeMu.isPending,
+                                      onClick: () => smmOdemeMu.mutate(r.id)
+                                    }
+                                  ]}
+                                />
                               ) : (
                                 <span className="text-[11px] text-ink-muted">Yetki yok</span>
-                              )}
-                            </TD>
-                          </TR>
+                              )
+                            }
+                          />
                         )
                       })}
-                    </TBody>
-                  </Table>
-                </div>
+                    </>
+                  }
+                />
               ) : (
                 <EmptyState
                   title="SMM bekleyen yok"

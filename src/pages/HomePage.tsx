@@ -25,6 +25,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, DraggablePanel, EmptyState, PageLoading, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { MobileRecordCard, ResponsiveDataView } from '../components/responsive'
 import { AnimatedNumber, Stagger, StaggerItem } from '../motion'
 import { useToast } from '../toast'
 import type { MuvekkilDto } from '../types/muvekkil'
@@ -241,7 +242,7 @@ export function HomePage(): ReactElement {
         </AlertBox>
       ) : null}
 
-      <Stagger className="grid items-stretch gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <Stagger className="grid grid-cols-2 items-stretch gap-3 xl:grid-cols-3 2xl:grid-cols-6">
         <StaggerItem className="h-full min-h-0">
           <StatCard
             label="Vadesi geçmiş taksit"
@@ -387,33 +388,69 @@ export function HomePage(): ReactElement {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto">
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH>Görünen ad</TH>
-                      <TH>Tür</TH>
-                      <TH>Telefon</TH>
-                      <TH>E-posta</TH>
-                      <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
+              <ResponsiveDataView
+                table={
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <THead>
+                        <TR>
+                          <TH>Görünen ad</TH>
+                          <TH>Tür</TH>
+                          <TH>Telefon</TH>
+                          <TH>E-posta</TH>
+                          <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
+                        {rows.map((m) => {
+                          const detailTo = `${APP_BASE}/muvekkil/${m.id}`
+                          return (
+                            <TR key={m.id} interactive onClick={() => navigate(detailTo)}>
+                              <TD>
+                                <span className="font-semibold text-primary decoration-primary/35 underline-offset-2 transition group-hover/row:text-primary group-hover/row:underline">
+                                  {m.gorunenAd}
+                                </span>
+                              </TD>
+                              <TD>
+                                {m.tur === 'TUZEL' ? (
+                                  <Badge variant="accent" className="!normal-case">
+                                    Tüzel
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="primary" className="!normal-case">
+                                    Gerçek
+                                  </Badge>
+                                )}
+                              </TD>
+                              <TD className="text-ink-muted">{m.telefon ?? '—'}</TD>
+                              <TD className="text-ink-muted">{m.eposta ?? '—'}</TD>
+                              <TD className="text-right">
+                                <Link
+                                  to={detailTo}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={tableActionLinkAccentClass}
+                                  aria-label={`${m.gorunenAd}: müvekkil detayı`}
+                                >
+                                  Detay
+                                </Link>
+                              </TD>
+                            </TR>
+                          )
+                        })}
+                      </TBody>
+                    </Table>
+                  </div>
+                }
+                cards={
+                  <>
                     {rows.map((m) => {
                       const detailTo = `${APP_BASE}/muvekkil/${m.id}`
                       return (
-                        <TR
+                        <MobileRecordCard
                           key={m.id}
-                          interactive
-                          onClick={() => navigate(detailTo)}
-                        >
-                          <TD>
-                            <span className="font-semibold text-primary decoration-primary/35 underline-offset-2 transition group-hover/row:text-primary group-hover/row:underline">
-                              {m.gorunenAd}
-                            </span>
-                          </TD>
-                          <TD>
-                            {m.tur === 'TUZEL' ? (
+                          title={m.gorunenAd}
+                          badge={
+                            m.tur === 'TUZEL' ? (
                               <Badge variant="accent" className="!normal-case">
                                 Tüzel
                               </Badge>
@@ -421,38 +458,41 @@ export function HomePage(): ReactElement {
                               <Badge variant="primary" className="!normal-case">
                                 Gerçek
                               </Badge>
-                            )}
-                          </TD>
-                          <TD className="text-ink-muted">{m.telefon ?? '—'}</TD>
-                          <TD className="text-ink-muted">{m.eposta ?? '—'}</TD>
-                          <TD className="text-right">
+                            )
+                          }
+                          fields={[
+                            { label: 'Telefon', value: m.telefon ?? '—' },
+                            { label: 'E-posta', value: m.eposta ?? '—' }
+                          ]}
+                          onClick={() => navigate(detailTo)}
+                          actions={
                             <Link
                               to={detailTo}
+                              className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-accent bg-accent px-3 text-sm font-semibold text-white shadow-sm"
                               onClick={(e) => e.stopPropagation()}
-                              className={tableActionLinkAccentClass}
-                              aria-label={`${m.gorunenAd}: müvekkil detayı`}
                             >
                               Detay
                             </Link>
-                          </TD>
-                        </TR>
+                          }
+                        />
                       )
                     })}
-                  </TBody>
-                </Table>
-              </div>
+                  </>
+                }
+              />
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-4 py-3 text-sm text-ink-muted">
                 <span>
                   Toplam <strong>{total}</strong> kayıt · sayfa {page}/{totalPages}
                 </span>
-                <div className="flex gap-2">
-                  <Button type="button" size="sm" variant="outline" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+                <div className="flex w-full gap-2 sm:w-auto">
+                  <Button type="button" size="sm" variant="outline" className="flex-1 sm:flex-none" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
                     Önceki
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
+                    className="flex-1 sm:flex-none"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
                   >
