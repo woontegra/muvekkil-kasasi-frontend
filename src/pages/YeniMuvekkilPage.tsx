@@ -7,6 +7,7 @@ import { invalidateDashboardSummary } from '../api/dashboard'
 import { ApiError } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import type { CreateMuvekkilPayload, MuvekkilTurApi } from '../types/muvekkil'
+import { OtomatikHatirlatmaSwitch } from '../components/bildirim/OtomatikHatirlatmaSwitch'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, Select, Textarea } from '../components/ui'
 
 function isEmail(s: string): boolean {
@@ -36,6 +37,7 @@ export function YeniMuvekkilPage(): ReactElement {
   const [tuzelAdres, setTuzelAdres] = useState('')
   const [tuzelNot, setTuzelNot] = useState('')
 
+  const [otomatikBildirimIzni, setOtomatikBildirimIzni] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -78,7 +80,7 @@ export function YeniMuvekkilPage(): ReactElement {
         mudurTelefon: '',
         muhasebeAdSoyad: '',
         muhasebeTelefon: '',
-        otomatikBildirimIzni: false
+        otomatikBildirimIzni
       }
     }
     return {
@@ -95,7 +97,7 @@ export function YeniMuvekkilPage(): ReactElement {
       mudurTelefon: mudurTelefon.trim(),
       muhasebeAdSoyad: muhasebeAdSoyad.trim(),
       muhasebeTelefon: muhasebeTelefon.trim(),
-      otomatikBildirimIzni: false
+      otomatikBildirimIzni
     }
   }
 
@@ -277,6 +279,16 @@ export function YeniMuvekkilPage(): ReactElement {
                 </div>
               </div>
             )}
+
+            <OtomatikHatirlatmaSwitch
+              id="yeni-muvekkil-otomatik-whatsapp"
+              label="Bu müvekkile otomatik WhatsApp ödeme hatırlatmaları gönderilsin"
+              description="Kapalıysa bu müvekkil için otomatik tahsilat hatırlatması planlanmaz. Varsayılan kapalıdır."
+              checked={otomatikBildirimIzni}
+              disabled={submitting}
+              onChange={setOtomatikBildirimIzni}
+              stateText={{ on: 'Açık', off: 'Kapalı' }}
+            />
 
             <AlertBox variant="info" title="Bilgi">
               Kayıt sonrası müvekkil detay sayfasına yönlendirilirsiniz; ana sayfa listesi güncellenir.

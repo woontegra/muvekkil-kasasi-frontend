@@ -4,14 +4,19 @@ import { Link } from 'react-router-dom'
 import { getOnayliWhatsAppSablonlari } from '../../api/whatsappBaglanti'
 import {
   getTaksitHatirlatmaPlan,
-  hhmmToMinutes,
-  minutesToHHmm,
   setTaksitHatirlatmaPlan,
   type BildirimPlanModu,
   type TaksitPlanKuralInput
 } from '../../api/bildirimPlan'
 import { friendlyClientErrorMessage } from '../../api/client'
 import { APP_BASE } from '../../config/appPaths'
+import {
+  BILDIRIM_PENCERE_HATA,
+  isGonderimSaatiSecilebilir,
+  listGonderimSaatiOptions,
+  minutesToHHmm,
+  snapGonderimSaatiDk
+} from '../../lib/bildirimSendWindow'
 import { useToast } from '../../toast'
 import type { BildirimKuralTuru } from '../../types/tahsilatBildirim'
 import { AlertBox, Button, Input, ModalScrim } from '../ui'
@@ -64,11 +69,20 @@ export function TaksitHatirlatmaPlanModal(props: Props): ReactElement {
   }, [planQ.data])
 
   const saveMu = useMutation({
-    mutationFn: () =>
-      setTaksitHatirlatmaPlan(props.taksitId, {
+    mutationFn: () => {
+      if (mode === 'OZEL') {
+        for (const k of kurallar) {
+          if (!k.aktifMi) continue
+          if (!isGonderimSaatiSecilebilir(k.gonderimSaatiDk)) {
+            throw new Error(BILDIRIM_PENCERE_HATA)
+          }
+        }
+      }
+      return setTaksitHatirlatmaPlan(props.taksitId, {
         mode,
         kurallar: mode === 'OZEL' ? kurallar : undefined
-      }),
+      })
+    },
     onSuccess: () => {
       toast.success('Hatırlatma planı kaydedildi.')
       void qc.invalidateQueries({ queryKey: ['vekalet'] })
@@ -122,13 +136,24 @@ export function TaksitHatirlatmaPlanModal(props: Props): ReactElement {
                         onChange={(e) => updateKural(k.kuralTuru, { gunOffset: Number(e.target.value) || 1 })}
                       />
                     ) : null}
-                    <Input
-                      label="Gönderim saati"
-                      value={minutesToHHmm(k.gonderimSaatiDk)}
-                      onChange={(e) =>
-                        updateKural(k.kuralTuru, { gonderimSaatiDk: hhmmToMinutes(e.target.value) })
-                      }
-                    />
+                    <div>
+                      <label className="text-xs font-semibold text-ink-muted">Gönderim saati</label>
+                      <select
+                        className="mt-1 w-full rounded-md border border-border px-2 py-1.5 text-sm"
+                        value={minutesToHHmm(snapGonderimSaatiDk(k.gonderimSaatiDk))}
+                        onChange={(e) => {
+                          const opt = listGonderimSaatiOptions().find((o) => o.label === e.target.value)
+                          if (opt) updateKural(k.kuralTuru, { gonderimSaatiDk: opt.dk })
+                        }}
+                      >
+                        {listGonderimSaatiOptions().map((o) => (
+                          <option key={o.dk} value={o.label}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-ink-muted">Türkiye saati 10:00–19:55, 5 dk adım</p>
+                    </div>
                     <div className="sm:col-span-2">
                       <label className="text-xs font-semibold text-ink-muted">WhatsApp şablonu</label>
                       {approved.length === 0 ? (

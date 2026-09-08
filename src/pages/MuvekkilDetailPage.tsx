@@ -1,18 +1,21 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { FormEvent, ReactElement, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { listMuvekkilDosyalari } from '../api/dosyalar'
 import { getMuvekkil } from '../api/muvekkiller'
-import { ApiError } from '../api/client'
+import { patchMuvekkilBildirimAyar } from '../api/bildirimAyar'
+import { ApiError, friendlyClientErrorMessage } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
 import { dosyaDurumuBadgeVariant, dosyaDurumuLabel, dosyaTuruLabel, mahkemeIcraSatir } from '../lib/dosyaLabels'
 import { cn } from '../lib/cn'
+import { OtomatikHatirlatmaSwitch } from '../components/bildirim/OtomatikHatirlatmaSwitch'
 import { MuvekkilEditModal } from '../components/muvekkil/MuvekkilEditModal'
 import { MuvekkilKarlilikTab } from '../components/mali/MuvekkilKarlilikTab'
 import { MuvekkilRandevularSection } from '../pages/RandevularPage'
 import { MobileRecordCard, ResponsiveDataView } from '../components/responsive'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { useToast } from '../toast'
 
 function ProfileStatCard({ label, value, className }: { label: string; value: ReactNode; className?: string }): ReactElement {
   return (
@@ -31,6 +34,8 @@ function ProfileStatCard({ label, value, className }: { label: string; value: Re
 export function MuvekkilDetailPage(): ReactElement {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const toast = useToast()
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [editOpen, setEditOpen] = useState(false)
@@ -50,6 +55,22 @@ export function MuvekkilDetailPage(): ReactElement {
     queryKey: ['muvekkil-dosyalar', id, debouncedQ],
     queryFn: () => listMuvekkilDosyalari(id!, { q: debouncedQ || undefined, page: 1, limit: 100 }),
     enabled: Boolean(id) && muvekkilQuery.isSuccess
+  })
+
+  const izinMu = useMutation({
+    mutationFn: (next: boolean) => patchMuvekkilBildirimAyar(id!, next),
+    onSuccess: async (res) => {
+      await queryClient.invalidateQueries({ queryKey: ['muvekkil', id] })
+      await queryClient.invalidateQueries({ queryKey: ['muvekkiller'] })
+      toast.success(
+        res.aktif
+          ? 'Otomatik WhatsApp ödeme hatırlatmaları açıldı.'
+          : 'Otomatik WhatsApp ödeme hatırlatmaları kapatıldı.'
+      )
+    },
+    onError: (err) => {
+      toast.error(friendlyClientErrorMessage(err, 'Hatırlatma izni güncellenemedi.'))
+    }
   })
 
   if (!id) {
@@ -165,6 +186,14 @@ export function MuvekkilDetailPage(): ReactElement {
               }
             />
             <ProfileStatCard
+              label="Otomatik WhatsApp hatırlatma"
+              value={
+                <span className={m.otomatikBildirimIzni ? 'text-emerald-700' : 'text-ink-muted'}>
+                  {m.otomatikBildirimIzni ? 'Açık' : 'Kapalı'}
+                </span>
+              }
+            />
+            <ProfileStatCard
               label="Adres"
               className="sm:col-span-2 lg:col-span-3"
               value={
@@ -187,6 +216,19 @@ export function MuvekkilDetailPage(): ReactElement {
               }
             />
           </div>
+
+          <OtomatikHatirlatmaSwitch
+            id={`muvekkil-detail-otomatik-whatsapp-${m.id}`}
+            label="Bu müvekkile otomatik WhatsApp ödeme hatırlatmaları gönderilsin"
+            description="Kapalıysa bu müvekkil için otomatik tahsilat hatırlatması planlanmaz."
+            checked={Boolean(m.otomatikBildirimIzni)}
+            disabled={izinMu.isPending}
+            onChange={(next) => {
+              if (next === Boolean(m.otomatikBildirimIzni) || izinMu.isPending) return
+              izinMu.mutate(next)
+            }}
+            stateText={{ on: 'Açık', off: 'Kapalı' }}
+          />
 
           {tuzelKutu ? (
             <div className="border-t border-border pt-4">

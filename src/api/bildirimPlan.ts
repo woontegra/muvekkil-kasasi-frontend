@@ -1,5 +1,9 @@
 import { apiFetch } from './client'
 import type { BildirimKuralTuru } from '../types/tahsilatBildirim'
+import {
+  hhmmToMinutes as parseHhmmToMinutes,
+  minutesToHHmm as formatMinutesToHHmm
+} from '../lib/bildirimSendWindow'
 
 export type BildirimPlanModu = 'VARSAYILAN' | 'OZEL' | 'KAPALI'
 
@@ -64,13 +68,9 @@ export async function updateRandevuBildirimAyarlar(body: {
 }
 
 export function minutesToHHmm(dk: number): string {
-  const h = Math.floor(dk / 60)
-  const m = dk % 60
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  return formatMinutesToHHmm(dk)
 }
 
 export function hhmmToMinutes(value: string): number {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim())
-  if (!m) return 600
-  return Number(m[1]) * 60 + Number(m[2])
+  return parseHhmmToMinutes(value) ?? 600
 }

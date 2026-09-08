@@ -11,16 +11,29 @@ import {
   updateTahsilatBildirimAyarlar,
   updateTahsilatBildirimKural
 } from '../../../api/tahsilatBildirim'
+import { listMuvekkiller } from '../../../api/muvekkiller'
 import { getOnayliWhatsAppSablonlariByKural } from '../../../api/whatsappBaglanti'
 import { friendlyClientErrorMessage } from '../../../api/client'
 import { APP_BASE } from '../../../config/appPaths'
 import { useAuth } from '../../../contexts/AuthContext'
 import { isYoneticiRole } from '../../../lib/isYonetici'
+import { whatsappAutomationReasonLabel } from '../../../lib/whatsapp'
+import {
+  BILDIRIM_PENCERE_ARALIK_HATA,
+  BILDIRIM_PENCERE_HATA,
+  hhmmToMinutes,
+  isGonderimSaatiSecilebilir,
+  isIzinliAralikGecerli,
+  listGonderimSaatiOptions,
+  minutesToHHmm,
+  snapGonderimSaatiDk
+} from '../../../lib/bildirimSendWindow'
 import { useToast } from '../../../toast'
 import type { BildirimKuralTuru, TahsilatBildirimKuraliDto } from '../../../types/tahsilatBildirim'
 import { bildirimKuralTuruLabel } from '../../../types/tahsilatBildirim'
 import { AlertBox, Badge, Button, Input, useConfirm } from '../../ui'
 import { AyarlarPanelShell } from '../shared'
+import { KuralWhatsappTestModal } from './KuralWhatsappTestModal'
 
 const SABLONLAR_PATH = `${APP_BASE}/ayarlar?bolum=whatsapp-sablonlari`
 
@@ -28,22 +41,6 @@ const KURAL_LIBRARY_KEYS: Record<BildirimKuralTuru, readonly string[]> = {
   VADEDEN_ONCE: ['TAHSILAT_VADE_ONCESI'],
   VADE_GUNU: ['TAHSILAT_VADE_GUNU'],
   VADE_SONRASI: ['TAHSILAT_GECIKMIS']
-}
-
-function minutesToHHmm(dk: number): string {
-  const clamped = Math.max(0, Math.min(1439, Math.floor(dk)))
-  const hh = String(Math.floor(clamped / 60)).padStart(2, '0')
-  const mm = String(clamped % 60).padStart(2, '0')
-  return `${hh}:${mm}`
-}
-
-function hhmmToMinutes(value: string): number | null {
-  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim())
-  if (!m) return null
-  const h = Number(m[1])
-  const min = Number(m[2])
-  if (!Number.isFinite(h) || !Number.isFinite(min) || h < 0 || h > 23 || min < 0 || min > 59) return null
-  return h * 60 + min
 }
 
 const KURAL_ORDER: BildirimKuralTuru[] = ['VADEDEN_ONCE', 'VADE_GUNU', 'VADE_SONRASI']
@@ -128,13 +125,22 @@ function AccordionSection(props: {
 export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   const { session } = useAuth()
   const isYonetici = isYoneticiRole(session?.user.role)
+  const isBuroSahibi = session?.user.role === 'BURO_SAHIBI'
   const toast = useToast()
   const { confirm } = useConfirm()
   const qc = useQueryClient()
+  const [testKural, setTestKural] = useState<{ id: string; kuralTuru: BildirimKuralTuru } | null>(null)
 
   const ayarlarQ = useQuery({
     queryKey: [...TAHSILAT_BILDIRIM_QUERY_KEY, 'ayarlar'],
     queryFn: getTahsilatBildirimAyarlar,
+    enabled: isYonetici,
+    staleTime: 30_000
+  })
+
+  const izinliMuvekkilQ = useQuery({
+    queryKey: ['muvekkiller', 'otomatik-izin-count'],
+    queryFn: () => listMuvekkiller({ otomatikHatirlatma: 'ACIK', page: 1, limit: 1 }),
     enabled: isYonetici,
     staleTime: 30_000
   })
@@ -197,7 +203,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
       rd[k.id] = {
         aktifMi: k.aktifMi,
         gunOffset: k.kuralTuru === 'VADE_GUNU' ? 0 : k.gunOffset,
-        gonderimSaati: minutesToHHmm(k.gonderimSaatiDk)
+        gonderimSaati: minutesToHHmm(snapGonderimSaatiDk(k.gonderimSaatiDk))
       }
     }
     setRuleDrafts(rd)
@@ -215,8 +221,8 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
       if (basDk == null || bitDk == null) {
         throw new Error('Mesaj saat aralığı SS:dd formatında olmalıdır.')
       }
-      if (basDk >= bitDk) {
-        throw new Error('Başlangıç saati, bitiş saatinden önce olmalıdır.')
+      if (!isIzinliAralikGecerli(basDk, bitDk)) {
+        throw new Error(BILDIRIM_PENCERE_ARALIK_HATA)
       }
 
       await updateTahsilatBildirimAyarlar({
@@ -232,6 +238,9 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
         const gonderimSaatiDk = hhmmToMinutes(d.gonderimSaati)
         if (gonderimSaatiDk == null) {
           throw new Error(`${bildirimKuralTuruLabel(k.kuralTuru)} için mesaj saati geçersiz.`)
+        }
+        if (!isGonderimSaatiSecilebilir(gonderimSaatiDk)) {
+          throw new Error(`${bildirimKuralTuruLabel(k.kuralTuru)}: ${BILDIRIM_PENCERE_HATA}`)
         }
         await updateTahsilatBildirimKural(k.id, {
           aktifMi: d.aktifMi,
@@ -251,12 +260,31 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     }
   })
 
+  const otomasyonMu = useMutation({
+    mutationFn: (next: boolean) => updateTahsilatBildirimAyarlar({ otomasyonAktif: next }),
+    onSuccess: (_res, next) => {
+      setOtomasyonAktif(next)
+      dirtyRef.current = false
+      hydratedAyarUpdatedAtRef.current = null
+      invalidateTahsilatBildirim(qc)
+      toast.success(next ? 'Otomatik hatırlatmalar açıldı ve kaydedildi.' : 'Otomatik hatırlatmalar kapatıldı.')
+    },
+    onError: (err) => {
+      toast.error(friendlyClientErrorMessage(err, 'Otomasyon durumu kaydedilemedi.'))
+    }
+  })
+
   const planlaMu = useMutation({
     mutationFn: planlaTahsilatBildirimleri,
     onSuccess: (res) => {
       invalidateTahsilatBildirim(qc)
       if (res.result.skipped) {
-        toast.info(res.result.reason ?? 'Planlama atlandı.')
+        toast.info(
+          whatsappAutomationReasonLabel(
+            res.result.reason,
+            typeof res.message === 'string' ? res.message : 'Planlama atlandı.'
+          )
+        )
       } else {
         toast.success(`Planlama tamamlandı. Yeni: ${res.result.created}, iptal: ${res.result.cancelled}.`)
       }
@@ -281,30 +309,29 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   }
 
   const handleOtomasyonToggle = async (next: boolean): Promise<void> => {
-    if (next && !otomasyonAktif) {
+    if (next === otomasyonAktif || otomasyonMu.isPending) return
+    if (next) {
       const ok = await confirm({
         title: 'Otomatik hatırlatmaları açmak istiyor musunuz?',
         message:
-          'Açıldığında sistem, kurallara göre tahsilat hatırlatmalarını planlar. Onaylı WhatsApp şablonu seçili kurallar Cloud üzerinden gönderilir.',
-        confirmLabel: 'Hatırlatmaları aç',
+          'Onayladığınızda ayar hemen kaydedilir. Sistem, kurallara göre tahsilat hatırlatmalarını planlar. Onaylı WhatsApp şablonu seçili kurallar Cloud üzerinden gönderilir.',
+        confirmLabel: 'Aç ve kaydet',
+        cancelLabel: 'Vazgeç'
+      })
+      if (!ok) return
+    } else {
+      const ok = await confirm({
+        title: 'Otomatik hatırlatmaları kapatmak istiyor musunuz?',
+        message: 'Onayladığınızda ayar hemen kaydedilir; yeni otomatik planlama yapılmaz.',
+        confirmLabel: 'Kapat ve kaydet',
         cancelLabel: 'Vazgeç'
       })
       if (!ok) return
     }
-    markDirty()
-    setOtomasyonAktif(next)
+    otomasyonMu.mutate(next)
   }
 
   const handleKaydet = async (): Promise<void> => {
-    if (otomasyonAktif && !ayarlarQ.data?.ayar.otomasyonAktif) {
-      const ok = await confirm({
-        title: 'Ayarları kaydetmek istiyor musunuz?',
-        message: 'Otomatik hatırlatmalar açık olarak kaydedilecek. Kural zamanlamaları da birlikte güncellenir.',
-        confirmLabel: 'Kaydet ve aç',
-        cancelLabel: 'Vazgeç'
-      })
-      if (!ok) return
-    }
     saveMu.mutate()
   }
 
@@ -337,17 +364,45 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                 type="button"
                 size="sm"
                 variant={otomasyonAktif ? 'outline' : 'primary'}
-                disabled={saveMu.isPending || ayarlarQ.isLoading}
+                disabled={saveMu.isPending || otomasyonMu.isPending || ayarlarQ.isLoading}
                 onClick={() => void handleOtomasyonToggle(!otomasyonAktif)}
               >
-                {otomasyonAktif ? 'Kapat' : 'Aç'}
+                {otomasyonMu.isPending ? 'Kaydediliyor…' : otomasyonAktif ? 'Kapat' : 'Aç'}
               </Button>
             </div>
           </div>
+          <p className="mt-2 text-xs text-ink-muted">Aç/Kapat onayı sonrası durum hemen kaydedilir.</p>
         </div>
+
+        {izinliMuvekkilQ.isSuccess ? (
+          izinliMuvekkilQ.data.total === 0 ? (
+            <AlertBox variant="warning" title={`İzinli müvekkil: ${izinliMuvekkilQ.data.total}`}>
+              <p>
+                Hiçbir müvekkilde otomatik WhatsApp ödeme hatırlatması izni açık değil. Otomasyon açık olsa bile
+                hatırlatma planlanmaz.
+              </p>
+              <p className="mt-2">
+                <Link to={APP_BASE} className="font-semibold text-primary hover:underline">
+                  Müvekkilleri yönet
+                </Link>
+              </p>
+            </AlertBox>
+          ) : (
+            <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
+              <p className="text-sm text-ink">
+                <span className="font-semibold">İzinli müvekkil: {izinliMuvekkilQ.data.total}</span>
+                <span className="mx-2 text-ink-subtle">·</span>
+                <Link to={APP_BASE} className="font-semibold text-primary hover:underline">
+                  Müvekkilleri yönet
+                </Link>
+              </p>
+            </div>
+          )
+        ) : null}
 
         <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Gönderim saat aralığı</p>
+          <p className="mt-1 text-xs text-ink-muted">Türkiye saatiyle yalnızca 10:00–20:00 arası kabul edilir.</p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Input
               label="Mesajların gönderilmeye başlayabileceği saat"
@@ -393,16 +448,28 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                   <Badge variant={d.aktifMi ? 'success' : 'default'} className="normal-case tracking-normal">
                     {d.aktifMi ? 'Açık' : 'Kapalı'}
                   </Badge>
-                  <label className="flex items-center gap-2 text-xs font-medium text-ink">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 rounded border-border"
-                      checked={d.aktifMi}
-                      onChange={(e) => updateRule(k.id, { aktifMi: e.target.checked })}
-                      disabled={saveMu.isPending}
-                    />
-                    Bu hatırlatmayı kullan
-                  </label>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {isBuroSahibi && d.aktifMi ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setTestKural({ id: k.id, kuralTuru: k.kuralTuru })}
+                      >
+                        Test Et
+                      </Button>
+                    ) : null}
+                    <label className="flex items-center gap-2 text-xs font-medium text-ink">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 rounded border-border"
+                        checked={d.aktifMi}
+                        onChange={(e) => updateRule(k.id, { aktifMi: e.target.checked })}
+                        disabled={saveMu.isPending}
+                      />
+                      Bu hatırlatmayı kullan
+                    </label>
+                  </div>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -423,13 +490,22 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                       <p className="mt-1 text-sm text-ink">{gunAlani.hint}</p>
                     </div>
                   )}
-                  <Input
-                    label="Mesajın gönderileceği saat"
-                    value={d.gonderimSaati}
-                    onChange={(e) => updateRule(k.id, { gonderimSaati: e.target.value })}
-                    placeholder="10:00"
-                    disabled={saveMu.isPending}
-                  />
+                  <div>
+                    <label className="text-xs font-semibold text-ink-muted">Mesajın gönderileceği saat</label>
+                    <select
+                      className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink"
+                      value={d.gonderimSaati}
+                      onChange={(e) => updateRule(k.id, { gonderimSaati: e.target.value })}
+                      disabled={saveMu.isPending}
+                    >
+                      {listGonderimSaatiOptions().map((o) => (
+                        <option key={o.dk} value={o.label}>
+                          {o.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-1 text-xs text-ink-muted">Türkiye saati 10:00–19:55, 5 dk adım</p>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -483,6 +559,14 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
           </Button>
         </div>
       </div>
+
+      {testKural ? (
+        <KuralWhatsappTestModal
+          kuralId={testKural.id}
+          kuralTuru={testKural.kuralTuru}
+          onClose={() => setTestKural(null)}
+        />
+      ) : null}
     </AyarlarPanelShell>
   )
 }

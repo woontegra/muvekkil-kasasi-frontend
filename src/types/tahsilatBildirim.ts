@@ -405,11 +405,9 @@ export type TahsilatBildirimPlanlaResult = {
 
 
 export type TahsilatBildirimPlanlaResponse = {
-
   ok: true
-
   result: TahsilatBildirimPlanlaResult
-
+  message?: string
 }
 
 

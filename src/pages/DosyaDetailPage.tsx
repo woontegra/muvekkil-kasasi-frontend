@@ -625,7 +625,7 @@ export function DosyaDetailPage(): ReactElement {
     onSuccess: () => {
       invalidateVekalet()
       setVekModal(null)
-      toast.success('Taksit güncellendi.')
+      toast.success('Taksit başarıyla güncellendi.')
     }
   })
   const odemeTaksitMu = useMutation({
@@ -2306,7 +2306,8 @@ function VekaletTaksitEditModal(props: {
     }
     onSubmit({
       vadeTarihi: `${vade}T00:00:00.000Z`,
-      tutar: tamOdendi ? undefined : amt,
+      // Tutar değişmediyse gönderme — yalnız tarih güncellemesinde tutar/ödeme yan etkisi olmasın
+      ...(tamOdendi || Math.abs(amt - Number(taksit.tutar)) < 0.0001 ? {} : { tutar: amt }),
       aciklama: aciklama.trim() || null
     })
   }
