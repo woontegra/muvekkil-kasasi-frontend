@@ -1,6 +1,6 @@
 import { useEffect, type ReactElement } from 'react'
 import { NavLink } from 'react-router-dom'
-import { PROGRAM_LOGO_SRC, WOONTEGRA_MARK_SRC } from '../../branding'
+import { PROGRAM_ICON_SRC, WOONTEGRA_MARK_SRC } from '../../branding'
 import { APP_BASE } from '../../config/appPaths'
 import { NAV_GROUP_LABELS, type NavGroupId, type NavItem, sidebarNavForRole } from '../../config/nav'
 import { cn } from '../../lib/cn'
@@ -88,7 +88,7 @@ export function AppSidebar({ role }: AppSidebarProps): ReactElement {
       <div className="app-shell-header relative box-border shrink-0 border-b border-white/[0.08] px-3">
         <div className="flex h-full items-center gap-3">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/[0.08] ring-1 ring-white/10">
-            <img src={PROGRAM_LOGO_SRC} alt="" className="h-[34px] w-[34px] object-contain" />
+            <img src={PROGRAM_ICON_SRC} alt="" className="h-[34px] w-[34px] object-contain" />
           </div>
           <div className="min-w-0 flex-1 leading-tight">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Kasa Defteri</p>
@@ -139,7 +139,7 @@ export function MobileNavDrawer({ open, onClose, role, buroAdi }: MobileNavDrawe
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] px-3 py-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white/[0.08] ring-1 ring-white/10">
-              <img src={PROGRAM_LOGO_SRC} alt="" className="h-[34px] w-[34px] object-contain" />
+              <img src={PROGRAM_ICON_SRC} alt="" className="h-[34px] w-[34px] object-contain" />
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-bold text-white">Müvekkil Kasası</p>

@@ -18,7 +18,7 @@ import {
   shouldShowLicenseRenewalBanner
 } from '../components/shell/LicenseRenewalBanner'
 import { TopbarActionChip } from '../components/shell/TopbarActionChip'
-import { PROGRAM_LOGO_SRC } from '../branding'
+import { PROGRAM_ICON_SRC } from '../branding'
 
 import type { AuthUserDto } from '../types/auth'
 
@@ -111,7 +111,7 @@ export function DashboardShell(): ReactElement {
           </button>
 
           <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
-            <img src={PROGRAM_LOGO_SRC} alt="" className="h-8 w-8 shrink-0 rounded-md object-contain" />
+            <img src={PROGRAM_ICON_SRC} alt="" className="h-8 w-8 shrink-0 rounded-md object-contain" />
             <div className="min-w-0">
               <p className="truncate text-xs font-bold leading-tight text-ink">{session?.tenant.buroAdi ?? '—'}</p>
               <p className="truncate text-[11px] leading-tight text-ink-muted">
