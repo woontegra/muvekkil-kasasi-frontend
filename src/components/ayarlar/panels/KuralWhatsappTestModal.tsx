@@ -123,7 +123,7 @@ export function KuralWhatsappTestModal(props: Props): ReactElement {
     const ok = await confirm({
       title: 'Test mesajını göndermek istiyor musunuz?',
       message:
-        'Gerçek Meta şablonu, seçtiğiniz test telefonuna gönderilir. Vade günü ve 10:00–20:00 şartı bu testte bilinçli olarak geçilir. Normal otomasyon etkilenmez.',
+        'Gerçek Meta şablonu, seçtiğiniz test telefonuna gönderilir. Vade günü şartı bu testte bilinçli olarak geçilir; gönderim her saatte yapılabilir. Normal otomasyon etkilenmez.',
       confirmLabel: 'Test mesajını gönder',
       cancelLabel: 'Vazgeç'
     })

@@ -29,9 +29,9 @@ const KURAL_LABEL: Record<BildirimKuralTuru, string> = {
 }
 
 const DEFAULT_RULES: TaksitPlanKuralInput[] = [
-  { kuralTuru: 'VADEDEN_ONCE', aktifMi: false, gunOffset: 3, gonderimSaatiDk: 600, metaSablonId: null },
-  { kuralTuru: 'VADE_GUNU', aktifMi: false, gunOffset: 0, gonderimSaatiDk: 600, metaSablonId: null },
-  { kuralTuru: 'VADE_SONRASI', aktifMi: false, gunOffset: 3, gonderimSaatiDk: 600, metaSablonId: null }
+  { kuralTuru: 'VADEDEN_ONCE', aktifMi: false, gunOffset: 3, gonderimSaatiDk: 540, metaSablonId: null },
+  { kuralTuru: 'VADE_GUNU', aktifMi: false, gunOffset: 0, gonderimSaatiDk: 540, metaSablonId: null },
+  { kuralTuru: 'VADE_SONRASI', aktifMi: false, gunOffset: 3, gonderimSaatiDk: 540, metaSablonId: null }
 ]
 
 type Props = {
@@ -152,7 +152,7 @@ export function TaksitHatirlatmaPlanModal(props: Props): ReactElement {
                           </option>
                         ))}
                       </select>
-                      <p className="mt-1 text-xs text-ink-muted">Türkiye saati 10:00–19:55, 5 dk adım</p>
+                      <p className="mt-1 text-xs text-ink-muted">Türkiye saati 00:00–23:55, 5 dk adım</p>
                     </div>
                     <div className="sm:col-span-2">
                       <label className="text-xs font-semibold text-ink-muted">WhatsApp şablonu</label>

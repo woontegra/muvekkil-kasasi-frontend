@@ -300,8 +300,14 @@ export function WhatsappBaglantiPanel(): ReactElement {
   }
 
   const d = durumQuery.data
-  const connected = Boolean(d?.connected)
-  const badge = durumEtiket(d?.durum ?? 'BAGLI_DEGIL', connected)
+  const statusPending = durumQuery.isLoading || durumQuery.isFetching
+  const statusFailed = durumQuery.isError
+  const connected = !statusFailed && Boolean(d?.connected)
+  const badge = statusFailed
+    ? { label: 'Durum alınamadı', variant: 'warning' as const }
+    : statusPending && !d
+      ? { label: 'Yükleniyor…', variant: 'default' as const }
+      : durumEtiket(d?.durum ?? 'BAGLI_DEGIL', connected)
 
   return (
     <AyarlarPanelShell
@@ -309,8 +315,8 @@ export function WhatsappBaglantiPanel(): ReactElement {
       description="Büro WhatsApp Business hesabınızı Meta üzerinden bağlayın. Webhook olayları yalnızca Müvekkil Kasa’ya gelir."
     >
       {durumQuery.isError ? (
-        <AlertBox variant="danger" title="Durum yüklenemedi">
-          {friendlyClientErrorMessage(durumQuery.error)}
+        <AlertBox variant="danger" title="Bağlantı durumu yüklenemedi">
+          {friendlyClientErrorMessage(durumQuery.error, 'Bağlantı durumu alınamadı. Bildirim ayarı hatası bağlantıyı koparmaz.')}
         </AlertBox>
       ) : null}
 
@@ -318,12 +324,12 @@ export function WhatsappBaglantiPanel(): ReactElement {
         <Badge variant={badge.variant} className="normal-case tracking-normal">
           {badge.label}
         </Badge>
-        {d?.gercekGonderimAktif ? (
+        {!statusFailed && d?.gercekGonderimAktif ? (
           <Badge variant="success" className="normal-case tracking-normal">
             API gönderim hazır
           </Badge>
         ) : null}
-        {d?.webhookOverrideActive ? (
+        {!statusFailed && d?.webhookOverrideActive ? (
           <Badge variant="primary" className="normal-case tracking-normal">
             Webhook override aktif
           </Badge>
@@ -340,7 +346,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
         ) : null}
       </div>
 
-      {!connected ? (
+      {statusFailed ? null : !connected ? (
         <div className="mt-4 space-y-3">
           <p className="text-sm text-ink-muted">
             Bağlı değil. Otomatik tahsilat WhatsApp’ı için önce Business hesabınızı bağlayın.

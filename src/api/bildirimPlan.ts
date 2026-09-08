@@ -2,7 +2,8 @@ import { apiFetch } from './client'
 import type { BildirimKuralTuru } from '../types/tahsilatBildirim'
 import {
   hhmmToMinutes as parseHhmmToMinutes,
-  minutesToHHmm as formatMinutesToHHmm
+  minutesToHHmm as formatMinutesToHHmm,
+  BILDIRIM_ONERI_BASLANGIC_DK
 } from '../lib/bildirimSendWindow'
 
 export type BildirimPlanModu = 'VARSAYILAN' | 'OZEL' | 'KAPALI'
@@ -72,5 +73,5 @@ export function minutesToHHmm(dk: number): string {
 }
 
 export function hhmmToMinutes(value: string): number {
-  return parseHhmmToMinutes(value) ?? 600
+  return parseHhmmToMinutes(value) ?? BILDIRIM_ONERI_BASLANGIC_DK
 }

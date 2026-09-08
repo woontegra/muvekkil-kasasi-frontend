@@ -176,8 +176,9 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   })
 
   const [otomasyonAktif, setOtomasyonAktif] = useState(false)
-  const [izinliBas, setIzinliBas] = useState('10:00')
+  const [izinliBas, setIzinliBas] = useState('09:00')
   const [izinliBit, setIzinliBit] = useState('20:00')
+  const [sessizSaatleriDikkateAl, setSessizSaatleriDikkateAl] = useState(false)
   const [ruleDrafts, setRuleDrafts] = useState<Record<string, RuleDraft>>({})
   const [openAccordions, setOpenAccordions] = useState<Record<BildirimKuralTuru, boolean>>({
     VADEDEN_ONCE: true,
@@ -198,6 +199,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     setOtomasyonAktif(data.ayar.otomasyonAktif)
     setIzinliBas(minutesToHHmm(data.ayar.izinliSaatBaslangic))
     setIzinliBit(minutesToHHmm(data.ayar.izinliSaatBitis))
+    setSessizSaatleriDikkateAl(Boolean(data.ayar.sessizSaatleriDikkateAl))
     const rd: Record<string, RuleDraft> = {}
     for (const k of data.kurallar) {
       rd[k.id] = {
@@ -228,7 +230,8 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
       await updateTahsilatBildirimAyarlar({
         otomasyonAktif,
         izinliSaatBaslangic: basDk,
-        izinliSaatBitis: bitDk
+        izinliSaatBitis: bitDk,
+        sessizSaatleriDikkateAl
       })
 
       const rules = ayarlarQ.data?.kurallar ?? []
@@ -304,7 +307,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     markDirty()
     setRuleDrafts((prev) => ({
       ...prev,
-      [id]: { ...(prev[id] ?? { aktifMi: false, gunOffset: 0, gonderimSaati: '10:00' }), ...patch }
+      [id]: { ...(prev[id] ?? { aktifMi: false, gunOffset: 0, gonderimSaati: '09:00' }), ...patch }
     }))
   }
 
@@ -401,21 +404,24 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
         ) : null}
 
         <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Gönderim saat aralığı</p>
-          <p className="mt-1 text-xs text-ink-muted">Türkiye saatiyle yalnızca 10:00–20:00 arası kabul edilir.</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Aktif saat aralığı</p>
+          <p className="mt-1 text-xs text-ink-muted">
+            Türkiye saatiyle 00:00–24:00 arası serbesttir. Öneri: 09:00–20:00. Tahsilat kuralları seçtiğiniz sabit
+            saatte çalışır; bu aralık yalnızca isteğe bağlı sessiz saatler için kullanılır.
+          </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Input
-              label="Mesajların gönderilmeye başlayabileceği saat"
+              label="Aktif saat başlangıcı"
               value={izinliBas}
               onChange={(e) => {
                 markDirty()
                 setIzinliBas(e.target.value)
               }}
-              placeholder="10:00"
+              placeholder="09:00"
               disabled={saveMu.isPending}
             />
             <Input
-              label="Mesajların gönderilebileceği son saat"
+              label="Aktif saat bitişi (hariç)"
               value={izinliBit}
               onChange={(e) => {
                 markDirty()
@@ -425,6 +431,25 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
               disabled={saveMu.isPending}
             />
           </div>
+          <label className="mt-4 flex cursor-pointer items-start gap-3">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={sessizSaatleriDikkateAl}
+              disabled={saveMu.isPending}
+              onChange={(e) => {
+                markDirty()
+                setSessizSaatleriDikkateAl(e.target.checked)
+              }}
+            />
+            <span>
+              <span className="block text-sm font-medium text-ink">Sessiz saatleri dikkate al</span>
+              <span className="mt-0.5 block text-xs text-ink-muted">
+                Açıkken randevu hatırlatması sessiz dilime denk gelirse randevudan sonraya bırakılmaz; önceki uygun
+                aktif saate alınır. Kapalıyken randevu mesajı gerçek hesaplanan zamanda (ör. 07:30) planlanır.
+              </span>
+            </span>
+          </label>
         </div>
 
         <div className="space-y-2">
@@ -504,7 +529,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-ink-muted">Türkiye saati 10:00–19:55, 5 dk adım</p>
+                    <p className="mt-1 text-xs text-ink-muted">Türkiye saati 00:00–23:55, 5 dk adım</p>
                   </div>
                 </div>
 

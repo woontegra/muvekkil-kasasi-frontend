@@ -74,6 +74,9 @@ export type TahsilatBildirimAyarDto = {
 
   izinliSaatBitis: number
 
+  /** Randevu hatırlatmalarında sessiz saatleri dikkate al (varsayılan kapalı). */
+  sessizSaatleriDikkateAl?: boolean
+
   createdAt: string
 
   updatedAt: string
@@ -326,6 +329,8 @@ export type UpdateTahsilatBildirimAyarPayload = {
 
   izinliSaatBitis?: number
 
+  sessizSaatleriDikkateAl?: boolean
+
 }
 
 
@@ -368,6 +373,7 @@ export type TahsilatBildirimSimulasyonOzetDto = {
 
   skippedAlreadyDone: number
 
+  /** @deprecated Sabit pencere kaldırıldı; API uyumu için 0 kalır. */
   deferredWindow: number
 
   hazirlanacak: number
