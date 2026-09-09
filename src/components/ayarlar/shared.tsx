@@ -11,22 +11,43 @@ export function SettingRow(props: { label: string; value: ReactNode; mono?: bool
   )
 }
 
-export function ModalShell(props: { title: string; onClose: () => void; children: ReactNode }): ReactElement {
-  const { title, onClose, children } = props
+export function ModalShell(props: {
+  title: string
+  onClose: () => void
+  children: ReactNode
+  /** Panel genişliği / yükseklik; varsayılan max-w-lg */
+  panelClassName?: string
+  /** İçerik alanı padding / spacing override */
+  bodyClassName?: string
+  /** Dış overlay (varsayılan z-50) */
+  overlayClassName?: string
+}): ReactElement {
+  const { title, onClose, children, panelClassName, bodyClassName, overlayClassName } = props
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]">
+    <div
+      className={`fixed inset-0 flex items-end justify-center bg-black/45 p-0 backdrop-blur-[1px] sm:items-center sm:p-4 ${
+        overlayClassName ?? 'z-50'
+      }`}
+    >
       <DraggablePanel
         role="dialog"
         aria-modal="true"
-        className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-white p-5 shadow-xl dark:bg-surface-elevated"
+        className={`flex max-h-[min(92dvh,90vh)] w-full max-w-lg flex-col overflow-hidden rounded-t-xl border border-border bg-white shadow-xl dark:bg-surface-elevated sm:rounded-xl ${panelClassName ?? ''}`}
       >
-        <div data-modal-drag-handle className="mb-4 flex items-start justify-between gap-2">
+        <div
+          data-modal-drag-handle
+          className="flex shrink-0 items-start justify-between gap-2 border-b border-border px-4 py-3 sm:px-6"
+        >
           <h2 className="text-base font-bold text-ink">{title}</h2>
           <Button type="button" variant="ghost" size="sm" className="h-8 shrink-0" onClick={onClose}>
             ✕
           </Button>
         </div>
-        {children}
+        <div
+          className={`min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 ${bodyClassName ?? ''}`}
+        >
+          {children}
+        </div>
       </DraggablePanel>
     </div>
   )

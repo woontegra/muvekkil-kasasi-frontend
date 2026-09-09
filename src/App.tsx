@@ -33,6 +33,7 @@ import { AdminSuperAdminsPage } from './pages/admin/AdminSuperAdminsPage'
 import { AdminTenantDetailPage } from './pages/admin/AdminTenantDetailPage'
 import { AdminCreateTenantPage } from './pages/admin/AdminCreateTenantPage'
 import { AdminTenantsPage } from './pages/admin/AdminTenantsPage'
+import { AdminWhatsAppPaketTalepleriPage } from './pages/admin/AdminWhatsAppPaketTalepleriPage'
 import { AdminSuperRoute } from './components/admin/AdminSuperRoute'
 import { RoleRoute } from './components/auth/RoleRoute'
 
@@ -66,6 +67,7 @@ export default function App(): ReactElement {
         />
         <Route path="burolar" element={<AdminTenantsPage />} />
         <Route path="burolar/:id" element={<AdminTenantDetailPage />} />
+        <Route path="whatsapp-paket-talepleri" element={<AdminWhatsAppPaketTalepleriPage />} />
         <Route path="lisans-uyarilar" element={<AdminLicenseAlertsPage />} />
         <Route path="pasif-burolar" element={<AdminPassiveTenantsPage />} />
         <Route

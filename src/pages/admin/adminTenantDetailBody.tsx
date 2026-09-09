@@ -7,6 +7,8 @@ import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Draggab
 import { formatDateTimeTR, formatDateTR } from '../../utils/formatters'
 import { lisansDurumuTr } from '../../utils/tenantLicenseDisplay'
 import { AdminTenantUserRow } from './AdminTenantUserRow'
+import { AdminWhatsAppWebhookOverridePanel } from '../../components/admin/AdminWhatsAppWebhookOverridePanel'
+import { AdminWhatsAppKrediPanel } from '../../components/admin/AdminWhatsAppKrediPanel'
 
 type ExtendTur = 'GUN' | 'AY' | 'YIL' | 'OZEL'
 
@@ -304,23 +306,27 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
       </div>
 
       {tab === 'genel' && (
-        <Card className="border-slate-200/80 shadow-sm">
-          <CardBody>
-            <dl>
-              <InfoRow label="Büro adı" value={t.buroAdi} />
-              <InfoRow label="Müşteri No" value={<span className="font-mono text-xs">{t.musteriNo ?? '—'}</span>} />
-              <InfoRow label="Sahip kullanıcı" value={ownerName} />
-              <InfoRow label="E-posta" value={t.eposta ?? ownerEmail ?? '—'} />
-              <InfoRow label="Telefon" value={t.telefon ?? '—'} />
-              <InfoRow label="Vergi no" value={t.vergiNo ?? '—'} />
-              <InfoRow label="Vergi dairesi" value={t.vergiDairesi ?? '—'} />
-              <InfoRow label="Slug / büro kodu" value={t.slug} />
-              <InfoRow label="Durum" value={t.aktifMi ? 'Aktif' : 'Pasif'} />
-              <InfoRow label="Lisans durumu" value={lisansDurumuTr(t.lisansDurumu)} />
-              <InfoRow label="Müdahale durumu" value={mudahaleGerekli ? 'Müdahale gerekli' : 'Normal'} />
-            </dl>
-          </CardBody>
-        </Card>
+        <div className="space-y-4">
+          <Card className="border-slate-200/80 shadow-sm">
+            <CardBody>
+              <dl>
+                <InfoRow label="Büro adı" value={t.buroAdi} />
+                <InfoRow label="Müşteri No" value={<span className="font-mono text-xs">{t.musteriNo ?? '—'}</span>} />
+                <InfoRow label="Sahip kullanıcı" value={ownerName} />
+                <InfoRow label="E-posta" value={t.eposta ?? ownerEmail ?? '—'} />
+                <InfoRow label="Telefon" value={t.telefon ?? '—'} />
+                <InfoRow label="Vergi no" value={t.vergiNo ?? '—'} />
+                <InfoRow label="Vergi dairesi" value={t.vergiDairesi ?? '—'} />
+                <InfoRow label="Slug / büro kodu" value={t.slug} />
+                <InfoRow label="Durum" value={t.aktifMi ? 'Aktif' : 'Pasif'} />
+                <InfoRow label="Lisans durumu" value={lisansDurumuTr(t.lisansDurumu)} />
+                <InfoRow label="Müdahale durumu" value={mudahaleGerekli ? 'Müdahale gerekli' : 'Normal'} />
+              </dl>
+            </CardBody>
+          </Card>
+          <AdminWhatsAppKrediPanel tenantId={id} enabled />
+          <AdminWhatsAppWebhookOverridePanel tenantId={id} enabled={isSuper} />
+        </div>
       )}
 
       {tab === 'abonelikLisans' && (

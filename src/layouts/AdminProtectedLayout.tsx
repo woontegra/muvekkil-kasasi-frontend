@@ -20,6 +20,7 @@ function navCls({ isActive }: { isActive: boolean }): string {
 const NAV_ITEMS: { to: string; label: string; end?: boolean; superOnly?: boolean }[] = [
   { to: '/admin', label: 'Genel Bakış', end: true },
   { to: '/admin/burolar', label: 'Kullanıcı Yönetimi' },
+  { to: '/admin/whatsapp-paket-talepleri', label: 'WhatsApp Paket Talepleri' },
   { to: '/admin/lisans-uyarilar', label: 'Lisansı Bitecekler' },
   { to: '/admin/pasif-burolar', label: 'Pasif Bürolar' },
   { to: '/admin/sistem', label: 'Sistem / Adminler', superOnly: true },

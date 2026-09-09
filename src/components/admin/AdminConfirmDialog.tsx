@@ -19,7 +19,7 @@ export function AdminConfirmDialog(props: {
           <CardTitle>{props.title}</CardTitle>
         </CardHeader>
         <CardBody className="space-y-4 px-4 py-4">
-          <p className="text-sm text-ink-muted">{props.message}</p>
+          <p className="whitespace-pre-line text-sm text-ink-muted">{props.message}</p>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={props.onCancel} disabled={props.loading}>
               Vazgeç

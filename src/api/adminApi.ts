@@ -223,3 +223,182 @@ export async function adminSettingsChangePasswordRequest(body: {
 export async function adminSettingsSystemInfoRequest(): Promise<AdminSystemInfoResponse> {
   return adminApiFetch<AdminSystemInfoResponse>('/api/v1/admin/settings/system-info')
 }
+
+export type AdminWhatsAppWebhookOverrideStatus = {
+  ok: true
+  tenantId: string
+  uiDurum: 'PASIF' | 'MK_YA_YONLENDIRILIYOR'
+  uiLabel: string
+  wabaIdMasked: string | null
+  phoneNumberIdMasked: string | null
+  displayPhoneNumber: string | null
+  mkCallbackUrlConfigured: boolean
+  mkCallbackHostPath: string | null
+  liveOverridePresent: boolean
+  liveOverridePointsToMk: boolean
+  liveOverrideHostPath: string | null
+  dbWebhookOverrideActive: boolean
+  dbHasOverrideCallback: boolean
+  lastWebhookAt: string | null
+}
+
+export async function adminWhatsAppWebhookOverrideStatusRequest(
+  tenantId: string
+): Promise<AdminWhatsAppWebhookOverrideStatus> {
+  const sp = new URLSearchParams({ tenantId })
+  return adminApiFetch(`/api/v1/admin/whatsapp/webhook-override?${sp}`)
+}
+
+export async function adminWhatsAppWebhookOverrideEnableRequest(
+  tenantId: string
+): Promise<AdminWhatsAppWebhookOverrideStatus> {
+  return adminApiFetch('/api/v1/admin/whatsapp/webhook-override/enable', {
+    method: 'POST',
+    body: JSON.stringify({ tenantId, confirm: true })
+  })
+}
+
+export async function adminWhatsAppWebhookOverrideDisableRequest(
+  tenantId: string
+): Promise<AdminWhatsAppWebhookOverrideStatus> {
+  return adminApiFetch('/api/v1/admin/whatsapp/webhook-override/disable', {
+    method: 'POST',
+    body: JSON.stringify({ tenantId, confirm: true })
+  })
+}
+
+export type AdminWhatsAppKrediOzetResponse = {
+  ok: true
+  tenantId: string
+  bakiye: number
+  toplamKullanilan: number
+  toplamEklenen: number
+  durum: 'NORMAL' | 'DUSUK' | 'KRITIK' | 'TUKENDI'
+  dusukBakiye: boolean
+  kritikBakiye: boolean
+  yillikDahilKredi: number
+}
+
+export type AdminWhatsAppKrediHareket = {
+  id: string
+  tip: string
+  miktar: number
+  oncekiBakiye: number
+  sonrakiBakiye: number
+  aciklama: string | null
+  createdAt: string
+}
+
+export type AdminWhatsAppKrediHareketlerResponse = {
+  ok: true
+  tenantId: string
+  total: number
+  items: AdminWhatsAppKrediHareket[]
+}
+
+export type AdminWhatsAppKrediAdjustResponse = {
+  ok: true
+  tenantId: string
+  yon: 'EKLE' | 'DUS'
+  miktar: number
+  oncekiBakiye: number
+  sonrakiBakiye: number
+  ozet: Omit<AdminWhatsAppKrediOzetResponse, 'ok' | 'tenantId'>
+}
+
+export async function adminWhatsAppKrediOzetRequest(
+  tenantId: string
+): Promise<AdminWhatsAppKrediOzetResponse> {
+  return adminApiFetch(`/api/v1/admin/tenants/${encodeURIComponent(tenantId)}/whatsapp-kredi`)
+}
+
+export async function adminWhatsAppKrediHareketlerRequest(
+  tenantId: string,
+  opts?: { limit?: number; offset?: number }
+): Promise<AdminWhatsAppKrediHareketlerResponse> {
+  const sp = new URLSearchParams()
+  if (opts?.limit != null) sp.set('limit', String(opts.limit))
+  if (opts?.offset != null) sp.set('offset', String(opts.offset))
+  const q = sp.toString()
+  return adminApiFetch(
+    `/api/v1/admin/tenants/${encodeURIComponent(tenantId)}/whatsapp-kredi/hareketler${q ? `?${q}` : ''}`
+  )
+}
+
+export async function adminWhatsAppKrediAdjustRequest(
+  tenantId: string,
+  body: { yon: 'EKLE' | 'DUS'; miktar: number; aciklama?: string }
+): Promise<AdminWhatsAppKrediAdjustResponse> {
+  return adminApiFetch(`/api/v1/admin/tenants/${encodeURIComponent(tenantId)}/whatsapp-kredi/adjust`, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+}
+
+export type AdminWhatsAppPaketTalepRow = {
+  id: string
+  tenantId: string
+  packageId: string
+  mesajAdedi: number
+  fiyatTL: number
+  paymentReference: string
+  durum: 'BEKLIYOR' | 'ONAYLANDI' | 'REDDEDILDI' | 'IPTAL'
+  adminNotu: string | null
+  createdAt: string
+  updatedAt: string
+  approvedAt: string | null
+  approvedByAdminId: string | null
+  buroAdi: string
+  musteriNo: string | null
+}
+
+export type AdminWhatsAppPaketTalepleriResponse = {
+  ok: true
+  total: number
+  items: AdminWhatsAppPaketTalepRow[]
+}
+
+export async function adminWhatsAppPaketTalepleriRequest(opts?: {
+  durum?: string
+  tenantId?: string
+  limit?: number
+  offset?: number
+}): Promise<AdminWhatsAppPaketTalepleriResponse> {
+  const sp = new URLSearchParams()
+  if (opts?.durum) sp.set('durum', opts.durum)
+  if (opts?.tenantId) sp.set('tenantId', opts.tenantId)
+  if (opts?.limit != null) sp.set('limit', String(opts.limit))
+  if (opts?.offset != null) sp.set('offset', String(opts.offset))
+  const q = sp.toString()
+  return adminApiFetch(`/api/v1/admin/whatsapp-mesaj-paket-talepleri${q ? `?${q}` : ''}`)
+}
+
+export async function adminWhatsAppPaketTalepOnaylaRequest(
+  talepId: string,
+  body?: { adminNotu?: string | null }
+): Promise<{
+  ok: true
+  talep: AdminWhatsAppPaketTalepRow
+  credit: { oncekiBakiye: number; sonrakiBakiye: number; alreadyApplied: boolean }
+}> {
+  return adminApiFetch(
+    `/api/v1/admin/whatsapp-mesaj-paket-talepleri/${encodeURIComponent(talepId)}/onayla`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body ?? {})
+    }
+  )
+}
+
+export async function adminWhatsAppPaketTalepReddetRequest(
+  talepId: string,
+  body?: { adminNotu?: string | null }
+): Promise<{ ok: true; talep: AdminWhatsAppPaketTalepRow }> {
+  return adminApiFetch(
+    `/api/v1/admin/whatsapp-mesaj-paket-talepleri/${encodeURIComponent(talepId)}/reddet`,
+    {
+      method: 'POST',
+      body: JSON.stringify(body ?? {})
+    }
+  )
+}

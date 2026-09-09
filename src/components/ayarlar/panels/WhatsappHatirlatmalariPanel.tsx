@@ -33,6 +33,7 @@ import type { BildirimKuralTuru, TahsilatBildirimKuraliDto } from '../../../type
 import { bildirimKuralTuruLabel } from '../../../types/tahsilatBildirim'
 import { AlertBox, Badge, Button, Input, useConfirm } from '../../ui'
 import { AyarlarPanelShell } from '../shared'
+import { WhatsappMesajHakkiCard } from './WhatsappMesajHakkiCard'
 
 const SABLONLAR_PATH = `${APP_BASE}/ayarlar?bolum=whatsapp-sablonlari`
 
@@ -363,6 +364,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
       ) : null}
 
       <div className="space-y-4">
+        <WhatsappMesajHakkiCard />
         <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
