@@ -33,7 +33,6 @@ import type { BildirimKuralTuru, TahsilatBildirimKuraliDto } from '../../../type
 import { bildirimKuralTuruLabel } from '../../../types/tahsilatBildirim'
 import { AlertBox, Badge, Button, Input, useConfirm } from '../../ui'
 import { AyarlarPanelShell } from '../shared'
-import { KuralWhatsappTestModal } from './KuralWhatsappTestModal'
 
 const SABLONLAR_PATH = `${APP_BASE}/ayarlar?bolum=whatsapp-sablonlari`
 
@@ -45,10 +44,10 @@ const KURAL_LIBRARY_KEYS: Record<BildirimKuralTuru, readonly string[]> = {
 
 const KURAL_ORDER: BildirimKuralTuru[] = ['VADEDEN_ONCE', 'VADE_GUNU', 'VADE_SONRASI']
 
-const KURAL_ACCORDION_TITLE: Record<BildirimKuralTuru, string> = {
-  VADEDEN_ONCE: 'Vadesinden önce',
-  VADE_GUNU: 'Vade günü',
-  VADE_SONRASI: 'Vadesinden sonra'
+const KURAL_TITLE: Record<BildirimKuralTuru, string> = {
+  VADEDEN_ONCE: 'Vadesinden Önce',
+  VADE_GUNU: 'Vade Günü',
+  VADE_SONRASI: 'Vadesinden Sonra'
 }
 
 type RuleDraft = {
@@ -91,32 +90,51 @@ function kuralGunAlani(kuralTuru: BildirimKuralTuru): {
   }
 }
 
+function kuralOzetCumle(kuralTuru: BildirimKuralTuru, gunOffset: number): string {
+  if (kuralTuru === 'VADEDEN_ONCE') {
+    return `Ödemeden ${Math.max(1, gunOffset)} gün önce hatırlat.`
+  }
+  if (kuralTuru === 'VADE_SONRASI') {
+    return `Ödeme ${Math.max(1, gunOffset)} gün geciktiğinde hatırlat.`
+  }
+  return 'Ödeme günü hatırlat.'
+}
+
 function sablonlarForKural(templates: OnayliSablon[], kuralTuru: BildirimKuralTuru): OnayliSablon[] {
   if (templates.some((t) => t.usageArea != null)) return templates
   const allowed = new Set(KURAL_LIBRARY_KEYS[kuralTuru])
   return templates.filter((t) => t.libraryKey != null && allowed.has(t.libraryKey))
 }
 
-function AccordionSection(props: {
+function sablonEtiket(
+  k: TahsilatBildirimKuraliDto,
+  templates: OnayliSablon[]
+): string {
+  if (!k.metaSablonId) return 'Şablon seçilmedi'
+  const hit = templates.find((t) => t.id === k.metaSablonId)
+  if (hit) return hit.metaName
+  const meta = (k as { metaSablon?: { metaName?: string } | null }).metaSablon
+  return meta?.metaName?.trim() || 'Şablon seçili'
+}
+
+function RuleCard(props: {
   title: string
-  subtitle?: string
   open: boolean
   onToggle: () => void
+  summary: ReactNode
   children: ReactNode
 }): ReactElement {
   return (
-    <div className="rounded-lg border border-border bg-white shadow-sm">
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
-        onClick={props.onToggle}
-      >
-        <div>
+    <div className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+        <button type="button" className="min-w-0 flex-1 text-left" onClick={props.onToggle}>
           <p className="text-sm font-semibold text-ink">{props.title}</p>
-          {props.subtitle ? <p className="mt-0.5 text-xs text-ink-muted">{props.subtitle}</p> : null}
-        </div>
-        <span className="shrink-0 text-xs text-ink-muted">{props.open ? '▲' : '▼'}</span>
-      </button>
+          <div className="mt-1.5 space-y-0.5 text-sm text-ink-muted">{props.summary}</div>
+        </button>
+        <Button type="button" size="sm" variant="outline" onClick={props.onToggle}>
+          {props.open ? 'Kapat' : 'Düzenle'}
+        </Button>
+      </div>
       {props.open ? <div className="space-y-3 border-t border-border px-4 py-4">{props.children}</div> : null}
     </div>
   )
@@ -125,11 +143,9 @@ function AccordionSection(props: {
 export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   const { session } = useAuth()
   const isYonetici = isYoneticiRole(session?.user.role)
-  const isBuroSahibi = session?.user.role === 'BURO_SAHIBI'
   const toast = useToast()
   const { confirm } = useConfirm()
   const qc = useQueryClient()
-  const [testKural, setTestKural] = useState<{ id: string; kuralTuru: BildirimKuralTuru } | null>(null)
 
   const ayarlarQ = useQuery({
     queryKey: [...TAHSILAT_BILDIRIM_QUERY_KEY, 'ayarlar'],
@@ -181,7 +197,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
   const [sessizSaatleriDikkateAl, setSessizSaatleriDikkateAl] = useState(false)
   const [ruleDrafts, setRuleDrafts] = useState<Record<string, RuleDraft>>({})
   const [openAccordions, setOpenAccordions] = useState<Record<BildirimKuralTuru, boolean>>({
-    VADEDEN_ONCE: true,
+    VADEDEN_ONCE: false,
     VADE_GUNU: false,
     VADE_SONRASI: false
   })
@@ -334,14 +350,10 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     otomasyonMu.mutate(next)
   }
 
-  const handleKaydet = async (): Promise<void> => {
-    saveMu.mutate()
-  }
-
   return (
     <AyarlarPanelShell
-      title="Otomatik WhatsApp Hatırlatmaları"
-      description="Vekalet taksitleri için otomatik hatırlatma kurallarını ve onaylı WhatsApp şablonlarını yönetin."
+      title="Otomatik WhatsApp hatırlatmaları"
+      description="Seçtiğiniz kurallara göre müvekkillerinize ödeme hatırlatmaları otomatik gönderilir."
     >
       {ayarlarQ.isLoading ? <p className="text-sm text-ink-muted">Ayarlar yükleniyor…</p> : null}
       {ayarlarQ.isError ? (
@@ -353,10 +365,10 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
       <div className="space-y-4">
         <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-ink">Otomasyon</p>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">Otomatik WhatsApp hatırlatmaları</p>
               <p className="mt-1 text-sm text-ink-muted">
-                Vekalet taksitleri için kurallara göre hatırlatma planlaması yapılır.
+                Ana anahtar. Kapalıyken aşağıdaki kurallar çalışmaz.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -374,7 +386,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
               </Button>
             </div>
           </div>
-          <p className="mt-2 text-xs text-ink-muted">Aç/Kapat onayı sonrası durum hemen kaydedilir.</p>
         </div>
 
         {izinliMuvekkilQ.isSuccess ? (
@@ -391,23 +402,20 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
               </p>
             </AlertBox>
           ) : (
-            <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
-              <p className="text-sm text-ink">
-                <span className="font-semibold">İzinli müvekkil: {izinliMuvekkilQ.data.total}</span>
-                <span className="mx-2 text-ink-subtle">·</span>
-                <Link to={APP_BASE} className="font-semibold text-primary hover:underline">
-                  Müvekkilleri yönet
-                </Link>
-              </p>
-            </div>
+            <p className="text-sm text-ink-muted">
+              İzinli müvekkil: <span className="font-semibold text-ink">{izinliMuvekkilQ.data.total}</span>
+              <span className="mx-2">·</span>
+              <Link to={APP_BASE} className="font-semibold text-primary hover:underline">
+                Müvekkilleri yönet
+              </Link>
+            </p>
           )
         ) : null}
 
         <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Aktif saat aralığı</p>
-          <p className="mt-1 text-xs text-ink-muted">
-            Türkiye saatiyle 00:00–24:00 arası serbesttir. Öneri: 09:00–20:00. Tahsilat kuralları seçtiğiniz sabit
-            saatte çalışır; bu aralık yalnızca isteğe bağlı sessiz saatler için kullanılır.
+          <p className="text-sm font-semibold text-ink">Gönderim tercihleri</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            Aktif saat aralığı ve isteğe bağlı sessiz saat davranışı.
           </p>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <Input
@@ -421,7 +429,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
               disabled={saveMu.isPending}
             />
             <Input
-              label="Aktif saat bitişi (hariç)"
+              label="Aktif saat bitişi"
               value={izinliBit}
               onChange={(e) => {
                 markDirty()
@@ -431,7 +439,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
               disabled={saveMu.isPending}
             />
           </div>
-          <label className="mt-4 flex cursor-pointer items-start gap-3">
+          <label className="mt-3 flex cursor-pointer items-start gap-3">
             <input
               type="checkbox"
               className="mt-1"
@@ -444,57 +452,61 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
             />
             <span>
               <span className="block text-sm font-medium text-ink">Sessiz saatleri dikkate al</span>
-              <span className="mt-0.5 block text-xs text-ink-muted">
-                Açıkken randevu hatırlatması sessiz dilime denk gelirse randevudan sonraya bırakılmaz; önceki uygun
-                aktif saate alınır. Kapalıyken randevu mesajı gerçek hesaplanan zamanda (ör. 07:30) planlanır.
+              <span className="mt-0.5 block text-sm text-ink-muted">
+                Açıkken randevu hatırlatması sessiz dilime denk gelirse önceki uygun aktif saate alınır.
               </span>
             </span>
           </label>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {kurallarSirali.map((k: TahsilatBildirimKuraliDto) => {
             const d = ruleDrafts[k.id]
             if (!d) return null
             const gunAlani = kuralGunAlani(k.kuralTuru)
-            const accordionTitle = KURAL_ACCORDION_TITLE[k.kuralTuru]
             const isOpen = openAccordions[k.kuralTuru]
             const kuralSablonlari = sablonlarForKural(onayliSablonQ.data?.[k.kuralTuru] ?? [], k.kuralTuru)
+            const sablonAdi = sablonEtiket(k, kuralSablonlari)
 
             return (
-              <AccordionSection
+              <RuleCard
                 key={k.id}
-                title={accordionTitle}
-                subtitle={d.aktifMi ? 'Aktif' : 'Pasif'}
+                title={KURAL_TITLE[k.kuralTuru]}
                 open={isOpen}
-                onToggle={() => setOpenAccordions((prev) => ({ ...prev, [k.kuralTuru]: !prev[k.kuralTuru] }))}
+                onToggle={() =>
+                  setOpenAccordions((prev) => ({ ...prev, [k.kuralTuru]: !prev[k.kuralTuru] }))
+                }
+                summary={
+                  <>
+                    <p>
+                      Durum:{' '}
+                      <span className={d.aktifMi ? 'font-semibold text-success' : 'font-semibold text-ink'}>
+                        {d.aktifMi ? 'Açık' : 'Kapalı'}
+                      </span>
+                    </p>
+                    <p>{kuralOzetCumle(k.kuralTuru, d.gunOffset)}</p>
+                    <p>
+                      Saat: {d.gonderimSaati}
+                      <span className="mx-2 text-ink-subtle">·</span>
+                      Şablon: {sablonAdi}
+                    </p>
+                  </>
+                }
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Badge variant={d.aktifMi ? 'success' : 'default'} className="normal-case tracking-normal">
                     {d.aktifMi ? 'Açık' : 'Kapalı'}
                   </Badge>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {isBuroSahibi && d.aktifMi ? (
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setTestKural({ id: k.id, kuralTuru: k.kuralTuru })}
-                      >
-                        Test Et
-                      </Button>
-                    ) : null}
-                    <label className="flex items-center gap-2 text-xs font-medium text-ink">
-                      <input
-                        type="checkbox"
-                        className="h-4 w-4 rounded border-border"
-                        checked={d.aktifMi}
-                        onChange={(e) => updateRule(k.id, { aktifMi: e.target.checked })}
-                        disabled={saveMu.isPending}
-                      />
-                      Bu hatırlatmayı kullan
-                    </label>
-                  </div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-ink">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-border"
+                      checked={d.aktifMi}
+                      onChange={(e) => updateRule(k.id, { aktifMi: e.target.checked })}
+                      disabled={saveMu.isPending}
+                    />
+                    Bu hatırlatmayı kullan
+                  </label>
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -518,7 +530,7 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                   <div>
                     <label className="text-xs font-semibold text-ink-muted">Mesajın gönderileceği saat</label>
                     <select
-                      className="mt-1 w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink"
+                      className="mt-1 w-full max-w-xs rounded-md border border-border bg-white px-3 py-2 text-sm text-ink"
                       value={d.gonderimSaati}
                       onChange={(e) => updateRule(k.id, { gonderimSaati: e.target.value })}
                       disabled={saveMu.isPending}
@@ -529,7 +541,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                         </option>
                       ))}
                     </select>
-                    <p className="mt-1 text-xs text-ink-muted">Türkiye saati 00:00–23:55, 5 dk adım</p>
                   </div>
                 </div>
 
@@ -538,13 +549,13 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                   {kuralSablonlari.length === 0 ? (
                     <div className="flex flex-wrap items-center gap-2 rounded-md border border-border/70 bg-surface-muted/20 px-3 py-2.5 text-sm text-ink-muted">
                       <span>Henüz onaylanmış WhatsApp şablonunuz bulunmuyor.</span>
-                      <Link to={SABLONLAR_PATH} className="text-xs font-semibold text-primary hover:underline">
+                      <Link to={SABLONLAR_PATH} className="text-sm font-semibold text-primary hover:underline">
                         Şablonlara Git
                       </Link>
                     </div>
                   ) : (
                     <select
-                      className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink"
+                      className="w-full max-w-md rounded-md border border-border bg-white px-3 py-2 text-sm text-ink"
                       value={k.metaSablonId ?? ''}
                       disabled={assignMetaMu.isPending || onayliSablonQ.isLoading}
                       onChange={(e) => {
@@ -564,19 +575,24 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                     </select>
                   )}
                 </div>
-              </AccordionSection>
+              </RuleCard>
             )
           })}
         </div>
 
-        <div className="flex flex-wrap gap-2 border-t border-border pt-2">
-          <Button type="button" size="sm" disabled={saveMu.isPending || ayarlarQ.isLoading} onClick={() => void handleKaydet()}>
-            {saveMu.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+        <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+          <Button
+            type="button"
+            size="sm"
+            disabled={saveMu.isPending || ayarlarQ.isLoading}
+            onClick={() => saveMu.mutate()}
+          >
+            {saveMu.isPending ? 'Kaydediliyor…' : 'Değişiklikleri Kaydet'}
           </Button>
           <Button
             type="button"
             size="sm"
-            variant="outline"
+            variant="ghost"
             disabled={planlaMu.isPending || saveMu.isPending}
             onClick={() => planlaMu.mutate()}
           >
@@ -584,14 +600,6 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
           </Button>
         </div>
       </div>
-
-      {testKural ? (
-        <KuralWhatsappTestModal
-          kuralId={testKural.id}
-          kuralTuru={testKural.kuralTuru}
-          onClose={() => setTestKural(null)}
-        />
-      ) : null}
     </AyarlarPanelShell>
   )
 }

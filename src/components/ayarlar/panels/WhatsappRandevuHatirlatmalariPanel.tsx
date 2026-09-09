@@ -73,14 +73,16 @@ export function WhatsappRandevuHatirlatmalariPanel(): ReactElement | null {
 
   return (
     <AyarlarPanelShell
-      title="Randevu Hatırlatmaları"
-      description="Büro genel randevu WhatsApp hatırlatma varsayılanları. Tekil randevularda özelleştirilebilir."
+      title="Randevu WhatsApp hatırlatmaları"
+      description="Yaklaşan randevular için seçtiğiniz zamanlarda otomatik WhatsApp mesajı gönderilir."
     >
       <div className="rounded-lg border border-border bg-white p-4 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-ink">Otomatik randevu hatırlatmaları</p>
-            <p className="mt-1 text-sm text-ink-muted">Müvekkile bağlı randevular için varsayılan hatırlatmalar.</p>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-ink">Randevu WhatsApp hatırlatmaları</p>
+            <p className="mt-1 text-sm text-ink-muted">
+              Büro varsayılanları; tekil randevularda özelleştirilebilir.
+            </p>
           </div>
           <div className="flex items-center gap-2">
             <Badge variant={otomasyonAktif ? 'success' : 'default'} className="normal-case tracking-normal">
@@ -99,13 +101,14 @@ export function WhatsappRandevuHatirlatmalariPanel(): ReactElement | null {
 
         <div className="mt-4 space-y-2">
           {kurallar.map((k) => (
-            <label
+            <div
               key={k.offsetDk}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border/70 px-3 py-2 text-sm"
+              className="grid grid-cols-1 items-center gap-2 rounded-md border border-border/70 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)]"
             >
-              <span className="flex items-center gap-2">
+              <label className="flex min-w-0 items-center gap-2 text-sm text-ink">
                 <input
                   type="checkbox"
+                  className="h-4 w-4 shrink-0 rounded border-border"
                   checked={k.aktifMi}
                   onChange={(e) =>
                     setKurallar((prev) =>
@@ -113,10 +116,10 @@ export function WhatsappRandevuHatirlatmalariPanel(): ReactElement | null {
                     )
                   }
                 />
-                {k.label}
-              </span>
+                <span className="font-medium">{k.label}</span>
+              </label>
               <select
-                className="rounded-md border border-border px-2 py-1 text-xs"
+                className="w-full rounded-md border border-border bg-white px-2 py-1.5 text-sm text-ink"
                 value={k.metaSablonId ?? ''}
                 onChange={(e) =>
                   setKurallar((prev) =>
@@ -133,12 +136,12 @@ export function WhatsappRandevuHatirlatmalariPanel(): ReactElement | null {
                   </option>
                 ))}
               </select>
-            </label>
+            </div>
           ))}
         </div>
 
         {approvedAll.length === 0 ? (
-          <p className="mt-2 text-xs text-ink-muted">
+          <p className="mt-3 text-sm text-ink-muted">
             Onaylı randevu şablonu yok.{' '}
             <Link to={`${APP_BASE}/ayarlar?bolum=whatsapp-sablonlari`} className="text-primary hover:underline">
               Şablonlara Git
@@ -148,7 +151,7 @@ export function WhatsappRandevuHatirlatmalariPanel(): ReactElement | null {
 
         <div className="mt-4">
           <Button type="button" size="sm" disabled={saveMu.isPending} onClick={() => saveMu.mutate()}>
-            {saveMu.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+            {saveMu.isPending ? 'Kaydediliyor…' : 'Değişiklikleri Kaydet'}
           </Button>
         </div>
       </div>

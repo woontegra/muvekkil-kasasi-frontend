@@ -309,10 +309,19 @@ export function WhatsappBaglantiPanel(): ReactElement {
       ? { label: 'Yükleniyor…', variant: 'default' as const }
       : durumEtiket(d?.durum ?? 'BAGLI_DEGIL', connected)
 
+  const healthy = connected && Boolean(d?.gercekGonderimAktif) && !d?.sonHataOzeti
+  const statusTone = statusFailed
+    ? 'border-danger/40 bg-danger-soft/80'
+    : healthy
+      ? 'border-success/40 bg-success-soft/80'
+      : connected
+        ? 'border-warning/40 bg-warning-soft/80'
+        : 'border-border bg-surface-muted/40'
+
   return (
     <AyarlarPanelShell
-      title="WhatsApp Bağlantısı"
-      description="Büro WhatsApp Business hesabınızı Meta üzerinden bağlayın. Webhook olayları yalnızca Müvekkil Kasa’ya gelir."
+      title="WhatsApp bağlantısı"
+      description="Büro WhatsApp Business hesabınızı bağlayın. Bağlantı sağlıklıysa otomatik mesajlar bu numaradan gider."
     >
       {durumQuery.isError ? (
         <AlertBox variant="danger" title="Bağlantı durumu yüklenemedi">
@@ -320,40 +329,49 @@ export function WhatsappBaglantiPanel(): ReactElement {
         </AlertBox>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant={badge.variant} className="normal-case tracking-normal">
-          {badge.label}
-        </Badge>
-        {!statusFailed && d?.gercekGonderimAktif ? (
-          <Badge variant="success" className="normal-case tracking-normal">
-            API gönderim hazır
-          </Badge>
-        ) : null}
-        {!statusFailed && d?.webhookOverrideActive ? (
-          <Badge variant="primary" className="normal-case tracking-normal">
-            Webhook override aktif
-          </Badge>
-        ) : null}
-        {showSharedTestBadges && connected && d?.sharedWebhookTestConnection ? (
-          <>
-            <Badge variant="success" className="normal-case tracking-normal">
-              WhatsApp API bağlı
-            </Badge>
-            <Badge variant="default" className="normal-case tracking-normal">
-              Webhook paylaşılmış/test bağlantısı
-            </Badge>
-          </>
-        ) : null}
-      </div>
-
-      {statusFailed ? null : !connected ? (
-        <div className="mt-4 space-y-3">
-          <p className="text-sm text-ink-muted">
-            Bağlı değil. Otomatik tahsilat WhatsApp’ı için önce Business hesabınızı bağlayın.
-            Bağlı değilken manuel <span className="font-medium">wa.me</span> akışı kullanılabilir.
-          </p>
-          {isYonetici ? (
+      <div className={`overflow-hidden rounded-xl border ${statusTone} shadow-sm`}>
+        <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={`inline-flex h-2.5 w-2.5 shrink-0 rounded-full ${
+                  statusFailed ? 'bg-danger' : healthy ? 'bg-success' : connected ? 'bg-warning' : 'bg-ink-subtle'
+                }`}
+                aria-hidden
+              />
+              <p className="text-base font-bold text-ink">{badge.label}</p>
+              {!statusFailed && d?.gercekGonderimAktif ? (
+                <Badge variant="success" className="normal-case tracking-normal">
+                  Gönderime hazır
+                </Badge>
+              ) : null}
+              {!statusFailed && connected && !d?.gercekGonderimAktif ? (
+                <Badge variant="warning" className="normal-case tracking-normal">
+                  Gönderim bekliyor
+                </Badge>
+              ) : null}
+            </div>
+            {statusFailed ? null : connected ? (
+              <>
+                <p className="mt-2 text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+                  {d?.displayPhoneNumber ?? '—'}
+                </p>
+                <p className="mt-1 text-sm text-ink-muted">
+                  {d?.verifiedName?.trim()
+                    ? d.verifiedName
+                    : 'Doğrulanmış işletme adı henüz görünmüyor'}
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-muted">
+                Otomatik tahsilat ve randevu hatırlatmaları için önce WhatsApp Business hesabınızı
+                bağlayın. Bağlı değilken manuel wa.me akışı kullanılabilir.
+              </p>
+            )}
+          </div>
+
+          {statusFailed ? null : !connected && isYonetici ? (
+            <div className="flex shrink-0 flex-wrap gap-2">
               <Button
                 type="button"
                 onClick={() => openOnboarding('connect')}
@@ -364,17 +382,61 @@ export function WhatsappBaglantiPanel(): ReactElement {
               </Button>
               <Button
                 type="button"
-                variant="ghost"
-                size="sm"
+                variant="outline"
                 onClick={() => openOnboarding('guide')}
                 data-testid="wa-how-to-connect"
               >
                 Nasıl Bağlanır?
               </Button>
             </div>
-          ) : (
+          ) : null}
+        </div>
+
+        {statusFailed ? null : connected ? (
+          <div className="border-t border-border/70 bg-white/70 px-5 py-4">
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <div>
+                <dt className="text-sm font-medium text-ink-muted">Bağlantı tarihi</dt>
+                <dd className="mt-1 text-sm font-semibold text-ink">{formatTrDate(d?.connectedAt)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-ink-muted">Son webhook</dt>
+                <dd className="mt-1 text-sm font-semibold text-ink">{formatTrDate(d?.lastWebhookAt)}</dd>
+              </div>
+              <div>
+                <dt className="text-sm font-medium text-ink-muted">Durum özeti</dt>
+                <dd className="mt-1 text-sm font-semibold text-ink">
+                  {healthy ? 'Sağlıklı' : d?.sonHataOzeti ? 'Dikkat gerekli' : 'Bağlı'}
+                </dd>
+              </div>
+            </dl>
+
+            {showSharedTestBadges && d?.sharedWebhookTestConnection ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Badge variant="success" className="normal-case tracking-normal">
+                  WhatsApp API bağlı
+                </Badge>
+                <Badge variant="default" className="normal-case tracking-normal">
+                  Webhook paylaşılmış/test bağlantısı
+                </Badge>
+              </div>
+            ) : null}
+            {!statusFailed && d?.webhookOverrideActive ? (
+              <div className="mt-3">
+                <Badge variant="primary" className="normal-case tracking-normal">
+                  Webhook override aktif
+                </Badge>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      {statusFailed ? null : !connected ? (
+        <div className="space-y-3">
+          {!isYonetici ? (
             <p className="text-sm text-ink-muted">Bağlantı yalnızca büro sahibi / yönetici tarafından yapılabilir.</p>
-          )}
+          ) : null}
           {isYonetici && configQuery.data && !configQuery.data.configured ? (
             <AlertBox variant="warning" title="Yapılandırma eksik">
               Sunucu tarafında App ID, Embedded Signup Config ID veya App Secret tanımlı değil.
@@ -382,26 +444,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
           ) : null}
         </div>
       ) : (
-        <div className="mt-4 space-y-4">
-          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <div>
-              <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Telefon</dt>
-              <dd className="text-sm text-ink">{d?.displayPhoneNumber ?? '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Doğrulanmış ad</dt>
-              <dd className="text-sm text-ink">{d?.verifiedName ?? '—'}</dd>
-            </div>
-            <div>
-              <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Bağlantı tarihi</dt>
-              <dd className="text-sm text-ink">{formatTrDate(d?.connectedAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">Son webhook</dt>
-              <dd className="text-sm text-ink">{formatTrDate(d?.lastWebhookAt)}</dd>
-            </div>
-          </dl>
-
+        <div className="space-y-4">
           {d?.sonHataOzeti ? (
             <AlertBox variant="warning" title="Son hata">
               {d.sonHataOzeti}
@@ -409,38 +452,44 @@ export function WhatsappBaglantiPanel(): ReactElement {
           ) : null}
 
           {isYonetici ? (
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="outline" onClick={() => void onDogrula()}>
-                Bağlantıyı doğrula
-              </Button>
-              <Button type="button" variant="outline" onClick={() => void onSenkron()}>
-                Şablonları senkronize et
-              </Button>
-              <Button type="button" variant="danger" onClick={() => void onKaldir()}>
-                Bağlantıyı kaldır
-              </Button>
-              <Button type="button" variant="ghost" size="sm" onClick={() => openOnboarding('guide')} data-testid="wa-how-to-connect">
-                WhatsApp Kurulum Rehberi
-              </Button>
+            <div className="rounded-xl border border-border bg-white p-4 shadow-sm">
+              <p className="text-sm font-semibold text-ink">Bağlantı işlemleri</p>
+              <p className="mt-1 text-sm text-ink-muted">
+                Doğrulama, şablon senkronu ve bağlantıyı kaldırma.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={() => void onDogrula()}>
+                  Bağlantıyı doğrula
+                </Button>
+                <Button type="button" variant="outline" onClick={() => void onSenkron()}>
+                  Şablonları senkronize et
+                </Button>
+                <Button type="button" variant="danger" onClick={() => void onKaldir()}>
+                  Bağlantıyı kaldır
+                </Button>
+              </div>
             </div>
           ) : null}
         </div>
       )}
 
-      <div className="mt-6 rounded-lg border border-border bg-surface-muted/40 px-3 py-3" data-testid="wa-help-section">
-        <p className="text-sm font-semibold text-ink">Yardıma mı ihtiyacınız var?</p>
-        <p className="mt-0.5 text-xs text-ink-muted">Adım adım kurulum rehberi — destek beklemeden ilerleyin.</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <Button type="button" variant="outline" size="sm" onClick={() => openOnboarding('guide')}>
+      <div
+        className="rounded-xl border border-dashed border-border bg-surface-muted/20 px-4 py-3"
+        data-testid="wa-help-section"
+      >
+        <p className="text-sm font-semibold text-ink">Yardım ve kurulum</p>
+        <p className="mt-0.5 text-sm text-ink-muted">Rehberler ve bağlantıyı yeniden deneme.</p>
+        <div className="mt-2.5 flex flex-wrap gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={() => openOnboarding('guide')}>
             WhatsApp Kurulum Rehberi
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={() => openOnboarding('consumer_guide')}>
+          <Button type="button" variant="ghost" size="sm" onClick={() => openOnboarding('consumer_guide')}>
             Normal WhatsApp’tan Business’a Geçiş
           </Button>
           {isYonetici ? (
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               size="sm"
               disabled={busy || completeMu.isPending || !configQuery.data?.configured}
               onClick={() => void launchEmbeddedSignup()}

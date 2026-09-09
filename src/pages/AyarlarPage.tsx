@@ -9,10 +9,8 @@ import { HesapDonemiPanel } from '../components/ayarlar/panels/HesapDonemiPanel'
 import { KullaniciGuvenlikPanel } from '../components/ayarlar/panels/KullaniciGuvenlikPanel'
 import { LisansKullanimPanel } from '../components/ayarlar/panels/LisansKullanimPanel'
 import { SistemBilgisiPanel } from '../components/ayarlar/panels/SistemBilgisiPanel'
-import { WhatsappBaglantiPanel } from '../components/ayarlar/panels/WhatsappBaglantiPanel'
+import { WhatsappSection } from '../components/ayarlar/WhatsappSection'
 import { WhatsappSablonlariPanel } from '../components/ayarlar/panels/WhatsappSablonlariPanel'
-import { WhatsappRandevuHatirlatmalariPanel } from '../components/ayarlar/panels/WhatsappRandevuHatirlatmalariPanel'
-import { WhatsappHatirlatmalariPanel } from '../components/ayarlar/panels/WhatsappHatirlatmalariPanel'
 import { VeriAktarimiPanel } from '../components/ayarlar/panels/VeriVeDenetimPanels'
 import {
   buildAyarlarNavItems,
@@ -84,17 +82,7 @@ export function AyarlarPage(): ReactElement {
         <div className="min-w-0 flex-1">
           {activeSection === 'buro' ? <BuroBilgileriPanel /> : null}
           {activeSection === 'hesap-donemi' && isYonetici ? <HesapDonemiPanel /> : null}
-          {activeSection === 'whatsapp' ? (
-            <div className="space-y-5">
-              <WhatsappBaglantiPanel />
-              {isYonetici ? (
-                <>
-                  <WhatsappHatirlatmalariPanel />
-                  <WhatsappRandevuHatirlatmalariPanel />
-                </>
-              ) : null}
-            </div>
-          ) : null}
+          {activeSection === 'whatsapp' ? <WhatsappSection /> : null}
           {activeSection === 'whatsapp-sablonlari' ? <WhatsappSablonlariPanel /> : null}
           {activeSection === 'kullanici' ? <KullaniciGuvenlikPanel /> : null}
           {activeSection === 'veri' && isBuroSahibi ? <VeriAktarimiPanel /> : null}
