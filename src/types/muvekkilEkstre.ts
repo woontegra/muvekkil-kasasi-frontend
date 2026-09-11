@@ -75,6 +75,19 @@ export type MuvekkilEkstreDto = {
     cikis: string
     bakiyeSonrasi: string
   }>
+  dosyaDisiOfisGelirleri?: {
+    toplam: string
+    hareketler: Array<{
+      id: string
+      tarih: string
+      belgeNo: string
+      kategori: string
+      aciklama: string | null
+      odemeYontemi: string
+      personelAd: string | null
+      tutar: string
+    }>
+  }
   dipnot: string
 }
 

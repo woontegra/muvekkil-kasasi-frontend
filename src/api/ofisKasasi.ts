@@ -11,6 +11,7 @@ import type {
 function toQuery(params: ListOfisKasaHareketleriParams): string {
   const sp = new URLSearchParams()
   if (params.q?.trim()) sp.set('q', params.q.trim())
+  if (params.muvekkilId?.trim()) sp.set('muvekkilId', params.muvekkilId.trim())
   if (params.islemTipi) sp.set('islemTipi', params.islemTipi)
   if (params.onayDurumu) sp.set('onayDurumu', params.onayDurumu)
   if (params.kategori?.trim()) sp.set('kategori', params.kategori.trim())

@@ -316,13 +316,49 @@ export function buildMuvekkilEkstreDocDefinition(ekstre: MuvekkilEkstreDto): TDo
             { text: money(h.bakiyeSonrasi), alignment: 'right' }
           ]),
           [60, 55, 55, '*', 55, 55, 55]
-        ),
-    {
-      text: ekstre.dipnot,
-      style: 'footnote',
-      margin: [0, 12, 0, 0] as [number, number, number, number]
-    }
+        )
   )
+
+  const ofisGelir = ekstre.dosyaDisiOfisGelirleri
+  if (ofisGelir) {
+    content.push(sectionTitle('Dosya dışı ofis geliri'))
+    content.push(
+      kvTable([
+        ['Toplam (bilgi amaçlı)', money(ofisGelir.toplam)],
+        ['Kayıt sayısı', String(ofisGelir.hareketler.length)]
+      ])
+    )
+    if (ofisGelir.hareketler.length === 0) {
+      content.push({ text: 'Dosya dışı ofis geliri kaydı yok.', style: 'muted' })
+    } else {
+      content.push(
+        dataTable(
+          ['Tarih', 'Belge', 'Kategori', 'Açıklama', 'Ödeme', 'Personel', 'Tutar'],
+          ofisGelir.hareketler.map((h) => [
+            formatDateTR(h.tarih),
+            h.belgeNo,
+            h.kategori,
+            h.aciklama ?? '—',
+            odemeYontemLabel(h.odemeYontemi),
+            h.personelAd?.trim() || '—',
+            { text: money(h.tutar), alignment: 'right' }
+          ]),
+          [55, 50, 55, '*', 45, 50, 50]
+        )
+      )
+    }
+    content.push({
+      text: 'Bu tutarlar ofis kasası gelirleridir; vekalet ve masraf avansı bakiyelerine dahil edilmez.',
+      style: 'muted',
+      margin: [0, 2, 0, 6] as [number, number, number, number]
+    })
+  }
+
+  content.push({
+    text: ekstre.dipnot,
+    style: 'footnote',
+    margin: [0, 12, 0, 0] as [number, number, number, number]
+  })
 
   return {
     pageSize: 'A4',

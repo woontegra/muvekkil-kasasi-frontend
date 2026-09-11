@@ -36,6 +36,12 @@ export const OFIS_KASA_GIDER_KATEGORILERI = [
   'Diğer gider'
 ] as const
 
+export type OfisKasaMuvekkilSnapshotDto = {
+  id: string
+  gorunenAd: string | null
+  aktifMi: boolean | null
+}
+
 export type OfisKasaHareketiDto = {
   id: string
   tenantId: string
@@ -56,6 +62,10 @@ export type OfisKasaHareketiDto = {
   otomatikOnayMi: boolean
   tahsilatiYapanUserId: string | null
   tahsilatiYapanPersonelId: string | null
+  tahsilatiYapanPersonelAd?: string | null
+  muvekkilId: string | null
+  muvekkilAdiSnapshot: string | null
+  muvekkil: OfisKasaMuvekkilSnapshotDto | null
   createdById: string
   updatedById: string | null
   createdAt: string
@@ -92,6 +102,7 @@ export type OfisKasaHareketOneResponse = {
 
 export type ListOfisKasaHareketleriParams = {
   q?: string
+  muvekkilId?: string
   islemTipi?: OfisKasaIslemTipiApi
   onayDurumu?: OfisKasaOnayDurumuApi
   kategori?: string
@@ -112,6 +123,8 @@ export type CreateOfisKasaHareketiPayload = {
   /** Yalnızca GELIR — prim hesabı. */
   tahsilatiYapanUserId?: string | null
   tahsilatiYapanPersonelId?: string | null
+  /** Yalnızca GELIR — isteğe bağlı müvekkil bağlantısı. GIDER için gönderilmez. */
+  muvekkilId?: string | null
 }
 
 export type CreateOfisKasaDuzeltmePayload = {

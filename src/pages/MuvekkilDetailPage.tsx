@@ -3,7 +3,7 @@ import type { FormEvent, ReactElement, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { listMuvekkilDosyalari } from '../api/dosyalar'
-import { getMuvekkil } from '../api/muvekkiller'
+import { getMuvekkil, listMuvekkilOfisGelirleri } from '../api/muvekkiller'
 import { patchMuvekkilBildirimAyar } from '../api/bildirimAyar'
 import { ApiError, friendlyClientErrorMessage } from '../api/client'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
@@ -16,6 +16,19 @@ import { MuvekkilRandevularSection } from '../pages/RandevularPage'
 import { MobileRecordCard, ResponsiveDataView } from '../components/responsive'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
 import { useToast } from '../toast'
+import { formatCurrencyTR, formatDateTR } from '../utils/formatters'
+import type { OfisKasaOdemeYontemiApi } from '../types/ofisKasasi'
+
+const OFIS_ODEME_LABELS: Record<OfisKasaOdemeYontemiApi, string> = {
+  NAKIT: 'Nakit',
+  BANKA: 'Banka',
+  KREDI_KARTI: 'Kredi kartı',
+  DIGER: 'Diğer'
+}
+
+function ofisOdemeLabel(v: OfisKasaOdemeYontemiApi): string {
+  return OFIS_ODEME_LABELS[v] ?? v
+}
 
 function ProfileStatCard({ label, value, className }: { label: string; value: ReactNode; className?: string }): ReactElement {
   return (
@@ -39,6 +52,8 @@ export function MuvekkilDetailPage(): ReactElement {
   const [q, setQ] = useState('')
   const [debouncedQ, setDebouncedQ] = useState('')
   const [editOpen, setEditOpen] = useState(false)
+  const [ofisGelirPage, setOfisGelirPage] = useState(1)
+  const ofisGelirLimit = 20
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedQ(q.trim()), 350)
@@ -54,6 +69,12 @@ export function MuvekkilDetailPage(): ReactElement {
   const dosyaQuery = useQuery({
     queryKey: ['muvekkil-dosyalar', id, debouncedQ],
     queryFn: () => listMuvekkilDosyalari(id!, { q: debouncedQ || undefined, page: 1, limit: 100 }),
+    enabled: Boolean(id) && muvekkilQuery.isSuccess
+  })
+
+  const ofisGelirQuery = useQuery({
+    queryKey: ['muvekkil-ofis-gelirleri', id, ofisGelirPage, ofisGelirLimit],
+    queryFn: () => listMuvekkilOfisGelirleri(id!, { page: ofisGelirPage, limit: ofisGelirLimit }),
     enabled: Boolean(id) && muvekkilQuery.isSuccess
   })
 
@@ -126,6 +147,9 @@ export function MuvekkilDetailPage(): ReactElement {
 
   const dosyalar = dosyaQuery.data?.items ?? []
   const dosyaToplam = dosyaQuery.isSuccess ? dosyaQuery.data.total : dosyaQuery.isLoading ? null : dosyalar.length
+  const ofisGelirler = ofisGelirQuery.data?.items ?? []
+  const ofisGelirToplam = ofisGelirQuery.data?.total ?? 0
+  const ofisGelirTotalPages = Math.max(1, Math.ceil(ofisGelirToplam / ofisGelirLimit))
 
   return (
     <div className="w-full space-y-4">
@@ -373,6 +397,124 @@ export function MuvekkilDetailPage(): ReactElement {
               }
             />
           )}
+        </CardBody>
+      </Card>
+
+      <Card className="shadow-card">
+        <CardHeader className="border-b border-border px-4 py-3">
+          <CardTitle className="text-base">Dosya dışı ofis gelirleri</CardTitle>
+          <p className="mt-1 text-xs text-ink-muted">
+            Bu müvekkille ilişkilendirilmiş ofis kasası gelir kayıtları. Dosya kasası ve vekalet tahsilatlarından ayrıdır.
+          </p>
+        </CardHeader>
+        <CardBody className="p-4">
+          {ofisGelirQuery.isError ? (
+            <AlertBox variant="danger" title="Ofis gelirleri">
+              {ofisGelirQuery.error instanceof Error ? ofisGelirQuery.error.message : 'Liste alınamadı.'}
+            </AlertBox>
+          ) : (
+            <ResponsiveDataView
+              isLoading={ofisGelirQuery.isLoading}
+              loading={<p className="py-10 text-center text-sm text-ink-muted">Ofis gelirleri yükleniyor…</p>}
+              isEmpty={!ofisGelirQuery.isLoading && ofisGelirler.length === 0}
+              empty={
+                <p className="py-10 text-center text-sm text-ink-muted">
+                  Bu müvekkille ilişkilendirilmiş dosya dışı ofis geliri kaydı yok.
+                </p>
+              }
+              table={
+                <div className="overflow-x-auto rounded-lg border border-border">
+                  <Table>
+                    <THead>
+                      <TR>
+                        <TH>Tarih</TH>
+                        <TH>Belge no</TH>
+                        <TH>Kategori</TH>
+                        <TH>Açıklama</TH>
+                        <TH>Ödeme</TH>
+                        <TH>Personel</TH>
+                        <TH className="text-right">Tutar</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
+                      {ofisGelirler.map((h) => (
+                        <TR key={h.id}>
+                          <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
+                          <TD className="font-mono text-xs">{h.belgeNo}</TD>
+                          <TD className="max-w-[160px] text-sm">
+                            {h.kategori}
+                            {h.ozelKategoriAdi?.trim() ? (
+                              <span className="mt-0.5 block text-[11px] text-ink-muted">({h.ozelKategoriAdi})</span>
+                            ) : null}
+                          </TD>
+                          <TD className="max-w-[200px] text-sm text-ink-muted">{h.aciklama?.trim() || '—'}</TD>
+                          <TD className="text-xs text-ink-muted">{ofisOdemeLabel(h.odemeYontemi)}</TD>
+                          <TD className="text-sm text-ink-muted">{h.tahsilatiYapanPersonelAd?.trim() || '—'}</TD>
+                          <TD className="text-right text-sm font-semibold tabular-nums">
+                            {formatCurrencyTR(Number(h.tutar))}
+                          </TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </div>
+              }
+              cards={
+                <>
+                  {ofisGelirler.map((h) => (
+                    <MobileRecordCard
+                      key={h.id}
+                      title={h.belgeNo}
+                      subtitle={h.kategori}
+                      fields={[
+                        { label: 'Tarih', value: formatDateTR(h.tarih) },
+                        {
+                          label: 'Tutar',
+                          value: formatCurrencyTR(Number(h.tutar)),
+                          numeric: true
+                        },
+                        { label: 'Ödeme', value: ofisOdemeLabel(h.odemeYontemi) },
+                        {
+                          label: 'Personel',
+                          value: h.tahsilatiYapanPersonelAd?.trim() || '—'
+                        },
+                        { label: 'Açıklama', value: h.aciklama?.trim() || '—', full: true }
+                      ]}
+                    />
+                  ))}
+                </>
+              }
+            />
+          )}
+          {ofisGelirToplam > ofisGelirLimit ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-ink-muted">
+              <span>
+                Toplam <strong>{ofisGelirToplam}</strong> kayıt · sayfa {ofisGelirPage}/{ofisGelirTotalPages}
+              </span>
+              <div className="flex w-full gap-2 sm:w-auto">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 sm:flex-none"
+                  disabled={ofisGelirPage <= 1}
+                  onClick={() => setOfisGelirPage((p) => p - 1)}
+                >
+                  Önceki
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="flex-1 sm:flex-none"
+                  disabled={ofisGelirPage >= ofisGelirTotalPages}
+                  onClick={() => setOfisGelirPage((p) => p + 1)}
+                >
+                  Sonraki
+                </Button>
+              </div>
+            </div>
+          ) : null}
         </CardBody>
       </Card>
 

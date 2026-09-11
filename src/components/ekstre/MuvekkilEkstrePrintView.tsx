@@ -263,6 +263,53 @@ export function MuvekkilEkstrePrintView(props: Props): ReactElement {
           </table>
         )}
       </ReceiptSectionTable>
+
+      {ekstre.dosyaDisiOfisGelirleri ? (
+        <ReceiptSectionTable
+          title="Dosya dışı ofis geliri"
+          rows={[
+            {
+              label: 'Toplam (bilgi amaçlı)',
+              value: formatCurrencyTR(Number(ekstre.dosyaDisiOfisGelirleri.toplam)),
+              amount: true
+            }
+          ]}
+        >
+          {ekstre.dosyaDisiOfisGelirleri.hareketler.length === 0 ? (
+            <p className="receipt-section__empty">Dosya dışı ofis geliri kaydı yok.</p>
+          ) : (
+            <table className="receipt-data-table">
+              <thead>
+                <tr>
+                  <th>Tarih</th>
+                  <th>Belge</th>
+                  <th>Kategori</th>
+                  <th>Açıklama</th>
+                  <th>Ödeme</th>
+                  <th>Personel</th>
+                  <th className="num">Tutar</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ekstre.dosyaDisiOfisGelirleri.hareketler.map((h) => (
+                  <tr key={h.id}>
+                    <td>{formatDateTR(h.tarih)}</td>
+                    <td className="value--mono">{h.belgeNo}</td>
+                    <td>{h.kategori}</td>
+                    <td>{h.aciklama ?? '—'}</td>
+                    <td>{odemeYontemLabel(h.odemeYontemi)}</td>
+                    <td>{h.personelAd?.trim() || '—'}</td>
+                    <td className="num">{formatCurrencyTR(Number(h.tutar))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <p className="mt-2 text-[8pt] text-ink-muted print:text-[7pt]">
+            Bu tutarlar ofis kasası gelirleridir; vekalet ve masraf avansı bakiyelerine dahil edilmez.
+          </p>
+        </ReceiptSectionTable>
+      ) : null}
     </ReceiptPrintLayout>
   )
 }

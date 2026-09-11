@@ -35,6 +35,7 @@ export function MuvekkilEkstreTab(props: Props): ReactElement {
   const ekstre = query.data
   const v = ekstre?.vekaletOzeti
   const a = ekstre?.masrafAvansiOzeti
+  const ofisGelir = ekstre?.dosyaDisiOfisGelirleri
   const printRootId = `ekstre-print-${dosyaId}`
 
   useEffect(() => {
@@ -170,6 +171,18 @@ export function MuvekkilEkstreTab(props: Props): ReactElement {
               </div>
             </StaggerItem>
           </Stagger>
+
+          {ofisGelir ? (
+            <div className="rounded-lg border border-border bg-surface-muted/20 px-3 py-2">
+              <p className="text-[11px] font-semibold text-ink-muted">Dosya dışı ofis geliri (bilgi)</p>
+              <p className="text-sm font-bold tabular-nums text-ink">
+                {formatCurrencyTR(Number(ofisGelir.toplam))}
+                <span className="ml-2 text-xs font-normal text-ink-muted">
+                  · {ofisGelir.hareketler.length} kayıt — vekalet/masraf toplamlarına dahil değildir
+                </span>
+              </p>
+            </div>
+          ) : null}
 
           <div className="rounded-lg border border-border bg-white p-3 dark:bg-surface-elevated">
             <p className="mb-2 text-xs text-ink-muted">

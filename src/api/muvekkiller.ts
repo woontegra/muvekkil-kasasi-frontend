@@ -1,4 +1,5 @@
 import { apiFetch } from './client'
+import type { OfisKasaHareketleriListResponse } from '../types/ofisKasasi'
 import type {
   CreateMuvekkilPayload,
   MuvekkilCreateResponse,
@@ -7,6 +8,11 @@ import type {
   MuvekkilOneResponse,
   MuvekkilTurApi
 } from '../types/muvekkil'
+
+export type ListMuvekkilOfisGelirleriParams = {
+  page?: number
+  limit?: number
+}
 
 export type ListMuvekkillerParams = {
   q?: string
@@ -58,4 +64,21 @@ export async function deactivateMuvekkil(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/muvekkiller/${encodeURIComponent(id)}`, {
     method: 'DELETE'
   })
+}
+
+function buildOfisGelirleriQuery(params: ListMuvekkilOfisGelirleriParams): string {
+  const sp = new URLSearchParams()
+  if (params.page != null) sp.set('page', String(params.page))
+  if (params.limit != null) sp.set('limit', String(params.limit))
+  const s = sp.toString()
+  return s ? `?${s}` : ''
+}
+
+export async function listMuvekkilOfisGelirleri(
+  muvekkilId: string,
+  params: ListMuvekkilOfisGelirleriParams = {}
+): Promise<OfisKasaHareketleriListResponse> {
+  return apiFetch<OfisKasaHareketleriListResponse>(
+    `/api/v1/muvekkiller/${encodeURIComponent(muvekkilId)}/ofis-gelirleri${buildOfisGelirleriQuery(params)}`
+  )
 }

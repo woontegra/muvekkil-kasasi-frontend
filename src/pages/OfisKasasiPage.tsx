@@ -11,6 +11,7 @@ import {
   listOfisKasaHareketleri,
   rejectOfisKasaHareketi
 } from '../api/ofisKasasi'
+import { MuvekkilOptionalSelect } from '../components/muvekkil/MuvekkilOptionalSelect'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import { useAuth } from '../contexts/AuthContext'
 import {
@@ -119,6 +120,13 @@ function canCreateHareket(role: string | undefined): boolean {
   return role === 'BURO_SAHIBI' || role === 'AVUKAT_YONETICI' || role === 'KATIP_PERSONEL'
 }
 
+function muvekkilAdiFromHareket(h: OfisKasaHareketiDto): string {
+  const ad = h.muvekkil?.gorunenAd?.trim() || h.muvekkilAdiSnapshot?.trim()
+  if (!ad) return '—'
+  if (h.muvekkil?.aktifMi === false) return `${ad} (pasif)`
+  return ad
+}
+
 export function OfisKasasiPage(): ReactElement {
   const { session } = useAuth()
   const role = session?.user.role
@@ -129,6 +137,8 @@ export function OfisKasasiPage(): ReactElement {
   const olusturabilir = canCreateHareket(role)
 
   const [q, setQ] = useState('')
+  const [filterMuvekkilId, setFilterMuvekkilId] = useState('')
+  const [filterMuvekkilLabel, setFilterMuvekkilLabel] = useState('')
   const [islemTipi, setIslemTipi] = useState<'' | OfisKasaIslemTipiApi>('')
   const [onayDurumu, setOnayDurumu] = useState<'' | OfisKasaOnayDurumuApi>('')
   const [kategori, setKategori] = useState('')
@@ -140,6 +150,7 @@ export function OfisKasasiPage(): ReactElement {
   const listParams = useMemo(
     () => ({
       q: q.trim() || undefined,
+      muvekkilId: filterMuvekkilId || undefined,
       islemTipi: islemTipi || undefined,
       onayDurumu: onayDurumu || undefined,
       kategori: kategori.trim() || undefined,
@@ -148,7 +159,7 @@ export function OfisKasasiPage(): ReactElement {
       page,
       limit
     }),
-    [q, islemTipi, onayDurumu, kategori, startDate, endDate, page, limit]
+    [q, filterMuvekkilId, islemTipi, onayDurumu, kategori, startDate, endDate, page, limit]
   )
 
   const ozetQuery = useQuery({
@@ -294,10 +305,12 @@ export function OfisKasasiPage(): ReactElement {
         </CardHeader>
         <CardBody className="space-y-4 p-4">
           <MobileFilterPanel
-            activeCount={[q, islemTipi, kategori, onayDurumu, startDate, endDate].filter(Boolean).length}
+            activeCount={[q, filterMuvekkilId, islemTipi, kategori, onayDurumu, startDate, endDate].filter(Boolean).length}
             onApply={() => setPage(1)}
             onReset={() => {
               setQ('')
+              setFilterMuvekkilId('')
+              setFilterMuvekkilLabel('')
               setIslemTipi('')
               setOnayDurumu('')
               setKategori('')
@@ -309,6 +322,17 @@ export function OfisKasasiPage(): ReactElement {
               <Input label="Arama" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Belge, açıklama…" />
             }
           >
+            <MuvekkilOptionalSelect
+              label="Müvekkil"
+              valueId={filterMuvekkilId}
+              valueLabel={filterMuvekkilLabel}
+              placeholder="Müvekkil seçin"
+              onChange={(next) => {
+                setFilterMuvekkilId(next?.id ?? '')
+                setFilterMuvekkilLabel(next?.gorunenAd ?? '')
+                setPage(1)
+              }}
+            />
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-muted">İşlem tipi</label>
               <select
@@ -366,6 +390,7 @@ export function OfisKasasiPage(): ReactElement {
                     <TR>
                       <TH>Tarih</TH>
                       <TH>Tip</TH>
+                      <TH className="hidden md:table-cell">Müvekkil</TH>
                       <TH>Kategori</TH>
                       <TH>Açıklama</TH>
                       <TH className="text-right">Tutar</TH>
@@ -385,6 +410,9 @@ export function OfisKasasiPage(): ReactElement {
                         <TR key={h.id} className={cn(h.islemTipi === 'DUZELTME' && 'bg-amber-50/30 dark:bg-amber-950/15')}>
                           <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
                           <TD className="text-sm font-medium">{tipLabel(h.islemTipi)}</TD>
+                          <TD className="hidden max-w-[140px] text-sm text-ink-muted md:table-cell">
+                            {muvekkilAdiFromHareket(h)}
+                          </TD>
                           <TD className="max-w-[160px] text-sm">
                             {h.kategori}
                             {h.ozelKategoriAdi?.trim() ? (
@@ -553,6 +581,7 @@ export function OfisKasasiPage(): ReactElement {
                           numeric: true
                         },
                         { label: 'Tip', value: tipLabel(h.islemTipi) },
+                        { label: 'Müvekkil', value: muvekkilAdiFromHareket(h), full: true },
                         { label: 'Ödeme', value: odemeLabel(h.odemeYontemi) },
                         {
                           label: 'Kategori',
@@ -651,6 +680,8 @@ function CreateOfisHareketModal(props: {
   const [tutar, setTutar] = useState('')
   const [odeme, setOdeme] = useState<OfisKasaOdemeYontemiApi>('NAKIT')
   const [tahsilatiYapanPersonelId, setTahsilatiYapanPersonelId] = useState('')
+  const [muvekkilId, setMuvekkilId] = useState('')
+  const [muvekkilLabel, setMuvekkilLabel] = useState('')
   const [localErr, setLocalErr] = useState<string | null>(null)
 
   const kategoriList = islemTipi === 'GELIR' ? OFIS_KASA_GELIR_KATEGORILERI : OFIS_KASA_GIDER_KATEGORILERI
@@ -676,7 +707,12 @@ function CreateOfisHareketModal(props: {
       aciklama: aciklama.trim() || null,
       tutar: n,
       odemeYontemi: odeme,
-      ...(islemTipi === 'GELIR' ? { tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null } : {})
+      ...(islemTipi === 'GELIR'
+        ? {
+            tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null,
+            muvekkilId: muvekkilId || null
+          }
+        : {})
     })
   }
 
@@ -695,6 +731,10 @@ function CreateOfisHareketModal(props: {
               setIslemTipi(t)
               setKategori(t === 'GELIR' ? OFIS_KASA_GELIR_KATEGORILERI[0] : OFIS_KASA_GIDER_KATEGORILERI[0])
               setOzel('')
+              if (t === 'GIDER') {
+                setMuvekkilId('')
+                setMuvekkilLabel('')
+              }
             }}
           >
             <option value="GELIR">Gelir</option>
@@ -736,7 +776,18 @@ function CreateOfisHareketModal(props: {
           </select>
         </div>
         {islemTipi === 'GELIR' ? (
-          <TahsilatiYapanPersonelSelect value={tahsilatiYapanPersonelId} onChange={setTahsilatiYapanPersonelId} />
+          <>
+            <MuvekkilOptionalSelect
+              valueId={muvekkilId}
+              valueLabel={muvekkilLabel}
+              disabled={loading}
+              onChange={(next) => {
+                setMuvekkilId(next?.id ?? '')
+                setMuvekkilLabel(next?.gorunenAd ?? '')
+              }}
+            />
+            <TahsilatiYapanPersonelSelect value={tahsilatiYapanPersonelId} onChange={setTahsilatiYapanPersonelId} />
+          </>
         ) : null}
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
