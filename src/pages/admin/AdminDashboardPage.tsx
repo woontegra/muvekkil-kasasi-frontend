@@ -53,8 +53,8 @@ export function AdminDashboardPage(): ReactElement {
                 />
               </div>
             ) : (
-              <div className="max-w-full overflow-x-auto">
-                <Table className="min-w-[640px]">
+              <div className="max-w-full min-w-0">
+                <Table className="w-full">
                   <THead>
                     <TR>
                       <TH>Büro</TH>
@@ -95,8 +95,8 @@ export function AdminDashboardPage(): ReactElement {
                 <EmptyState title="Kayıt yok" description="Henüz listelenecek yeni büro yok." />
               </div>
             ) : (
-              <div className="max-w-full overflow-x-auto">
-                <Table className="min-w-[520px]">
+              <div className="max-w-full min-w-0">
+                <Table className="w-full">
                   <THead>
                     <TR>
                       <TH>Büro</TH>
@@ -138,8 +138,8 @@ export function AdminDashboardPage(): ReactElement {
                 <EmptyState title="Bugün giriş yok" description="Bugün en az bir kullanıcı oturumu açmış büro bulunmuyor." />
               </div>
             ) : (
-              <div className="max-w-full overflow-x-auto">
-                <Table className="min-w-[560px]">
+              <div className="max-w-full min-w-0">
+                <Table className="w-full">
                   <THead>
                     <TR>
                       <TH>Büro</TH>
@@ -182,8 +182,8 @@ export function AdminDashboardPage(): ReactElement {
                 <EmptyState title="Kayıt yok" description="Henüz admin denetim kaydı bulunmuyor." />
               </div>
             ) : (
-              <div className="max-w-full overflow-x-auto">
-                <Table className="min-w-[720px]">
+              <div className="max-w-full min-w-0">
+                <Table className="w-full">
                   <THead>
                     <TR>
                       <TH>Tarih</TH>

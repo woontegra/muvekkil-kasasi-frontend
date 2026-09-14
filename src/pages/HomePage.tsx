@@ -24,13 +24,14 @@ import { getTahsilatMerkeziOzet, TAKSILAT_MERKEZI_QUERY_KEY } from '../api/tahsi
 import { useAuth } from '../contexts/AuthContext'
 import { useAdminAuth } from '../contexts/AdminAuthContext'
 import { APP_BASE, HOME_PAGE_LABEL } from '../config/appPaths'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, DraggablePanel, EmptyState, PageLoading, StatCard, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, DraggablePanel, EmptyState, PageHeader, PageLoading, StatCard, Table, TBody, TD, TH, THead, TR, tableActionColClass, tableActionLinkAccentClass } from '../components/ui'
 import { MobileRecordCard, ResponsiveDataView } from '../components/responsive'
-import { AnimatedNumber, Stagger, StaggerItem } from '../motion'
+import { Stagger, StaggerItem } from '../motion'
 import { useToast } from '../toast'
 import type { MuvekkilDto } from '../types/muvekkil'
 import type { SmmBekleyenDto } from '../types/smm'
-import { formatCurrencyTR } from '../utils/formatters'
+import { getOfisKasaOzet } from '../api/ofisKasasi'
+import { MultiCurrencyTotals } from '../components/paraBirimi/MultiCurrencyTotals'
 
 type HealthResponse = { ok: boolean; db?: string }
 
@@ -137,6 +138,13 @@ export function HomePage(): ReactElement {
     retry: 1
   })
 
+  const ofisOzetQuery = useQuery({
+    queryKey: ['ofis-kasasi-ozet'],
+    queryFn: getOfisKasaOzet,
+    staleTime: 30_000,
+    retry: 1
+  })
+
   const taksitUyariQuery = useQuery({
     queryKey: TAKSIT_UYARILARI_QUERY_KEY,
     queryFn: getTaksitUyarilari,
@@ -214,27 +222,21 @@ export function HomePage(): ReactElement {
     setSmmPanelOpen(true)
   }
 
-  const ofisBakiyeNum =
-    dashboardQuery.isSuccess && dash && Number.isFinite(Number(dash.ofisKasaBakiyesi))
-      ? Number(dash.ofisKasaBakiyesi)
-      : null
   const ofisBakiyeVal =
-    ofisBakiyeNum != null ? (
-      <AnimatedNumber value={ofisBakiyeNum} format={formatCurrencyTR} />
-    ) : dashboardQuery.isLoading ? (
+    ofisOzetQuery.isLoading ? (
       '…'
+    ) : ofisOzetQuery.data?.ozet.bakiyeler ? (
+      <MultiCurrencyTotals amounts={ofisOzetQuery.data.ozet.bakiyeler} compact />
     ) : (
       '—'
     )
 
   return (
     <div className="w-full space-y-5">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-ink md:text-2xl">{HOME_PAGE_LABEL}</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Programın giriş kapısı: müvekkil arayın veya listeden seçin. Dosya kasası ve taksit işlemleri dosya detayındadır.
-        </p>
-      </div>
+      <PageHeader
+        title={HOME_PAGE_LABEL}
+        description="Programın giriş kapısı: müvekkil arayın veya listeden seçin. Dosya kasası ve taksit işlemleri dosya detayındadır."
+      />
 
       {health.isError || health.data?.ok === false ? (
         <AlertBox variant="warning" title="Bağlantı uyarısı">
@@ -274,7 +276,7 @@ export function HomePage(): ReactElement {
           />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
-          <StatCard label="Ofis kasa bakiyesi" value={ofisBakiyeVal} sub="Onaylanmış kasa hareketlerine göre" />
+          <StatCard label="Ofis kasa bakiyesi" value={ofisBakiyeVal} sub="TRY / USD / EUR ayrı bakiyeler" />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
           <StatCard
@@ -390,7 +392,7 @@ export function HomePage(): ReactElement {
             <>
               <ResponsiveDataView
                 table={
-                  <div className="overflow-x-auto">
+                  <div className="min-w-0 max-w-full">
                     <Table>
                       <THead>
                         <TR>
@@ -398,7 +400,7 @@ export function HomePage(): ReactElement {
                           <TH>Tür</TH>
                           <TH>Telefon</TH>
                           <TH>E-posta</TH>
-                          <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
+                          <TH className={tableActionColClass}>İşlem</TH>
                         </TR>
                       </THead>
                       <TBody>
@@ -424,7 +426,7 @@ export function HomePage(): ReactElement {
                               </TD>
                               <TD className="text-ink-muted">{m.telefon ?? '—'}</TD>
                               <TD className="text-ink-muted">{m.eposta ?? '—'}</TD>
-                              <TD className="text-right">
+                              <TD className={tableActionColClass}>
                                 <Link
                                   to={detailTo}
                                   onClick={(e) => e.stopPropagation()}

@@ -177,7 +177,7 @@ export function BildirimMerkeziPage(): ReactElement {
               />
             }
             table={
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="min-w-0 max-w-full">
                 <Table>
                   <THead>
                     <TR>

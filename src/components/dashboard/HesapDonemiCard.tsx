@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { cn } from '../../lib/cn'
 import { AnimatedNumber } from '../../motion'
+import { MultiCurrencyTotals } from '../paraBirimi/MultiCurrencyTotals'
 import { formatCurrencyTR } from '../../utils/formatters'
 import type { HesapDonemiOzetResponse } from '../../types/hesapDonemi'
 import { DashboardSummaryCard } from './DashboardSummaryCard'
@@ -49,6 +50,11 @@ export function HesapDonemiCard({ data, loading, onPrev, onNext, onClick }: Prop
               {loading ? '…' : netNum != null ? <AnimatedNumber value={netNum} format={formatCurrencyTR} /> : '—'}
             </span>
           </div>
+          {data?.byCurrency ? (
+            <div className="pt-0.5">
+              <MultiCurrencyTotals amounts={data.bakiyeler} compact hideZero />
+            </div>
+          ) : null}
           <p className="text-[10px] font-semibold text-primary">Detayları gör</p>
         </div>
       }

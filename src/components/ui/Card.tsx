@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactElement, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
+import { uiType } from '../../lib/uiDensity'
 
 export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>): ReactElement {
   return (
@@ -14,13 +15,13 @@ export function Card({ className, ...rest }: HTMLAttributes<HTMLDivElement>): Re
 }
 
 export function CardHeader({ className, ...rest }: HTMLAttributes<HTMLDivElement>): ReactElement {
-  return <div className={cn('border-b border-border px-4 py-3', className)} {...rest} />
+  return <div className={cn('border-b border-border px-3.5 py-2.5', className)} {...rest} />
 }
 
 export function CardTitle({ children, className }: { children: ReactNode; className?: string }): ReactElement {
-  return <h3 className={cn('text-sm font-bold tracking-tight text-ink', className)}>{children}</h3>
+  return <h3 className={cn(uiType.sectionTitle, className)}>{children}</h3>
 }
 
 export function CardBody({ className, ...rest }: HTMLAttributes<HTMLDivElement>): ReactElement {
-  return <div className={cn('p-4', className)} {...rest} />
+  return <div className={cn('p-3.5', className)} {...rest} />
 }

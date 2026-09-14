@@ -5,6 +5,7 @@ import { getBagliPrimPersonel, listAktifPrimPersonel } from '../../api/primPerso
 import { useAuth } from '../../contexts/AuthContext'
 import { isYoneticiRole } from '../../lib/isYonetici'
 import { cn } from '../../lib/cn'
+import { formControlClass, uiType } from '../../lib/uiDensity'
 
 type Props = {
   value: string
@@ -24,18 +25,15 @@ function ReadonlyAd(props: {
 }): ReactElement {
   return (
     <div>
-      <label className="mb-1 block text-xs font-semibold text-ink-muted">{props.label}</label>
+      <label className={uiType.label}>{props.label}</label>
       <input
         type="text"
         readOnly
         disabled
         value={props.value}
-        className={cn(
-          'h-9 w-full rounded-md border border-border bg-surface-muted px-3 text-sm text-ink-muted',
-          props.className
-        )}
+        className={cn(formControlClass, 'bg-surface-muted text-ink-muted', props.className)}
       />
-      {props.hint ? <p className="mt-1 text-xs text-ink-muted">{props.hint}</p> : null}
+      {props.hint ? <p className={uiType.hint}>{props.hint}</p> : null}
     </div>
   )
 }
@@ -72,8 +70,8 @@ export function TahsilatiYapanPersonelSelect(props: Props): ReactElement {
   if (!session?.user) {
     return (
       <div>
-        <label className="mb-1 block text-xs font-semibold text-ink-muted">{label}</label>
-        <p className="text-xs text-ink-muted">—</p>
+        <label className={uiType.label}>{label}</label>
+        <p className={uiType.helper}>—</p>
       </div>
     )
   }
@@ -96,11 +94,10 @@ export function TahsilatiYapanPersonelSelect(props: Props): ReactElement {
 
   return (
     <div>
-      <label className="mb-1 block text-xs font-semibold text-ink-muted">{label}</label>
+      <label className={uiType.label}>{label}</label>
       <select
         className={cn(
-          'h-9 w-full rounded-md border bg-white px-3 text-sm text-ink shadow-inner outline-none transition',
-          'border-border focus:border-primary focus:ring-2 focus:ring-primary/15',
+          formControlClass,
           disabled && 'bg-surface-muted text-ink-muted',
           required && !value && 'border-amber-400',
           className
@@ -117,7 +114,7 @@ export function TahsilatiYapanPersonelSelect(props: Props): ReactElement {
           </option>
         ))}
       </select>
-      {hint ? <p className="mt-1 text-xs text-ink-muted">{hint}</p> : null}
+      {hint ? <p className={uiType.hint}>{hint}</p> : null}
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import type { ReactElement, SelectHTMLAttributes } from 'react'
 import { forwardRef } from 'react'
 import { cn } from '../../lib/cn'
+import { formControlClass, formControlErrorClass, uiType } from '../../lib/uiDensity'
 
 export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
   label?: string
@@ -17,25 +18,20 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
   return (
     <div className="w-full">
       {label ? (
-        <label htmlFor={sid} className="mb-1 block text-xs font-semibold text-ink-muted">
+        <label htmlFor={sid} className={uiType.label}>
           {label}
         </label>
       ) : null}
       <select
         ref={ref}
         id={sid}
-        className={cn(
-          'h-11 w-full rounded-md border bg-white px-2.5 text-sm text-ink shadow-inner outline-none transition md:h-9',
-          'border-border focus:border-primary focus:ring-2 focus:ring-primary/15',
-          error && 'border-danger',
-          className
-        )}
+        className={cn(formControlClass, error && formControlErrorClass, className)}
         {...rest}
       >
         {children}
       </select>
-      {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
-      {!error && hint ? <p className="mt-1 text-xs text-ink-subtle">{hint}</p> : null}
+      {error ? <p className={cn(uiType.hint, 'text-danger')}>{error}</p> : null}
+      {!error && hint ? <p className={uiType.hint}>{hint}</p> : null}
     </div>
   )
 })

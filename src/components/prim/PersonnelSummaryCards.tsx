@@ -31,20 +31,20 @@ export function PersonnelSummaryCards(props: Props): ReactElement {
   return (
     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
       <MiniStat
-        label="Bu ay toplam prim tahsilatı"
+        label="Bu ay toplam prim tahsilatı (TRY)"
         value={loading ? dash : formatCurrencyTR(Number(ozet.toplamTahsilatBuAy))}
       />
       <MiniStat
-        label="Prim hesabına giren"
+        label="Prim hesabına giren (TRY)"
         value={loading ? dash : formatCurrencyTR(Number(ozet.primDahilTahsilat))}
       />
       <MiniStat
-        label="Tahmini prim"
+        label="Tahmini prim (TRY)"
         value={loading ? dash : formatCurrencyTR(Number(ozet.tahminiPrim))}
         highlight
       />
       <MiniStat
-        label="Ödenmiş prim"
+        label="Ödenmiş prim (TRY)"
         value={loading ? dash : formatCurrencyTR(Number(ozet.odenmisPrim))}
       />
       <MiniStat

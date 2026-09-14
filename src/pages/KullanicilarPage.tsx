@@ -750,11 +750,11 @@ export function KullanicilarPage(): ReactElement {
 
       <ResponsiveDataView
         isLoading={usersQuery.isLoading}
-        loading={<p className="py-8 text-center text-sm text-ink-muted">Yükleniyor…</p>}
+        loading={<p className="py-8 text-center text-[11px] text-ink-muted">Yükleniyor…</p>}
         isEmpty={!usersQuery.isLoading && items.length === 0}
-        empty={<p className="py-8 text-center text-sm text-ink-muted">Kayıt bulunamadı.</p>}
+        empty={<p className="py-8 text-center text-[11px] text-ink-muted">Kayıt bulunamadı.</p>}
         table={
-          <div className="overflow-x-auto rounded-lg border border-border bg-panel shadow-sm">
+          <div className="min-w-0 max-w-full bg-panel shadow-sm">
             <Table>
               <THead>
                 <TR>
@@ -775,10 +775,10 @@ export function KullanicilarPage(): ReactElement {
                     <TR key={u.id}>
                       <TD className="font-medium text-ink">{u.adSoyad}</TD>
                       <TD className="font-mono text-xs">{u.kullaniciAdi}</TD>
-                      <TD className="text-sm">{u.eposta ?? '—'}</TD>
-                      <TD className="text-sm">{u.telefon ?? '—'}</TD>
-                      <TD className="text-sm">{roleLabel(u.role)}</TD>
-                      <TD className="text-sm">
+                      <TD>{u.eposta ?? '—'}</TD>
+                      <TD>{u.telefon ?? '—'}</TD>
+                      <TD>{roleLabel(u.role)}</TD>
+                      <TD>
                         {u.aktifMi ? <span className="text-emerald-700">Aktif</span> : <span className="text-ink-muted">Pasif</span>}
                       </TD>
                       <TD className="whitespace-nowrap text-xs text-ink-muted">{formatDateTime(u.sonGirisTarihi)}</TD>

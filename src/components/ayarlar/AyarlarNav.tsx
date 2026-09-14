@@ -13,7 +13,7 @@ export function AyarlarNav(props: Props): ReactElement {
     <>
       <div className="lg:hidden">
         <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-ink-muted">Ayar kategorisi</p>
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]" data-testid="ayarlar-nav-scroll">
           {props.items.map((item) => {
             const active = props.active === item.id
             return (

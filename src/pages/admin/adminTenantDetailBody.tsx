@@ -4,7 +4,7 @@ import type { AdminTenantDetailResponse } from '../../types/admin'
 import { AdminBreadcrumb } from '../../components/admin/AdminBreadcrumb'
 import { AdminEmptyState } from '../../components/admin/AdminEmptyState'
 import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, DraggablePanel, Input, Table, TBody, TD, TH, THead, TR } from '../../components/ui'
-import { formatDateTimeTR, formatDateTR } from '../../utils/formatters'
+import { formatDateTimeTR, formatDateTR, formatMoney, MONEY_NBSP, resolveParaBirimi, type ParaBirimi } from '../../utils/formatters'
 import { lisansDurumuTr } from '../../utils/tenantLicenseDisplay'
 import { AdminTenantUserRow } from './AdminTenantUserRow'
 import { AdminWhatsAppWebhookOverridePanel } from '../../components/admin/AdminWhatsAppWebhookOverridePanel'
@@ -96,7 +96,11 @@ function renewalSourceTr(source: string): string {
 
 function formatAmount(amount: string | null, currency: string): string {
   if (amount == null) return '—'
-  return `${amount} ${currency === 'TRY' ? '₺' : currency}`
+  const n = Number(amount)
+  if (Number.isFinite(n) && (currency === 'TRY' || currency === 'USD' || currency === 'EUR')) {
+    return formatMoney(n, resolveParaBirimi(currency) as ParaBirimi)
+  }
+  return currency === 'TRY' ? `${amount}${MONEY_NBSP}₺` : `${amount} ${currency}`
 }
 
 const TABS: { id: string; label: string }[] = [
@@ -341,7 +345,10 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
                 <InfoRow label="Lisans bitiş" value={effBitis ? formatDateTR(effBitis) : '—'} />
                 <InfoRow label="Kalan gün" value={kalanGunUst != null ? String(kalanGunUst) : '—'} />
                 <InfoRow label="Son ödeme tarihi" value={t.sonOdemeTarihi ? formatDateTR(t.sonOdemeTarihi) : '—'} />
-                <InfoRow label="Yıllık ücret" value={t.yillikUcret != null ? `${t.yillikUcret} ₺` : '—'} />
+                <InfoRow
+                  label="Yıllık ücret"
+                  value={t.yillikUcret != null ? formatMoney(Number(t.yillikUcret), 'TRY') : '—'}
+                />
                 <InfoRow label="Lisans notları" value={t.lisansNotlari?.trim() ? t.lisansNotlari : '—'} />
               </dl>
             </CardBody>
@@ -442,7 +449,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
               {renewals.length === 0 ? (
                 <p className="p-6 text-sm text-slate-500">Bu lisans için henüz yenileme kaydı yok.</p>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="min-w-0 max-w-full">
                   <Table>
                     <THead>
                       <TR className="bg-slate-50/80">
@@ -524,7 +531,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
                   <AdminEmptyState description="Bu alanda henüz kayıt bulunmuyor." />
                 </div>
               ) : (
-                <div className="overflow-x-auto">
+                <div className="min-w-0 max-w-full">
                   <Table>
                     <THead>
                       <TR className="bg-slate-50/80">
@@ -561,7 +568,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
                 <CardTitle className="text-sm">Kullanıcı yönetimi</CardTitle>
               </CardHeader>
               <CardBody className="p-0">
-                <div className="overflow-x-auto">
+                <div className="min-w-0 max-w-full">
                   <Table>
                     <THead>
                       <TR className="bg-slate-50/80">
@@ -614,7 +621,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
                 <AdminEmptyState description="Bu alanda henüz kayıt bulunmuyor." />
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="min-w-0 max-w-full">
                 <Table>
                   <THead>
                     <TR className="bg-slate-50/80">

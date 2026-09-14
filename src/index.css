@@ -12,27 +12,57 @@
     color: theme('colors.ink.DEFAULT');
     height: 100%;
     min-height: 100dvh;
-    overflow-x: hidden;
   }
   body {
     @apply m-0 min-h-screen text-[15px] leading-normal;
     background-color: theme('colors.canvas');
     height: 100%;
     min-height: 100dvh;
-    overflow-x: hidden;
-    max-width: 100vw;
+    /* 100vw scrollbar genişliği kadar yatay taşmaya yol açar — kullanma */
+    max-width: 100%;
   }
   #root {
     height: 100%;
     min-height: 100dvh;
     max-width: 100%;
-    overflow-x: hidden;
+    min-width: 0;
   }
   button,
   input,
   select,
   textarea {
     font: inherit;
+  }
+
+  /* Ofis Kasası tarih çifti — native date min-content taşmasını kes; masaüstünde sabit genişlik wrapper’dan gelir */
+  .ofis-kasa-date-range {
+    min-width: 0;
+  }
+  .ofis-kasa-date-range input[type='date'] {
+    min-width: 0 !important;
+    max-width: 100%;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Tablo açıklama/belge — line-clamp + sabit yükseklik (satır şişmesini keser) */
+  .ofis-clamp-2 {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+    line-height: 1.15rem;
+    max-height: 2.3rem;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+  .ofis-clamp-1 {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.15rem;
+    max-width: 100%;
   }
 }
 
@@ -181,4 +211,25 @@
     animation: none !important;
     stroke-dashoffset: 0;
   }
+}
+
+/* Ofis Kasası DUZELTME — hover/zebra Tailwind çakışmalarını ezer */
+tr[data-ofis-row-variant='duzeltme'] {
+  background-color: #fff1f2 !important; /* rose-50 */
+  border-left: 4px solid #f43f5e !important; /* rose-500 */
+}
+tr[data-ofis-row-variant='duzeltme']:hover {
+  background-color: #ffe4e6 !important; /* rose-100 */
+}
+.dark tr[data-ofis-row-variant='duzeltme'] {
+  background-color: rgba(136, 19, 55, 0.4) !important;
+  border-left-color: #fb7185 !important;
+}
+.dark tr[data-ofis-row-variant='duzeltme']:hover {
+  background-color: rgba(136, 19, 55, 0.55) !important;
+}
+[data-ofis-mobile-variant='duzeltme'],
+.ofis-duzeltme-mobile {
+  background-color: #fff1f2 !important;
+  border-left: 4px solid #f43f5e !important;
 }

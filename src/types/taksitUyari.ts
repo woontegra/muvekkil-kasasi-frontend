@@ -1,3 +1,5 @@
+import type { ParaBirimi } from '../utils/paraBirimi'
+
 export type TaksitUyariListeSatir = {
   id: string
   kaynak: 'VEKALET' | 'ICRA'
@@ -11,6 +13,7 @@ export type TaksitUyariListeSatir = {
   tutar: string
   odenen: string
   kalan: string
+  paraBirimi?: ParaBirimi | null
   durum: 'GECIKTI'
 }
 

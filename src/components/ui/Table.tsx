@@ -1,11 +1,22 @@
 import type { ComponentPropsWithoutRef, HTMLAttributes, ReactElement, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
+/**
+ * SaaS veri cetveli — ortak kompakt yoğunluk.
+ * Başlık ~10–11px, hücre ~11–12px.
+ * Yatay scrollbar yok; tablo container genişliğine sığar.
+ * overflow-hidden KULLANILMAZ — işlem butonlarını kırpar / sahte PASS üretir.
+ */
 export function Table({ className, ...rest }: HTMLAttributes<HTMLTableElement>): ReactElement {
   return (
-    <div className="w-full min-w-0 overflow-x-auto rounded-lg border border-border">
-      {/* min-width yalnızca masaüstü tablo görünümünde; mobil kart listesi ResponsiveDataView kullanır */}
-      <table className={cn('w-full border-collapse text-left text-sm md:min-w-[520px]', className)} {...rest} />
+    <div className="mk-data-table-wrap w-full min-w-0 max-w-full rounded-lg border border-border">
+      <table
+        className={cn(
+          'mk-data-table w-full max-w-full table-fixed border-collapse text-left text-[11px] leading-snug',
+          className
+        )}
+        {...rest}
+      />
     </div>
   )
 }
@@ -14,7 +25,7 @@ export function THead({ className, ...rest }: HTMLAttributes<HTMLTableSectionEle
   return (
     <thead
       className={cn(
-        'bg-gradient-to-b from-surface-muted to-white text-[11px] font-bold uppercase tracking-wide text-ink-muted',
+        'bg-gradient-to-b from-surface-muted to-white text-[10px] font-semibold uppercase tracking-wide text-ink-muted',
         className
       )}
       {...rest}
@@ -50,17 +61,17 @@ export function TR({ className, interactive, ...rest }: TRProps): ReactElement {
 }
 
 export function TH({ className, ...rest }: HTMLAttributes<HTMLTableCellElement>): ReactElement {
-  return <th className={cn('px-3 py-2.5', className)} {...rest} />
+  return <th className={cn('px-1.5 py-2 align-middle', className)} {...rest} />
 }
 
 export function TD({ className, ...rest }: ComponentPropsWithoutRef<'td'>): ReactElement {
-  return <td className={cn('px-3 py-2 text-ink', className)} {...rest} />
+  return <td className={cn('px-1.5 py-2 align-middle text-[11px] text-ink', className)} {...rest} />
 }
 
 export function TableEmptyRow({ colSpan, children }: { colSpan: number; children: ReactNode }): ReactElement {
   return (
     <tr>
-      <td colSpan={colSpan} className="px-3 py-8 text-center text-sm text-ink-muted">
+      <td colSpan={colSpan} className="px-1.5 py-6 text-center text-[11px] text-ink-muted">
         {children}
       </td>
     </tr>

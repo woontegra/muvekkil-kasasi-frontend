@@ -1,8 +1,10 @@
 import { apiFetch } from './client'
 import type {
+  CreateOfisKasaDovizDonusumPayload,
   CreateOfisKasaDuzeltmePayload,
   CreateOfisKasaHareketiPayload,
   ListOfisKasaHareketleriParams,
+  OfisKasaDovizDonusumResponse,
   OfisKasaHareketleriListResponse,
   OfisKasaHareketOneResponse,
   OfisKasaOzetResponse
@@ -15,6 +17,7 @@ function toQuery(params: ListOfisKasaHareketleriParams): string {
   if (params.islemTipi) sp.set('islemTipi', params.islemTipi)
   if (params.onayDurumu) sp.set('onayDurumu', params.onayDurumu)
   if (params.kategori?.trim()) sp.set('kategori', params.kategori.trim())
+  if (params.paraBirimi) sp.set('paraBirimi', params.paraBirimi)
   if (params.startDate) sp.set('startDate', params.startDate)
   if (params.endDate) sp.set('endDate', params.endDate)
   if (params.page != null) sp.set('page', String(params.page))
@@ -37,6 +40,21 @@ export async function createOfisKasaHareketi(body: CreateOfisKasaHareketiPayload
   return apiFetch<OfisKasaHareketOneResponse>('/api/v1/ofis-kasasi/hareketler', {
     method: 'POST',
     body: JSON.stringify(body)
+  })
+}
+
+export async function createOfisKasaDovizDonusum(
+  body: CreateOfisKasaDovizDonusumPayload
+): Promise<OfisKasaDovizDonusumResponse> {
+  return apiFetch<OfisKasaDovizDonusumResponse>('/api/v1/ofis-kasasi/doviz-donusum', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+}
+
+export async function deleteOfisKasaDovizDonusum(dovizDonusumId: string): Promise<void> {
+  await apiFetch<void>(`/api/v1/ofis-kasasi/doviz-donusum/${encodeURIComponent(dovizDonusumId)}`, {
+    method: 'DELETE'
   })
 }
 
@@ -67,4 +85,31 @@ export async function deleteOfisKasaHareketi(id: string): Promise<void> {
   await apiFetch<void>(`/api/v1/ofis-kasasi/hareketler/${encodeURIComponent(id)}`, {
     method: 'DELETE'
   })
+}
+
+export type GuvenliOfisGiderSilPayload = {
+  sifre: string
+  deleteReason: string
+}
+
+export type GuvenliOfisGiderSilResponse = {
+  ok: true
+  message: string
+  softDeletedIds: string[]
+  auditMessage: string
+  mode?: 'GIDER_SIL' | 'GELIR_SIL' | 'TAHSILAT_IPTAL'
+  alreadyDone?: boolean
+}
+
+export async function guvenliOfisGiderSil(
+  id: string,
+  payload: GuvenliOfisGiderSilPayload
+): Promise<GuvenliOfisGiderSilResponse> {
+  return apiFetch<GuvenliOfisGiderSilResponse>(
+    `/api/v1/ofis-kasasi/hareketler/${encodeURIComponent(id)}/guvenli-sil`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }
+  )
 }

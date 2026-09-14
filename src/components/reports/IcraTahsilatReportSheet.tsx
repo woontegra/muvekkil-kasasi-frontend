@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { IcraTahsilatReportResponse } from '../../types/reports'
-import { formatCurrencyTR, formatDateTR, formatDateTimeTR } from '../../utils/formatters'
+import { formatCurrencyTR, formatDateTR, formatDateTimeTR, formatMoney, resolveParaBirimi, type ParaBirimi } from '../../utils/formatters'
 import {
   ReportDataTable,
   ReportDocHeader,
@@ -12,6 +12,26 @@ function rangeLabel(start: string | null, end: string | null): string {
   const a = start ? formatDateTR(start) : '—'
   const b = end ? formatDateTR(end) : '—'
   return `${a} — ${b}`
+}
+
+function currencySummaryRows(data: IcraTahsilatReportResponse): { label: string; value: string }[] {
+  const bc = data.totals.byCurrency
+  if (bc) {
+    return (['TRY', 'USD', 'EUR'] as ParaBirimi[]).flatMap((pb) => {
+      const bucket = bc[pb]
+      if (!bucket) return []
+      return [
+        { label: `${pb} — toplam alacak`, value: formatMoney(Number(bucket.toplamAlacak), pb) },
+        { label: `${pb} — tahsil edilen`, value: formatMoney(Number(bucket.tahsilEdilen), pb) },
+        { label: `${pb} — kalan`, value: formatMoney(Number(bucket.kalanAlacak), pb) }
+      ]
+    })
+  }
+  return [
+    { label: 'Toplam alacak (TRY)', value: formatCurrencyTR(Number(data.totals.toplamAlacak)) },
+    { label: 'Tahsil edilen (TRY)', value: formatCurrencyTR(Number(data.totals.tahsilEdilen)) },
+    { label: 'Kalan alacak (TRY)', value: formatCurrencyTR(Number(data.totals.kalanAlacak)) }
+  ]
 }
 
 export function IcraTahsilatReportSheet(props: { data: IcraTahsilatReportResponse }): ReactElement {
@@ -30,9 +50,7 @@ export function IcraTahsilatReportSheet(props: { data: IcraTahsilatReportRespons
       />
       <ReportSummaryTable
         rows={[
-          { label: 'Toplam alacak (liste)', value: formatCurrencyTR(Number(data.totals.toplamAlacak)) },
-          { label: 'Tahsil edilen', value: formatCurrencyTR(Number(data.totals.tahsilEdilen)) },
-          { label: 'Kalan alacak', value: formatCurrencyTR(Number(data.totals.kalanAlacak)) },
+          ...currencySummaryRows(data),
           { label: 'Vadesi geçmiş taksit', value: String(data.totals.vadesiGecmisTaksit) },
           { label: 'SMM bekleyen', value: String(data.totals.smmBekleyen) }
         ]}
@@ -45,6 +63,7 @@ export function IcraTahsilatReportSheet(props: { data: IcraTahsilatReportRespons
           'Müvekkil',
           'Dosya',
           'Tür',
+          'PB',
           'Toplam',
           'Ödenen',
           'Kalan',
@@ -52,18 +71,22 @@ export function IcraTahsilatReportSheet(props: { data: IcraTahsilatReportRespons
           'Durum',
           'Personel'
         ]}
-        rows={data.alacaklar.map((r) => [
-          r.borcluAd,
-          r.muvekkilAd ?? '—',
-          r.dosyaBaslik ?? '—',
-          r.alacakTuruLabel,
-          formatCurrencyTR(Number(r.toplamTutar)),
-          formatCurrencyTR(Number(r.odenenToplam)),
-          formatCurrencyTR(Number(r.kalanTutar)),
-          String(r.taksitSayisi),
-          r.durumLabel,
-          r.tahsilatiYapanPersonelAd ?? '—'
-        ])}
+        rows={data.alacaklar.map((r) => {
+          const pb = resolveParaBirimi(r.paraBirimi)
+          return [
+            r.borcluAd,
+            r.muvekkilAd ?? '—',
+            r.dosyaBaslik ?? '—',
+            r.alacakTuruLabel,
+            pb,
+            formatMoney(Number(r.toplamTutar), pb),
+            formatMoney(Number(r.odenenToplam), pb),
+            formatMoney(Number(r.kalanTutar), pb),
+            String(r.taksitSayisi),
+            r.durumLabel,
+            r.tahsilatiYapanPersonelAd ?? '—'
+          ]
+        })}
       />
       <ReportDataTable
         title="Tahsilatlar"

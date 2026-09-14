@@ -4,13 +4,26 @@ import { useMemo, useState } from 'react'
 import { invalidateDashboardSummary } from '../api/dashboard'
 import {
   approveOfisKasaHareketi,
+  createOfisKasaDovizDonusum,
   createOfisKasaDuzeltme,
   createOfisKasaHareketi,
+  deleteOfisKasaDovizDonusum,
   deleteOfisKasaHareketi,
   getOfisKasaOzet,
+  guvenliOfisGiderSil,
   listOfisKasaHareketleri,
   rejectOfisKasaHareketi
 } from '../api/ofisKasasi'
+import { MasrafGuvenliSilModal } from '../components/kasa/MasrafGuvenliSilModal'
+import { OfisKasaHareketTableRow } from '../components/ofisKasa/OfisKasaHareketTableRow'
+import { OfisKasaIslemTipiCell } from '../components/ofisKasa/OfisKasaIslemTipiCell'
+import { ofisHareketAciklamaOzet, resolveOfisGuvenliIslemMode } from '../lib/ofisKasaGuvenliSil'
+import {
+  isOfisDuzeltmeTipi,
+  OFIS_DUZELTME_MOBILE_CARD_CLASS,
+  OFIS_DUZELTME_TUTAR_CLASS
+} from '../lib/ofisKasaDuzeltmeStil'
+import { isBuroSahibiRole } from '../lib/isBuroSahibi'
 import { MuvekkilOptionalSelect } from '../components/muvekkil/MuvekkilOptionalSelect'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import { useAuth } from '../contexts/AuthContext'
@@ -24,17 +37,16 @@ import {
   CardTitle,
   Input,
   MoneyInput,
+  PageHeader,
   StatCard,
   Table,
   TBody,
-  TD,
   TH,
   THead,
   TR,
-  tableActionsFlexRow,
-  tableActionButtonShrinkClass,
   useConfirm,
-  DraggablePanel
+  DraggablePanel,
+  tableActionColClass
 } from '../components/ui'
 import {
   MobileActionBar,
@@ -44,18 +56,33 @@ import {
 } from '../components/responsive'
 import { useToast } from '../toast'
 import { cn } from '../lib/cn'
+import { formControlClass, uiType } from '../lib/uiDensity'
+
 import type {
   OfisKasaHareketiDto,
   OfisKasaIslemTipiApi,
   OfisKasaOdemeYontemiApi,
   OfisKasaOnayDurumuApi
 } from '../types/ofisKasasi'
+import { CurrencyBalanceCards, MultiCurrencyTotals } from '../components/paraBirimi/MultiCurrencyTotals'
+import { ParaBirimiFilterSelect, ParaBirimiSelect } from '../components/paraBirimi/ParaBirimiSelect'
+import { previewDovizDonusumKur } from '../lib/crossCurrencyPayment'
+import { TcmbCrossRatePanel } from '../components/kurlar/TcmbCrossRatePanel'
+import { useCrossCurrencyTcmb } from '../hooks/useCrossCurrencyTcmb'
 import {
   OFIS_KASA_GELIR_KATEGORILERI,
   OFIS_KASA_GIDER_KATEGORILERI,
+  type CreateOfisKasaDovizDonusumPayload,
   type CreateOfisKasaHareketiPayload
 } from '../types/ofisKasasi'
-import { formatCurrencyTR, formatDateTR, parseCurrencyInputTR, parsePosTutar } from '../utils/formatters'
+import {
+  formatDateTR,
+  formatSignedMoney,
+  parseCurrencyInputTR,
+  parsePosTutar,
+  resolveParaBirimi,
+  type ParaBirimi
+} from '../utils/formatters'
 
 const ODEME_OPTIONS: { value: OfisKasaOdemeYontemiApi; label: string }[] = [
   { value: 'NAKIT', label: 'Nakit' },
@@ -84,9 +111,17 @@ function tipLabel(t: OfisKasaIslemTipiApi): string {
       return 'Gider'
     case 'DUZELTME':
       return 'Düzeltme'
+    case 'DOVIZ_CIKIS':
+      return 'Döviz çıkış'
+    case 'DOVIZ_GIRIS':
+      return 'Döviz giriş'
     default:
       return t
   }
+}
+
+function hareketParaBirimi(h: OfisKasaHareketiDto): ParaBirimi {
+  return resolveParaBirimi(h.paraBirimi)
 }
 
 function onayLabel(o: OfisKasaOnayDurumuApi): string {
@@ -142,6 +177,7 @@ export function OfisKasasiPage(): ReactElement {
   const [islemTipi, setIslemTipi] = useState<'' | OfisKasaIslemTipiApi>('')
   const [onayDurumu, setOnayDurumu] = useState<'' | OfisKasaOnayDurumuApi>('')
   const [kategori, setKategori] = useState('')
+  const [filterParaBirimi, setFilterParaBirimi] = useState<'' | ParaBirimi>('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [page, setPage] = useState(1)
@@ -154,12 +190,13 @@ export function OfisKasasiPage(): ReactElement {
       islemTipi: islemTipi || undefined,
       onayDurumu: onayDurumu || undefined,
       kategori: kategori.trim() || undefined,
+      paraBirimi: filterParaBirimi || undefined,
       startDate: startDate ? dateInputToIsoUtcNoon(startDate) : undefined,
       endDate: endDate ? dateInputToIsoUtcNoon(endDate) : undefined,
       page,
       limit
     }),
-    [q, filterMuvekkilId, islemTipi, onayDurumu, kategori, startDate, endDate, page, limit]
+    [q, filterMuvekkilId, islemTipi, onayDurumu, kategori, filterParaBirimi, startDate, endDate, page, limit]
   )
 
   const ozetQuery = useQuery({
@@ -199,6 +236,22 @@ export function OfisKasasiPage(): ReactElement {
       toast.success('Kayıt silindi.')
     }
   })
+  const guvenliSilMu = useMutation({
+    mutationFn: ({
+      id,
+      sifre,
+      deleteReason
+    }: {
+      id: string
+      sifre: string
+      deleteReason: string
+    }) => guvenliOfisGiderSil(id, { sifre, deleteReason }),
+    onSuccess: (res) => {
+      invalidateAll()
+      setGuvenliSilFor(null)
+      toast.success(res.message || 'Masraf silindi ve denetim kaydı oluşturuldu')
+    }
+  })
   const duzeltmeMu = useMutation({
     mutationFn: ({ id, body }: { id: string; body: { tarih: string; tutar: number; aciklama: string; odemeYontemi: OfisKasaOdemeYontemiApi } }) =>
       createOfisKasaDuzeltme(id, body),
@@ -216,8 +269,25 @@ export function OfisKasasiPage(): ReactElement {
   })
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [dovizOpen, setDovizOpen] = useState(false)
   const [rejectFor, setRejectFor] = useState<OfisKasaHareketiDto | null>(null)
   const [duzeltFor, setDuzeltFor] = useState<OfisKasaHareketiDto | null>(null)
+  const [guvenliSilFor, setGuvenliSilFor] = useState<OfisKasaHareketiDto | null>(null)
+
+  const dovizDeleteMu = useMutation({
+    mutationFn: (dovizDonusumId: string) => deleteOfisKasaDovizDonusum(dovizDonusumId),
+    onSuccess: () => {
+      invalidateAll()
+      toast.success('Döviz dönüşümü silindi.')
+    }
+  })
+  const dovizCreateMu = useMutation({
+    mutationFn: (body: CreateOfisKasaDovizDonusumPayload) => createOfisKasaDovizDonusum(body),
+    onSuccess: () => {
+      invalidateAll()
+      toast.success('Döviz dönüşümü kaydedildi (onay bekliyor).')
+    }
+  })
 
   const ozet = ozetQuery.data?.ozet
   const items = listQuery.data?.items ?? []
@@ -231,13 +301,10 @@ export function OfisKasasiPage(): ReactElement {
 
   return (
     <div className="w-full space-y-5">
-      <div>
-        <h1 className="text-xl font-bold tracking-tight text-ink md:text-2xl">Ofis Kasası</h1>
-        <p className="mt-1 text-sm text-ink-muted">
-          Büronun dosya dışı gelir ve giderleri. Müvekkil dosya kasasından tamamen ayrıdır; yalnızca onaylı kayıtlar bakiyeye
-          yansır.
-        </p>
-      </div>
+      <PageHeader
+        title="Ofis Kasası"
+        description="Büronun dosya dışı gelir ve giderleri. Müvekkil dosya kasasından tamamen ayrıdır; yalnızca onaylı kayıtlar bakiyeye yansır."
+      />
 
       {ozetQuery.isError ? (
         <AlertBox variant="danger" title="Özet yüklenemedi">
@@ -250,36 +317,46 @@ export function OfisKasasiPage(): ReactElement {
         </AlertBox>
       ) : null}
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <CurrencyBalanceCards bakiyeler={ozet?.bakiyeler} />
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
-          label="Toplam gelir (onaylı)"
-          value={ozet ? formatCurrencyTR(Number(ozet.toplamGelir)) : '—'}
-          sub="Ofis kasası"
+          label="Bu ay gelir (onaylı)"
+          value={
+            ozet?.byCurrency ? (
+              <MultiCurrencyTotals
+                amounts={{
+                  TRY: ozet.byCurrency.TRY.buAyGelir,
+                  USD: ozet.byCurrency.USD.buAyGelir,
+                  EUR: ozet.byCurrency.EUR.buAyGelir
+                }}
+                compact
+              />
+            ) : (
+              '—'
+            )
+          }
+          sub="Para birimine göre ayrı"
           className="border border-emerald-300/60 bg-emerald-50/80 dark:border-emerald-900/50 dark:bg-emerald-950/25"
         />
         <StatCard
-          label="Toplam gider (onaylı)"
-          value={ozet ? formatCurrencyTR(Number(ozet.toplamGider)) : '—'}
-          sub="Pozitif tutarlar toplamı"
+          label="Bu ay gider (onaylı)"
+          value={
+            ozet?.byCurrency ? (
+              <MultiCurrencyTotals
+                amounts={{
+                  TRY: ozet.byCurrency.TRY.buAyGider,
+                  USD: ozet.byCurrency.USD.buAyGider,
+                  EUR: ozet.byCurrency.EUR.buAyGider
+                }}
+                compact
+              />
+            ) : (
+              '—'
+            )
+          }
+          sub="Giderler yalnızca TRY"
           className="border border-orange-400/50 bg-orange-50/85 dark:border-orange-900/45 dark:bg-orange-950/25"
-        />
-        <StatCard
-          label="Kasa bakiyesi"
-          value={ozet ? formatCurrencyTR(Number(ozet.kasaBakiyesi)) : '—'}
-          sub="Gelir − gider ± düzeltme"
-          className="border border-sky-400/50 bg-sky-50/90 dark:border-sky-900/45 dark:bg-sky-950/25"
-        />
-        <StatCard
-          label="Bu ay gelir"
-          value={ozet ? formatCurrencyTR(Number(ozet.buAyGelir)) : '—'}
-          sub="Onaylı, ay içi"
-          className="border border-border bg-panel"
-        />
-        <StatCard
-          label="Bu ay gider"
-          value={ozet ? formatCurrencyTR(Number(ozet.buAyGider)) : '—'}
-          sub="Onaylı, ay içi"
-          className="border border-border bg-panel"
         />
         <StatCard
           label="Onaysız işlem"
@@ -296,16 +373,23 @@ export function OfisKasasiPage(): ReactElement {
             <p className="mt-1 text-xs text-ink-muted">Filtreleyin; yeni kayıt varsayılan olarak onaysızdır.</p>
           </div>
           {olusturabilir ? (
-            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-              Yeni Ofis Kasa Hareketi
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                Yeni Ofis Kasa Hareketi
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setDovizOpen(true)}>
+                Döviz dönüşümü
+              </Button>
+            </div>
           ) : (
             <p className="text-xs text-ink-muted">Hareket eklemek için yetkiniz yok.</p>
           )}
         </CardHeader>
         <CardBody className="space-y-4 p-4">
           <MobileFilterPanel
-            activeCount={[q, filterMuvekkilId, islemTipi, kategori, onayDurumu, startDate, endDate].filter(Boolean).length}
+            className="min-w-0 max-w-full overflow-x-clip"
+            desktopInlineToolbar
+            activeCount={[q, filterMuvekkilId, islemTipi, kategori, filterParaBirimi, onayDurumu, startDate, endDate].filter(Boolean).length}
             onApply={() => setPage(1)}
             onReset={() => {
               setQ('')
@@ -314,29 +398,41 @@ export function OfisKasasiPage(): ReactElement {
               setIslemTipi('')
               setOnayDurumu('')
               setKategori('')
+              setFilterParaBirimi('')
               setStartDate('')
               setEndDate('')
               setPage(1)
             }}
+            desktopFiltersClassName="!mt-0"
+            mobileFiltersClassName="grid w-full grid-cols-1 gap-3"
             primary={
-              <Input label="Arama" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Belge, açıklama…" />
+              <div className="w-full md:w-[260px] md:shrink-0">
+                <Input
+                  label="Arama"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder="Belge, açıklama…"
+                />
+              </div>
             }
           >
-            <MuvekkilOptionalSelect
-              label="Müvekkil"
-              valueId={filterMuvekkilId}
-              valueLabel={filterMuvekkilLabel}
-              placeholder="Müvekkil seçin"
-              onChange={(next) => {
-                setFilterMuvekkilId(next?.id ?? '')
-                setFilterMuvekkilLabel(next?.gorunenAd ?? '')
-                setPage(1)
-              }}
-            />
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">İşlem tipi</label>
+            <div className="w-full md:w-[180px] md:shrink-0">
+              <MuvekkilOptionalSelect
+                label="Müvekkil"
+                valueId={filterMuvekkilId}
+                valueLabel={filterMuvekkilLabel}
+                placeholder="Müvekkil seçin"
+                onChange={(next) => {
+                  setFilterMuvekkilId(next?.id ?? '')
+                  setFilterMuvekkilLabel(next?.gorunenAd ?? '')
+                  setPage(1)
+                }}
+              />
+            </div>
+            <div className="w-full md:w-[135px] md:shrink-0">
+              <label className={uiType.label}>İşlem tipi</label>
               <select
-                className="h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated"
+                className={formControlClass}
                 value={islemTipi}
                 onChange={(e) => setIslemTipi(e.target.value as '' | OfisKasaIslemTipiApi)}
               >
@@ -346,10 +442,10 @@ export function OfisKasasiPage(): ReactElement {
                 <option value="DUZELTME">Düzeltme</option>
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Kategori</label>
+            <div className="w-full md:w-[170px] md:shrink-0">
+              <label className={uiType.label}>Kategori</label>
               <select
-                className="h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated"
+                className={formControlClass}
                 value={kategori}
                 onChange={(e) => setKategori(e.target.value)}
               >
@@ -361,10 +457,20 @@ export function OfisKasasiPage(): ReactElement {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Onay</label>
+            <div className="w-full md:w-[140px] md:shrink-0">
+              <ParaBirimiFilterSelect
+                label="Para birimi"
+                value={filterParaBirimi}
+                onChange={(v) => {
+                  setFilterParaBirimi(v)
+                  setPage(1)
+                }}
+              />
+            </div>
+            <div className="w-full md:w-[115px] md:shrink-0">
+              <label className={uiType.label}>Onay</label>
               <select
-                className="h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated"
+                className={formControlClass}
                 value={onayDurumu}
                 onChange={(e) => setOnayDurumu(e.target.value as '' | OfisKasaOnayDurumuApi)}
               >
@@ -374,8 +480,27 @@ export function OfisKasasiPage(): ReactElement {
                 <option value="REDDEDILDI">Reddedildi</option>
               </select>
             </div>
-            <Input label="Başlangıç" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-            <Input label="Bitiş" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            <div
+              className="ofis-kasa-date-range flex w-full shrink-0 gap-2 md:w-auto"
+              data-testid="ofis-kasa-date-range"
+            >
+              <div className="min-w-0 flex-1 md:w-[142px] md:flex-none">
+                <Input
+                  label="Başlangıç"
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="min-w-0 flex-1 md:w-[142px] md:flex-none">
+                <Input
+                  label="Bitiş"
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
           </MobileFilterPanel>
 
           <ResponsiveDataView
@@ -384,127 +509,82 @@ export function OfisKasasiPage(): ReactElement {
             isEmpty={!listQuery.isLoading && items.length === 0}
             empty={<p className="py-6 text-center text-sm text-ink-muted">Kayıt yok.</p>}
             table={
-              <div className="overflow-x-auto rounded-lg border border-border">
-                <Table>
-                  <THead>
-                    <TR>
-                      <TH>Tarih</TH>
-                      <TH>Tip</TH>
-                      <TH className="hidden md:table-cell">Müvekkil</TH>
-                      <TH>Kategori</TH>
-                      <TH>Açıklama</TH>
-                      <TH className="text-right">Tutar</TH>
-                      <TH>Ödeme</TH>
-                      <TH>Belge no</TH>
-                      <TH>Onay</TH>
-                      <TH className="min-w-[200px] text-right">İşlem</TH>
-                    </TR>
-                  </THead>
-                  <TBody>
-                    {items.map((h) => {
-                      const onaysiz = h.onayDurumu === 'ONAYSIZ'
-                      const onayli = h.onayDurumu === 'ONAYLI'
-                      const reddedildi = h.onayDurumu === 'REDDEDILDI'
-                      const signed = signedTutar(h)
-                      return (
-                        <TR key={h.id} className={cn(h.islemTipi === 'DUZELTME' && 'bg-amber-50/30 dark:bg-amber-950/15')}>
-                          <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
-                          <TD className="text-sm font-medium">{tipLabel(h.islemTipi)}</TD>
-                          <TD className="hidden max-w-[140px] text-sm text-ink-muted md:table-cell">
-                            {muvekkilAdiFromHareket(h)}
-                          </TD>
-                          <TD className="max-w-[160px] text-sm">
-                            {h.kategori}
-                            {h.ozelKategoriAdi?.trim() ? (
-                              <span className="mt-0.5 block text-[11px] text-ink-muted">({h.ozelKategoriAdi})</span>
-                            ) : null}
-                          </TD>
-                          <TD className="max-w-[200px] text-sm text-ink-muted">{h.aciklama?.trim() || '—'}</TD>
-                          <TD
-                            className={cn(
-                              'text-right text-sm font-semibold tabular-nums',
-                              signed < 0 ? 'text-danger' : 'text-ink'
-                            )}
-                          >
-                            {formatCurrencyTR(signed)}
-                          </TD>
-                          <TD className="text-xs text-ink-muted">{odemeLabel(h.odemeYontemi)}</TD>
-                          <TD className="font-mono text-xs">{h.belgeNo}</TD>
-                          <TD>
-                            <Badge
-                              variant={onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'}
-                              className="!normal-case"
-                            >
-                              {onayLabel(h.onayDurumu)}
-                            </Badge>
-                            {reddedildi && h.redSebebi?.trim() ? (
-                              <p className="mt-1 max-w-[140px] text-[11px] text-danger">{h.redSebebi}</p>
-                            ) : null}
-                          </TD>
-                          <TD className="min-w-[200px] align-middle text-right">
-                            <div className={cn(tableActionsFlexRow, 'gap-1.5')}>
-                              {onaysiz && yonetici ? (
-                                <>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    className={cn('h-7 px-2 text-[11px]', tableActionButtonShrinkClass)}
-                                    disabled={approveMu.isPending}
-                                    onClick={() => approveMu.mutate(h.id)}
-                                  >
-                                    Onayla
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className={cn('h-7 px-2 text-[11px]', tableActionButtonShrinkClass)}
-                                    onClick={() => setRejectFor(h)}
-                                  >
-                                    Reddet
-                                  </Button>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className={cn('h-7 px-2 text-[11px] text-danger', tableActionButtonShrinkClass)}
-                                    disabled={deleteMu.isPending}
-                                    onClick={() => {
-                                      void confirm({
-                                        title: 'Kayıt silinsin mi?',
-                                        message: 'Bu onaysız kaydı silmek istiyor musunuz?',
-                                        confirmLabel: 'Sil',
-                                        danger: true
-                                      }).then((ok) => {
-                                        if (ok) deleteMu.mutate(h.id)
-                                      })
-                                    }}
-                                  >
-                                    Sil
-                                  </Button>
-                                </>
-                              ) : null}
-                              {onayli && h.islemTipi !== 'DUZELTME' ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="outline"
-                                  className={cn('h-7 px-2 text-[11px]', tableActionButtonShrinkClass)}
-                                  onClick={() => setDuzeltFor(h)}
-                                >
-                                  Düzeltme
-                                </Button>
-                              ) : null}
-                              {reddedildi ? <span className="text-[11px] text-ink-muted">—</span> : null}
-                            </div>
-                          </TD>
-                        </TR>
-                      )
-                    })}
-                  </TBody>
-                </Table>
-              </div>
+              <Table data-testid="ofis-hareket-table">
+                <colgroup>
+                  {/* PB yok — tutar sembolü yeterli; dar viewport’ta Ödeme/Belge col gizlenir */}
+                  <col style={{ width: '7%' }} />
+                  <col style={{ width: '8%' }} />
+                  <col style={{ width: '9%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col style={{ width: '22%' }} />
+                  <col style={{ width: '11%' }} />
+                  <col className="hidden xl:[display:table-column]" style={{ width: '5%' }} />
+                  <col className="hidden xl:[display:table-column]" style={{ width: '7%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '10%' }} />
+                </colgroup>
+                <THead>
+                  <TR>
+                    <TH className="whitespace-nowrap">Tarih</TH>
+                    <TH className="whitespace-nowrap">Tip</TH>
+                    <TH className="hidden whitespace-nowrap md:table-cell">Müvekkil</TH>
+                    <TH className="whitespace-nowrap">Kategori</TH>
+                    <TH>Açıklama</TH>
+                    <TH className="whitespace-nowrap text-right">Tutar</TH>
+                    <TH className="hidden whitespace-nowrap xl:table-cell">Ödeme</TH>
+                    <TH className="hidden whitespace-nowrap xl:table-cell">Belge no</TH>
+                    <TH className="whitespace-nowrap">Onay</TH>
+                    <TH className={cn(tableActionColClass)}>İşlem</TH>
+                  </TR>
+                </THead>
+                <TBody>
+                  {items.map((h) => {
+                    const signed = signedTutar(h)
+                    return (
+                      <OfisKasaHareketTableRow
+                        key={h.id}
+                        hareket={h}
+                        role={role}
+                        yonetici={yonetici}
+                        muvekkilAdi={muvekkilAdiFromHareket(h)}
+                        signed={signed}
+                        paraBirimi={hareketParaBirimi(h)}
+                        formatSignedMoney={formatSignedMoney}
+                        odemeLabel={odemeLabel}
+                        onayLabel={onayLabel}
+                        approvePending={approveMu.isPending}
+                        deletePending={deleteMu.isPending}
+                        dovizDeletePending={dovizDeleteMu.isPending}
+                        guvenliSilPending={guvenliSilMu.isPending}
+                        onApprove={() => approveMu.mutate(h.id)}
+                        onReject={() => setRejectFor(h)}
+                        onHardDelete={() => {
+                          void confirm({
+                            title: 'Kayıt silinsin mi?',
+                            message: 'Bu onaysız kaydı silmek istiyor musunuz?',
+                            confirmLabel: 'Sil',
+                            danger: true
+                          }).then((ok) => {
+                            if (ok) deleteMu.mutate(h.id)
+                          })
+                        }}
+                        onDuzeltme={() => setDuzeltFor(h)}
+                        onDovizDelete={() => {
+                          void confirm({
+                            title: 'Döviz dönüşümü silinsin mi?',
+                            message: 'Kaynak ve hedef hareket birlikte silinir.',
+                            confirmLabel: 'Sil',
+                            danger: true
+                          }).then((ok) => {
+                            if (ok && h.dovizDonusumId) dovizDeleteMu.mutate(h.dovizDonusumId)
+                          })
+                        }}
+                        onGuvenliSil={() => setGuvenliSilFor(h)}
+                      />
+                    )
+                  })}
+                </TBody>
+              </Table>
             }
             cards={
               <>
@@ -513,6 +593,7 @@ export function OfisKasasiPage(): ReactElement {
                   const onayli = h.onayDurumu === 'ONAYLI'
                   const reddedildi = h.onayDurumu === 'REDDEDILDI'
                   const signed = signedTutar(h)
+                  const isDuz = isOfisDuzeltmeTipi(h.islemTipi)
                   const actions = []
                   if (onaysiz && yonetici) {
                     actions.push(
@@ -530,8 +611,10 @@ export function OfisKasasiPage(): ReactElement {
                         primary: true,
                         variant: 'outline' as const,
                         onClick: () => setRejectFor(h)
-                      },
-                      {
+                      }
+                    )
+                    if (h.islemTipi !== 'GIDER') {
+                      actions.push({
                         key: 'sil',
                         label: 'Sil',
                         danger: true,
@@ -546,10 +629,10 @@ export function OfisKasasiPage(): ReactElement {
                             if (ok) deleteMu.mutate(h.id)
                           })
                         }
-                      }
-                    )
+                      })
+                    }
                   }
-                  if (onayli && h.islemTipi !== 'DUZELTME') {
+                  if (onayli && h.islemTipi !== 'DUZELTME' && h.islemTipi !== 'DOVIZ_CIKIS' && h.islemTipi !== 'DOVIZ_GIRIS') {
                     actions.push({
                       key: 'duzelt',
                       label: 'Düzeltme',
@@ -558,35 +641,68 @@ export function OfisKasasiPage(): ReactElement {
                       onClick: () => setDuzeltFor(h)
                     })
                   }
+                  const guvenliMode = resolveOfisGuvenliIslemMode(h)
+                  if (isBuroSahibiRole(role) && guvenliMode) {
+                    actions.push({
+                      key: `guvenli-${guvenliMode}`,
+                      label: 'Sil',
+                      danger: true,
+                      disabled: guvenliSilMu.isPending,
+                      onClick: () => setGuvenliSilFor(h)
+                    })
+                  }
                   return (
                     <MobileRecordCard
                       key={h.id}
+                      className={cn(isDuz && OFIS_DUZELTME_MOBILE_CARD_CLASS, isDuz && 'ofis-duzeltme-mobile')}
                       title={h.belgeNo}
                       subtitle={h.aciklama?.trim() || tipLabel(h.islemTipi)}
                       badge={
-                        <Badge
-                          variant={onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'}
-                          className="!normal-case"
-                        >
-                          {onayLabel(h.onayDurumu)}
-                        </Badge>
+                        <div className="flex flex-col items-end gap-1">
+                          {isDuz ? <OfisKasaIslemTipiCell islemTipi={h.islemTipi} /> : null}
+                          <Badge
+                            variant={onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'}
+                            className="!normal-case"
+                          >
+                            {onayLabel(h.onayDurumu)}
+                          </Badge>
+                        </div>
                       }
                       fields={[
                         { label: 'Tarih', value: formatDateTR(h.tarih) },
                         {
-                          label: 'Tutar',
-                          value: (
-                            <span className={signed < 0 ? 'text-danger' : undefined}>{formatCurrencyTR(signed)}</span>
-                          ),
-                          numeric: true
+                          label: 'Tip',
+                          value: tipLabel(h.islemTipi)
                         },
-                        { label: 'Tip', value: tipLabel(h.islemTipi) },
                         { label: 'Müvekkil', value: muvekkilAdiFromHareket(h), full: true },
-                        { label: 'Ödeme', value: odemeLabel(h.odemeYontemi) },
                         {
                           label: 'Kategori',
                           value: h.ozelKategoriAdi?.trim() ? `${h.kategori} (${h.ozelKategoriAdi})` : h.kategori,
                           full: true
+                        },
+                        {
+                          label: 'Açıklama',
+                          value: h.aciklama?.trim() || '—',
+                          full: true
+                        },
+                        {
+                          label: 'Tutar',
+                          value: (
+                            <span
+                              className={
+                                isDuz ? OFIS_DUZELTME_TUTAR_CLASS : signed < 0 ? 'text-danger' : undefined
+                              }
+                            >
+                              {formatSignedMoney(signed, hareketParaBirimi(h))}
+                            </span>
+                          ),
+                          numeric: true
+                        },
+                        { label: 'Ödeme', value: odemeLabel(h.odemeYontemi) },
+                        { label: 'Belge no', value: h.belgeNo },
+                        {
+                          label: 'Onay',
+                          value: onayLabel(h.onayDurumu)
                         }
                       ]}
                       actions={
@@ -635,6 +751,15 @@ export function OfisKasasiPage(): ReactElement {
         />
       ) : null}
 
+      {dovizOpen ? (
+        <DovizDonusumModal
+          onClose={() => setDovizOpen(false)}
+          loading={dovizCreateMu.isPending}
+          error={dovizCreateMu.error instanceof Error ? dovizCreateMu.error.message : null}
+          onSubmit={(payload) => dovizCreateMu.mutate(payload, { onSuccess: () => setDovizOpen(false) })}
+        />
+      ) : null}
+
       {rejectFor ? (
         <RejectOfisModal
           belgeNo={rejectFor.belgeNo}
@@ -661,6 +786,31 @@ export function OfisKasasiPage(): ReactElement {
           }
         />
       ) : null}
+
+      {guvenliSilFor ? (
+        <MasrafGuvenliSilModal
+          ozet={{
+            id: guvenliSilFor.id,
+            tarih: guvenliSilFor.tarih,
+            aciklama: ofisHareketAciklamaOzet(guvenliSilFor),
+            tutar: guvenliSilFor.tutar,
+            odemeYontemiLabel: odemeLabel(guvenliSilFor.odemeYontemi),
+            belgeNo: guvenliSilFor.belgeNo,
+            mode: resolveOfisGuvenliIslemMode(guvenliSilFor) ?? 'GIDER_SIL',
+            muvekkilAdi: muvekkilAdiFromHareket(guvenliSilFor),
+            kategori: guvenliSilFor.ozelKategoriAdi?.trim()
+              ? `${guvenliSilFor.kategori} (${guvenliSilFor.ozelKategoriAdi})`
+              : guvenliSilFor.kategori,
+            paraBirimi: hareketParaBirimi(guvenliSilFor)
+          }}
+          onClose={() => setGuvenliSilFor(null)}
+          loading={guvenliSilMu.isPending}
+          error={guvenliSilMu.error instanceof Error ? guvenliSilMu.error.message : null}
+          onSubmit={(payload) =>
+            guvenliSilMu.mutate({ id: guvenliSilFor.id, ...payload })
+          }
+        />
+      ) : null}
     </div>
   )
 }
@@ -678,6 +828,7 @@ function CreateOfisHareketModal(props: {
   const [ozel, setOzel] = useState('')
   const [aciklama, setAciklama] = useState('')
   const [tutar, setTutar] = useState('')
+  const [paraBirimi, setParaBirimi] = useState<ParaBirimi>('TRY')
   const [odeme, setOdeme] = useState<OfisKasaOdemeYontemiApi>('NAKIT')
   const [tahsilatiYapanPersonelId, setTahsilatiYapanPersonelId] = useState('')
   const [muvekkilId, setMuvekkilId] = useState('')
@@ -707,6 +858,7 @@ function CreateOfisHareketModal(props: {
       aciklama: aciklama.trim() || null,
       tutar: n,
       odemeYontemi: odeme,
+      paraBirimi: islemTipi === 'GIDER' ? 'TRY' : paraBirimi,
       ...(islemTipi === 'GELIR'
         ? {
             tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null,
@@ -722,7 +874,7 @@ function CreateOfisHareketModal(props: {
         {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
         <div>
-          <label className="mb-1 block text-xs font-semibold text-ink-muted">İşlem tipi</label>
+          <label className={uiType.label}>İşlem tipi</label>
           <select
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
             value={islemTipi}
@@ -734,6 +886,7 @@ function CreateOfisHareketModal(props: {
               if (t === 'GIDER') {
                 setMuvekkilId('')
                 setMuvekkilLabel('')
+                setParaBirimi('TRY')
               }
             }}
           >
@@ -741,9 +894,14 @@ function CreateOfisHareketModal(props: {
             <option value="GIDER">Gider</option>
           </select>
         </div>
+        {islemTipi === 'GELIR' ? (
+          <ParaBirimiSelect label="Para birimi" value={paraBirimi} onChange={setParaBirimi} disabled={loading} />
+        ) : (
+          <ParaBirimiSelect label="Para birimi" value="TRY" onChange={() => undefined} tryOnly disabled={loading} />
+        )}
         <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
         <div>
-          <label className="mb-1 block text-xs font-semibold text-ink-muted">Kategori</label>
+          <label className={uiType.label}>Kategori</label>
           <select
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
             value={kategori}
@@ -760,9 +918,13 @@ function CreateOfisHareketModal(props: {
           <Input label="Özel kategori adı" value={ozel} onChange={(e) => setOzel(e.target.value)} />
         ) : null}
         <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
-        <MoneyInput label="Tutar (TL)" value={tutar} onChange={setTutar} />
+        <MoneyInput
+          label={islemTipi === 'GIDER' ? 'Tutar (TRY)' : `Tutar (${paraBirimi})`}
+          value={tutar}
+          onChange={setTutar}
+        />
         <div>
-          <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
+          <label className={uiType.label}>Ödeme yöntemi</label>
           <select
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
             value={odeme}
@@ -877,7 +1039,7 @@ function DuzeltOfisModal(props: {
           placeholder="-100,00 veya 50,00"
         />
         <div>
-          <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama</label>
+          <label className={uiType.label}>Açıklama</label>
           <textarea
             className="min-h-[88px] w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
             value={aciklama}
@@ -885,7 +1047,7 @@ function DuzeltOfisModal(props: {
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
+          <label className={uiType.label}>Ödeme yöntemi</label>
           <select
             className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
             value={odeme}
@@ -904,6 +1066,121 @@ function DuzeltOfisModal(props: {
           </Button>
           <Button type="button" onClick={submit} disabled={loading}>
             {loading ? 'Gönderiliyor…' : 'Düzeltme aç'}
+          </Button>
+        </div>
+      </div>
+    </ModalShell>
+  )
+}
+
+function DovizDonusumModal(props: {
+  onClose: () => void
+  loading: boolean
+  error: string | null
+  onSubmit: (p: CreateOfisKasaDovizDonusumPayload) => void
+}): ReactElement {
+  const { onClose, loading, error, onSubmit } = props
+  const [tarih, setTarih] = useState(todayInputDate())
+  const [kaynakPb, setKaynakPb] = useState<ParaBirimi>('USD')
+  const [hedefPb, setHedefPb] = useState<ParaBirimi>('TRY')
+  const [kaynakTutar, setKaynakTutar] = useState('')
+  const [hedefTutar, setHedefTutar] = useState('')
+  const [odeme, setOdeme] = useState<OfisKasaOdemeYontemiApi>('NAKIT')
+  const [aciklama, setAciklama] = useState('')
+  const [localErr, setLocalErr] = useState<string | null>(null)
+
+  const kurOzeti = previewDovizDonusumKur(kaynakPb, hedefPb, kaynakTutar, hedefTutar)
+  const tcmb = useCrossCurrencyTcmb({
+    alacakParaBirimi: kaynakPb,
+    odemeParaBirimi: hedefPb,
+    odemeTarihi: tarih,
+    mahsupTutar: kaynakTutar,
+    kasaTutari: hedefTutar,
+    onKasaTutariChange: setHedefTutar,
+    disabled: loading
+  })
+
+  const submit = (): void => {
+    setLocalErr(null)
+    if (kaynakPb === hedefPb) {
+      setLocalErr('Kaynak ve hedef para birimi farklı olmalıdır.')
+      return
+    }
+    const kaynak = parsePosTutar(kaynakTutar)
+    const hedef = parsePosTutar(hedefTutar)
+    if (kaynak == null || hedef == null) {
+      setLocalErr('Kaynak ve hedef tutar pozitif olmalıdır.')
+      return
+    }
+    onSubmit({
+      tarih: dateInputToIsoUtcNoon(tarih),
+      kaynakParaBirimi: kaynakPb,
+      hedefParaBirimi: hedefPb,
+      kaynakTutar: kaynak,
+      hedefTutar: hedef,
+      odemeYontemi: odeme,
+      aciklama: aciklama.trim() || null,
+      kurKaynagi: tcmb.state.kurKaynagi,
+      tcmbKurTarihi: tcmb.state.tcmbKurTarihi,
+      tcmbReferansKur: tcmb.state.tcmbReferansKur
+    })
+  }
+
+  return (
+    <ModalShell title="Döviz dönüşümü" onClose={onClose}>
+      <div className="space-y-3">
+        {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
+        {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
+        <p className="text-xs text-ink-muted">
+          Kaynak kasadan çıkış ve hedef kasaya giriş birlikte oluşturulur; onay bekler.
+        </p>
+        <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ParaBirimiSelect label="Kaynak para birimi" value={kaynakPb} onChange={setKaynakPb} disabled={loading} />
+          <ParaBirimiSelect label="Hedef para birimi" value={hedefPb} onChange={setHedefPb} disabled={loading} />
+        </div>
+        <MoneyInput label={`Kaynak tutar (${kaynakPb})`} value={kaynakTutar} onChange={setKaynakTutar} />
+        {tcmb.cross ? (
+          <TcmbCrossRatePanel
+            bazParaBirimi={kaynakPb}
+            karsiParaBirimi={hedefPb}
+            state={tcmb.state}
+            onTcmbKullanChange={tcmb.setTcmbKullan}
+            onUygulanacakKurChange={tcmb.setUygulanacakKur}
+            disabled={loading}
+          />
+        ) : null}
+        <MoneyInput
+          label={`Hedef tutar (${hedefPb})`}
+          value={hedefTutar}
+          onChange={tcmb.cross ? tcmb.onKasaTutariManualChange : setHedefTutar}
+        />
+        {kurOzeti ? (
+          <p className="rounded-md border border-sky-300/60 bg-sky-50/80 px-2.5 py-2 text-xs font-medium text-sky-900 dark:border-sky-900/50 dark:bg-sky-950/30 dark:text-sky-100">
+            Kur özeti: {kurOzeti}
+          </p>
+        ) : null}
+        <div>
+          <label className={uiType.label}>Ödeme yöntemi</label>
+          <select
+            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
+            value={odeme}
+            onChange={(e) => setOdeme(e.target.value as OfisKasaOdemeYontemiApi)}
+          >
+            {ODEME_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
+            Vazgeç
+          </Button>
+          <Button type="button" onClick={submit} disabled={loading}>
+            {loading ? 'Kaydediliyor…' : 'Dönüşümü kaydet'}
           </Button>
         </div>
       </div>

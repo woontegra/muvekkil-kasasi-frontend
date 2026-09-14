@@ -44,6 +44,9 @@ export type KasaHareketiDto = {
   tahsilatiYapanPersonelId: string | null
   createdById: string
   updatedById: string | null
+  deletedAt?: string | null
+  deletedById?: string | null
+  deleteReason?: string | null
   createdAt: string
   updatedAt: string
 }

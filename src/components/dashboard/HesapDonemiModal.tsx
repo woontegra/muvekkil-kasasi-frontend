@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { ModalScrim, Button } from '../ui'
 import { AnimatedNumber } from '../../motion'
-import { formatCurrencyTR, formatDateTR } from '../../utils/formatters'
+import { formatCurrencyTR, formatDateTR, formatMoney, type ParaBirimi } from '../../utils/formatters'
 import { cn } from '../../lib/cn'
 import type { HesapDonemiOzetResponse } from '../../types/hesapDonemi'
 import { getPreviousAccountingPeriod, getNextAccountingPeriod } from '../../lib/accountingPeriod'
@@ -77,9 +77,18 @@ export function HesapDonemiModal({ open, onClose, data, onNavigate }: Props): Re
                 valueClass={Number(data.donemNetSonucu) > 0 ? 'text-emerald-600' : Number(data.donemNetSonucu) < 0 ? 'text-danger' : undefined}
               />
               <Row
-                label="Kasa bakiyesi"
+                label="Kasa bakiyesi (TRY)"
                 value={<AnimatedNumber value={Number(data.kasaBakiyesi)} format={formatCurrencyTR} />}
               />
+              {data.byCurrency ? (
+                (['TRY', 'USD', 'EUR'] as ParaBirimi[]).map((pb) => (
+                  <Row
+                    key={pb}
+                    label={`${pb} bakiye`}
+                    value={formatMoney(Number(data.byCurrency![pb].kasaBakiyesi), pb)}
+                  />
+                ))
+              ) : null}
             </div>
 
             <div className="mt-4 flex flex-wrap items-center gap-2">

@@ -89,8 +89,8 @@ export function AdminSuperAdminsPage(): ReactElement {
           ) : listQ.isError ? (
             <p className="px-4 py-10 text-center text-sm text-danger">{listQ.error instanceof Error ? listQ.error.message : 'Liste alınamadı.'}</p>
           ) : (
-            <div className="w-full max-w-full overflow-x-auto">
-              <Table className="min-w-[960px]">
+            <div className="w-full max-w-full min-w-0">
+              <Table className="w-full">
                 <THead>
                   <TR>
                     <TH>Ad soyad</TH>
@@ -99,7 +99,7 @@ export function AdminSuperAdminsPage(): ReactElement {
                     <TH>Rol</TH>
                     <TH>Aktif</TH>
                     <TH>Son giriş</TH>
-                    <TH className="min-w-[220px]">İşlem</TH>
+                    <TH className="w-full">İşlem</TH>
                   </TR>
                 </THead>
                 <TBody>

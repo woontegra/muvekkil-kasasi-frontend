@@ -72,6 +72,32 @@ export async function deleteKasaHareketi(id: string): Promise<void> {
   })
 }
 
+export type GuvenliMasrafSilPayload = {
+  sifre: string
+  deleteReason: string
+}
+
+export type GuvenliMasrafSilResponse = {
+  ok: true
+  message: string
+  softDeletedIds: string[]
+  auditMessage: string
+}
+
+/** Büro sahibi — şifre yeniden doğrulamalı soft-delete. Şifreyi saklamayın. */
+export async function guvenliMasrafSil(
+  id: string,
+  payload: GuvenliMasrafSilPayload
+): Promise<GuvenliMasrafSilResponse> {
+  return apiFetch<GuvenliMasrafSilResponse>(
+    `/api/v1/kasa-hareketleri/${encodeURIComponent(id)}/guvenli-sil`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    }
+  )
+}
+
 export async function getKasaOzet(dosyaId: string): Promise<KasaOzetResponse> {
   return apiFetch<KasaOzetResponse>(`/api/v1/dosyalar/${encodeURIComponent(dosyaId)}/kasa-ozet`)
 }

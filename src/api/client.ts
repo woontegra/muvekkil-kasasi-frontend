@@ -174,6 +174,13 @@ async function handleFailedResponse(
         infra = true
         message = API_INFRA_ERROR_MESSAGE
       }
+      // Backend sızıntısı / Prisma stack asla UI’da gösterilmesin
+      if (
+        /prisma|invocation|kur_kaynagi|column .* does not exist|[A-Za-z]:\\Users\\/i.test(message) ||
+        (res.status >= 500 && /Internal|Error:|at\s+\w+/i.test(message))
+      ) {
+        message = 'İşlem şu an tamamlanamadı. Lütfen daha sonra tekrar deneyin.'
+      }
     } catch {
       infra = true
       message = API_INFRA_ERROR_MESSAGE

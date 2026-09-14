@@ -43,7 +43,8 @@ import {
   THead,
   TR,
   tableActionButtonShrinkClass,
-  tableActionsFlexRow
+  tableActionsFlexRow,
+  PageHeader
 } from '../components/ui'
 import { useAuth } from '../contexts/AuthContext'
 import type {
@@ -56,11 +57,24 @@ import type {
 } from '../types/icraTahsilat'
 import { ICRA_ALACAK_DURUM_LABEL, ICRA_ALACAK_TURU_LABEL } from '../types/icraTahsilat'
 import type { OfisKasaOdemeYontemiApi } from '../types/ofisKasasi'
-import { formatCurrencyTR, formatDateTR, moneyInputFromAmount, parsePosTutar } from '../utils/formatters'
+import { CrossCurrencyPaymentFields } from '../components/paraBirimi/CrossCurrencyPaymentFields'
+import { MultiCurrencyTotals } from '../components/paraBirimi/MultiCurrencyTotals'
+import { ParaBirimiSelect } from '../components/paraBirimi/ParaBirimiSelect'
+import { buildCrossPaymentPayload } from '../lib/crossCurrencyPayment'
+import type { CrossPaymentKurMeta } from '../types/kurlar'
+import {
+  formatDateTR,
+  formatMoney,
+  moneyInputFromAmount,
+  parsePosTutar,
+  resolveParaBirimi,
+  type ParaBirimi
+} from '../utils/formatters'
 import {
   buildCreateIcraTahsilatPayload,
   validateCreateIcraTahsilatForm
 } from '../lib/icraTahsilatCreateForm'
+import { formControlClass, uiType } from '../lib/uiDensity'
 
 const ODEME_OPTIONS: { value: OfisKasaOdemeYontemiApi; label: string }[] = [
   { value: 'NAKIT', label: 'Nakit' },
@@ -68,9 +82,6 @@ const ODEME_OPTIONS: { value: OfisKasaOdemeYontemiApi; label: string }[] = [
   { value: 'KREDI_KARTI', label: 'Kredi kartı' },
   { value: 'DIGER', label: 'Diğer' }
 ]
-
-const SELECT_TOUCH =
-  'h-11 w-full rounded-md border border-border bg-white px-3 text-sm text-ink shadow-inner outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated'
 
 function todayInputDate(): string {
   const d = new Date()
@@ -167,22 +178,20 @@ export function IcraTahsilatPage(): ReactElement {
 
   return (
     <div className="w-full space-y-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink md:text-2xl">İcra Tahsilat</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Karşı taraf ve icra vekalet ücreti alacakları. Tahsilatlar ofis kasasına gelir olarak işlenir; dosya avans kasası etkilenmez.
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" onClick={() => setCreateOpen(true)}>
-            Yeni icra tahsilat alacağı
-          </Button>
-          <Button type="button" variant="outline" disabled={icraReportMu.isPending} onClick={() => icraReportMu.mutate()}>
-            {icraReportMu.isPending ? 'Hazırlanıyor…' : 'İcra tahsilat raporu yazdır'}
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="İcra Tahsilat"
+        description="Karşı taraf ve icra vekalet ücreti alacakları. Tahsilatlar ofis kasasına gelir olarak işlenir; dosya avans kasası etkilenmez."
+        actions={
+          <>
+            <Button type="button" onClick={() => setCreateOpen(true)}>
+              Yeni icra tahsilat alacağı
+            </Button>
+            <Button type="button" variant="outline" disabled={icraReportMu.isPending} onClick={() => icraReportMu.mutate()}>
+              {icraReportMu.isPending ? 'Hazırlanıyor…' : 'İcra tahsilat raporu yazdır'}
+            </Button>
+          </>
+        }
+      />
 
       {listQ.isError ? (
         <AlertBox variant="danger" title="Liste yüklenemedi">
@@ -191,11 +200,68 @@ export function IcraTahsilatPage(): ReactElement {
       ) : null}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <StatCard label="Toplam alacak" value={ozet ? formatCurrencyTR(Number(ozet.toplamAlacak)) : '—'} />
-        <StatCard label="Tahsil edilen" value={ozet ? formatCurrencyTR(Number(ozet.tahsilEdilen)) : '—'} />
-        <StatCard label="Kalan alacak" value={ozet ? formatCurrencyTR(Number(ozet.kalanAlacak)) : '—'} />
+        <StatCard
+          label="Toplam alacak"
+          value={
+            ozet?.byCurrency ? (
+              <MultiCurrencyTotals
+                amounts={{
+                  TRY: ozet.byCurrency.TRY.toplamAlacak,
+                  USD: ozet.byCurrency.USD.toplamAlacak,
+                  EUR: ozet.byCurrency.EUR.toplamAlacak
+                }}
+                compact
+              />
+            ) : (
+              '—'
+            )
+          }
+        />
+        <StatCard
+          label="Tahsil edilen"
+          value={
+            ozet?.byCurrency ? (
+              <MultiCurrencyTotals
+                amounts={{
+                  TRY: ozet.byCurrency.TRY.tahsilEdilen,
+                  USD: ozet.byCurrency.USD.tahsilEdilen,
+                  EUR: ozet.byCurrency.EUR.tahsilEdilen
+                }}
+                compact
+              />
+            ) : (
+              '—'
+            )
+          }
+        />
+        <StatCard
+          label="Kalan alacak"
+          value={
+            ozet?.byCurrency ? (
+              <MultiCurrencyTotals
+                amounts={{
+                  TRY: ozet.byCurrency.TRY.kalanAlacak,
+                  USD: ozet.byCurrency.USD.kalanAlacak,
+                  EUR: ozet.byCurrency.EUR.kalanAlacak
+                }}
+                compact
+              />
+            ) : (
+              '—'
+            )
+          }
+        />
         <StatCard label="Vadesi geçmiş taksit" value={ozet ? String(ozet.vadesiGecmisTaksit) : '—'} />
-        <StatCard label="Bu ay tahsilat" value={ozet ? formatCurrencyTR(Number(ozet.buAyTahsilat)) : '—'} />
+        <StatCard
+          label="Bu ay tahsilat"
+          value={
+            ozet?.buAyTahsilatByCurrency ? (
+              <MultiCurrencyTotals amounts={ozet.buAyTahsilatByCurrency} compact />
+            ) : (
+              '—'
+            )
+          }
+        />
         <StatCard label="SMM bekleyen" value={ozet ? String(ozet.smmBekleyen) : '—'} />
       </div>
 
@@ -226,9 +292,9 @@ export function IcraTahsilatPage(): ReactElement {
             <Input label="Tarih başlangıç" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             <Input label="Tarih bitiş" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Alacak türü</label>
+              <label className={uiType.label}>Alacak türü</label>
               <select
-                className={SELECT_TOUCH}
+                className={formControlClass}
                 value={alacakTuru}
                 onChange={(e) => setAlacakTuru(e.target.value as '' | IcraAlacakTuruApi)}
               >
@@ -241,9 +307,9 @@ export function IcraTahsilatPage(): ReactElement {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Durum</label>
+              <label className={uiType.label}>Durum</label>
               <select
-                className={SELECT_TOUCH}
+                className={formControlClass}
                 value={durum}
                 onChange={(e) => setDurum(e.target.value as '' | IcraAlacakDurumApi)}
               >
@@ -256,8 +322,8 @@ export function IcraTahsilatPage(): ReactElement {
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Tahsilatı yapan personel</label>
-              <select className={SELECT_TOUCH} value={personelId} onChange={(e) => setPersonelId(e.target.value)}>
+              <label className={uiType.label}>Tahsilatı yapan personel</label>
+              <select className={formControlClass} value={personelId} onChange={(e) => setPersonelId(e.target.value)}>
                 <option value="">Tümü</option>
                 {(personelQ.data?.items ?? []).map((p) => (
                   <option key={p.id} value={p.id}>
@@ -274,11 +340,11 @@ export function IcraTahsilatPage(): ReactElement {
         <CardBody className="p-4">
           <ResponsiveDataView
             isLoading={listQ.isLoading}
-            loading={<p className="py-6 text-center text-sm text-ink-muted">Yükleniyor…</p>}
+            loading={<p className="py-6 text-center text-[11px] text-ink-muted">Yükleniyor…</p>}
             isEmpty={!listQ.isLoading && items.length === 0}
-            empty={<p className="py-6 text-center text-sm text-ink-muted">Kayıt bulunamadı.</p>}
+            empty={<p className="py-6 text-center text-[11px] text-ink-muted">Kayıt bulunamadı.</p>}
             table={
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="min-w-0 max-w-full">
                 <Table>
                   <THead>
                     <TR>
@@ -316,9 +382,9 @@ export function IcraTahsilatPage(): ReactElement {
                       fields={[
                         { label: 'Alacak türü', value: row.alacakTuruLabel },
                         { label: 'Taksit', value: String(row.taksitSayisi) },
-                        { label: 'Toplam', value: formatCurrencyTR(Number(row.toplamTutar)), numeric: true },
-                        { label: 'Ödenen', value: formatCurrencyTR(Number(row.odenenToplam)), numeric: true },
-                        { label: 'Kalan', value: formatCurrencyTR(Number(row.kalanTutar)), numeric: true },
+                        { label: 'Toplam', value: formatMoney(Number(row.toplamTutar), resolveParaBirimi(row.paraBirimi)), numeric: true },
+                        { label: 'Ödenen', value: formatMoney(Number(row.odenenToplam), resolveParaBirimi(row.paraBirimi)), numeric: true },
+                        { label: 'Kalan', value: formatMoney(Number(row.kalanTutar), resolveParaBirimi(row.paraBirimi)), numeric: true },
                         {
                           label: 'Son tahsilatı yapan',
                           value: row.sonTahsilatciAd ?? row.tahsilatiYapanAd ?? '—',
@@ -386,12 +452,12 @@ function ListeRow(props: { row: IcraTahsilatListeSatirDto; index: number; onOpen
     <TR>
       <TD className="text-ink-muted">{index}</TD>
       <TD className="font-medium">{row.borcluAd}</TD>
-      <TD className="max-w-[200px] truncate text-sm" title={ilgili}>{ilgili}</TD>
-      <TD className="text-sm">{row.alacakTuruLabel}</TD>
-      <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.toplamTutar))}</TD>
-      <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.odenenToplam))}</TD>
-      <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.kalanTutar))}</TD>
-      <TD className="text-sm">{row.sonTahsilatciAd ?? row.tahsilatiYapanAd ?? '—'}</TD>
+      <TD className="max-w-[200px] truncate" title={ilgili}>{ilgili}</TD>
+      <TD>{row.alacakTuruLabel}</TD>
+      <TD className="text-right tabular-nums">{formatMoney(Number(row.toplamTutar), resolveParaBirimi(row.paraBirimi))}</TD>
+      <TD className="text-right tabular-nums">{formatMoney(Number(row.odenenToplam), resolveParaBirimi(row.paraBirimi))}</TD>
+      <TD className="text-right tabular-nums">{formatMoney(Number(row.kalanTutar), resolveParaBirimi(row.paraBirimi))}</TD>
+      <TD>{row.sonTahsilatciAd ?? row.tahsilatiYapanAd ?? '—'}</TD>
       <TD className="text-center">{row.taksitSayisi}</TD>
       <TD><Badge variant={durumBadge(row.durum)}>{row.durumLabel}</Badge></TD>
       <TD>
@@ -416,6 +482,9 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
   const [odemeYontemi, setOdemeYontemi] = useState<OfisKasaOdemeYontemiApi>('NAKIT')
   const [personelId, setPersonelId] = useState('')
   const [aciklama, setAciklama] = useState('')
+  const [paraBirimi, setParaBirimi] = useState<ParaBirimi>('TRY')
+  const [odemeParaBirimi, setOdemeParaBirimi] = useState<ParaBirimi>('TRY')
+  const [kasaTutari, setKasaTutari] = useState('')
   const [err, setErr] = useState<string | null>(null)
 
   const pesinMod = tahsilatTipi === 'PESIN_TAHSIL'
@@ -437,7 +506,10 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
       odemeYontemi,
       personelId,
       currentUserId: session?.user.id ?? null,
-      aciklama
+      aciklama,
+      paraBirimi,
+      odemeParaBirimi,
+      kasaTutariRaw: kasaTutari
     }),
     [
       alacakTuru,
@@ -453,7 +525,10 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
       odemeYontemi,
       personelId,
       session?.user.id,
-      aciklama
+      aciklama,
+      paraBirimi,
+      odemeParaBirimi,
+      kasaTutari
     ]
   )
 
@@ -505,17 +580,17 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
               </p>
             ) : null}
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Alacak türü</label>
-              <select className={SELECT_TOUCH} value={alacakTuru} onChange={(e) => setAlacakTuru(e.target.value as IcraAlacakTuruApi)}>
+              <label className={uiType.label}>Alacak türü</label>
+              <select className={formControlClass} value={alacakTuru} onChange={(e) => setAlacakTuru(e.target.value as IcraAlacakTuruApi)}>
                 {(Object.keys(ICRA_ALACAK_TURU_LABEL) as IcraAlacakTuruApi[]).map((k) => (
                   <option key={k} value={k}>{ICRA_ALACAK_TURU_LABEL[k]}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Tahsilat tipi</label>
+              <label className={uiType.label}>Tahsilat tipi</label>
               <select
-                className={SELECT_TOUCH}
+                className={formControlClass}
                 value={tahsilatTipi}
                 onChange={(e) => onTahsilatTipiChange(e.target.value as IcraTahsilatTipiApi)}
               >
@@ -526,8 +601,8 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
             </div>
             <Input label="Borçlu / karşı taraf adı" value={borcluAd} onChange={(e) => setBorcluAd(e.target.value)} required />
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">İlgili müvekkil (isteğe bağlı)</label>
-              <select className={SELECT_TOUCH} value={muvekkilId} onChange={(e) => { setMuvekkilId(e.target.value); setDosyaId('') }}>
+              <label className={uiType.label}>İlgili müvekkil (isteğe bağlı)</label>
+              <select className={formControlClass} value={muvekkilId} onChange={(e) => { setMuvekkilId(e.target.value); setDosyaId('') }}>
                 <option value="">—</option>
                 {(muvekkilQ.data?.items ?? []).map((m) => (
                   <option key={m.id} value={m.id}>{m.gorunenAd}</option>
@@ -535,15 +610,16 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">İlgili dosya (isteğe bağlı)</label>
-              <select className={SELECT_TOUCH} value={dosyaId} onChange={(e) => setDosyaId(e.target.value)} disabled={!muvekkilId}>
+              <label className={uiType.label}>İlgili dosya (isteğe bağlı)</label>
+              <select className={formControlClass} value={dosyaId} onChange={(e) => setDosyaId(e.target.value)} disabled={!muvekkilId}>
                 <option value="">—</option>
                 {(dosyaQ.data?.items ?? []).map((d) => (
                   <option key={d.id} value={d.id}>{d.konuBasligi}</option>
                 ))}
               </select>
             </div>
-            <MoneyInput label="Toplam alacak tutarı" value={toplamTutar} onChange={setToplamTutar} />
+            <ParaBirimiSelect label="Alacak para birimi" value={paraBirimi} onChange={(pb) => { setParaBirimi(pb); setOdemeParaBirimi(pb) }} />
+            <MoneyInput label={`Toplam alacak tutarı (${paraBirimi})`} value={toplamTutar} onChange={setToplamTutar} />
             {!pesinMod ? (
               <>
                 <Input label="Taksit sayısı" type="number" min={1} value={taksitSayisi} onChange={(e) => setTaksitSayisi(e.target.value)} />
@@ -554,11 +630,22 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
               <MoneyInput label="Peşinat tutarı" value={pesinatTutar} onChange={setPesinatTutar} />
             ) : null}
             {personelZorunlu ? (
-              <Input label="Tahsilat tarihi" type="date" value={tahsilatTarihi} onChange={(e) => setTahsilatTarihi(e.target.value)} />
+              <>
+                <Input label="Tahsilat tarihi" type="date" value={tahsilatTarihi} onChange={(e) => setTahsilatTarihi(e.target.value)} />
+                <ParaBirimiSelect label="Tahsilat kasa para birimi" value={odemeParaBirimi} onChange={setOdemeParaBirimi} />
+                {odemeParaBirimi !== paraBirimi ? (
+                  <MoneyInput
+                    label={`Kasaya giren tutar (${odemeParaBirimi})`}
+                    value={kasaTutari}
+                    onChange={setKasaTutari}
+                    hint={`Mahsup: ${pesinMod ? 'toplam alacak' : 'peşinat tutarı'} (${paraBirimi})`}
+                  />
+                ) : null}
+              </>
             ) : null}
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
-              <select className={SELECT_TOUCH} value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value as OfisKasaOdemeYontemiApi)}>
+              <label className={uiType.label}>Ödeme yöntemi</label>
+              <select className={formControlClass} value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value as OfisKasaOdemeYontemiApi)}>
                 {ODEME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
@@ -572,7 +659,7 @@ function CreateAlacakModal(props: { onClose: () => void; onSaved: () => void }):
               }
             />
             <div className="col-span-full">
-              <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama / not</label>
+              <label className={uiType.label}>Açıklama / not</label>
               <textarea className="min-h-[72px] w-full rounded-md border border-border px-3 py-2 text-sm" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
             </div>
             <div className="col-span-full flex justify-end gap-2">
@@ -633,11 +720,11 @@ function DetayModal(props: { id: string; yonetici: boolean; onClose: () => void;
           ) : null}
 
           <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6 text-sm">
-            <div><span className="text-ink-muted">Toplam alacak</span><p className="font-semibold tabular-nums">{formatCurrencyTR(Number(alacak.ozet.toplamAlacak))}</p></div>
-            <div><span className="text-ink-muted">Taksit toplamı</span><p className="font-semibold tabular-nums">{formatCurrencyTR(Number(alacak.ozet.taksitToplami))}</p></div>
-            <div><span className="text-ink-muted">Tahsil edilen</span><p className="font-semibold tabular-nums">{formatCurrencyTR(Number(alacak.ozet.tahsilEdilen))}</p></div>
-            <div><span className="text-ink-muted">Kalan</span><p className="font-semibold tabular-nums">{formatCurrencyTR(Number(alacak.ozet.kalan))}</p></div>
-            <div><span className="text-ink-muted">Dağıtılmamış fark</span><p className="font-semibold tabular-nums">{formatCurrencyTR(alacak.ozet.dagitilmamisFark)}</p></div>
+            <div><span className="text-ink-muted">Toplam alacak ({alacak.paraBirimi})</span><p className="font-semibold tabular-nums">{formatMoney(Number(alacak.ozet.toplamAlacak), resolveParaBirimi(alacak.paraBirimi))}</p></div>
+            <div><span className="text-ink-muted">Taksit toplamı</span><p className="font-semibold tabular-nums">{formatMoney(Number(alacak.ozet.taksitToplami), resolveParaBirimi(alacak.paraBirimi))}</p></div>
+            <div><span className="text-ink-muted">Tahsil edilen</span><p className="font-semibold tabular-nums">{formatMoney(Number(alacak.ozet.tahsilEdilen), resolveParaBirimi(alacak.paraBirimi))}</p></div>
+            <div><span className="text-ink-muted">Kalan</span><p className="font-semibold tabular-nums">{formatMoney(Number(alacak.ozet.kalan), resolveParaBirimi(alacak.paraBirimi))}</p></div>
+            <div><span className="text-ink-muted">Dağıtılmamış fark</span><p className="font-semibold tabular-nums">{formatMoney(alacak.ozet.dagitilmamisFark, resolveParaBirimi(alacak.paraBirimi))}</p></div>
             <div><span className="text-ink-muted">Durum</span><p className="font-semibold">{alacak.durumLabel}</p></div>
           </div>
 
@@ -662,9 +749,9 @@ function DetayModal(props: { id: string; yonetici: boolean; onClose: () => void;
                   <TR key={t.id}>
                     <TD>{t.taksitNo}</TD>
                     <TD>{formatDateTR(t.vadeTarihi)}</TD>
-                    <TD className="text-right tabular-nums">{formatCurrencyTR(Number(t.tutar))}</TD>
-                    <TD className="text-right tabular-nums">{formatCurrencyTR(Number(t.odenenToplam))}</TD>
-                    <TD className="text-right tabular-nums">{formatCurrencyTR(Number(t.kalanTutar))}</TD>
+                    <TD className="text-right tabular-nums">{formatMoney(Number(t.tutar), resolveParaBirimi(t.paraBirimi ?? alacak.paraBirimi))}</TD>
+                    <TD className="text-right tabular-nums">{formatMoney(Number(t.odenenToplam), resolveParaBirimi(t.paraBirimi ?? alacak.paraBirimi))}</TD>
+                    <TD className="text-right tabular-nums">{formatMoney(Number(t.kalanTutar), resolveParaBirimi(t.paraBirimi ?? alacak.paraBirimi))}</TD>
                     <TD className="text-xs">{t.durum}</TD>
                     <TD className="text-xs">{t.sonOdemeTarihi ? formatDateTR(t.sonOdemeTarihi) : '—'}</TD>
                     <TD className="text-xs">{t.smmDurumu}</TD>
@@ -718,9 +805,9 @@ function DetayModal(props: { id: string; yonetici: boolean; onClose: () => void;
                   alacak.odemeler.map((o) => (
                     <TR key={o.id}>
                       <TD>{formatDateTR(o.odemeTarihi)}</TD>
-                      <TD className="text-right tabular-nums">{formatCurrencyTR(Number(o.tutar))}</TD>
+                      <TD className="text-right tabular-nums">{formatMoney(Number(o.tutar), resolveParaBirimi(o.alacakParaBirimi ?? alacak.paraBirimi))}</TD>
                       <TD>{o.odemeYontemi}</TD>
-                      <TD className="text-sm">{o.tahsilatiYapanAd ?? '—'}</TD>
+                      <TD>{o.tahsilatiYapanAd ?? '—'}</TD>
                       <TD>{o.smmKesildiMi ? 'Kesildi' : 'Bekliyor'}</TD>
                       <TD className="max-w-[200px] truncate">{o.aciklama ?? '—'}</TD>
                     </TR>
@@ -755,12 +842,21 @@ function TaksitSilBtn(props: { taksitId: string; onDone: () => void }): ReactEle
 function OdemeModal(props: { alacak: IcraTahsilatDetayDto; taksit: IcraTahsilatTaksitDto; onClose: () => void; onSaved: () => void }): ReactElement {
   const { session } = useAuth()
   const yonetici = isYonetici(session?.user.role)
-  const [tutar, setTutar] = useState(moneyInputFromAmount(props.taksit.kalanTutar))
+  const alacakPb = resolveParaBirimi(props.alacak.paraBirimi)
+  const [mahsupTutar, setMahsupTutar] = useState(moneyInputFromAmount(props.taksit.kalanTutar))
+  const [odemeParaBirimi, setOdemeParaBirimi] = useState<ParaBirimi>(alacakPb)
+  const [kasaTutari, setKasaTutari] = useState('')
   const [tarih, setTarih] = useState(todayInputDate())
   const [odemeYontemi, setOdemeYontemi] = useState<OfisKasaOdemeYontemiApi>(props.alacak.varsayilanOdemeYontemi)
   const [personelId, setPersonelId] = useState('')
   const [aciklama, setAciklama] = useState('')
   const [err, setErr] = useState<string | null>(null)
+  const [kurOnay, setKurOnay] = useState(false)
+  const [kurMeta, setKurMeta] = useState<CrossPaymentKurMeta>({
+    kurKaynagi: null,
+    tcmbKurTarihi: null,
+    tcmbReferansKur: null
+  })
 
   const bagliQ = useQuery({
     queryKey: ['prim-personel', 'bagli-ben', 'icra-odeme'],
@@ -772,12 +868,15 @@ function OdemeModal(props: { alacak: IcraTahsilatDetayDto; taksit: IcraTahsilatT
     setPersonelId(bagliQ.data.personel.id)
   }, [bagliQ.data, personelId])
 
+  const crossPreview = buildCrossPaymentPayload(alacakPb, mahsupTutar, odemeParaBirimi, kasaTutari, kurMeta)
+  const needsKurOnay = crossPreview.ok && crossPreview.kurOzeti != null
+
   const saveMu = useMutation({
     mutationFn: () => {
-      const n = parsePosTutar(tutar)
-      if (n == null) throw new Error('Geçerli tutar girin.')
+      if (!crossPreview.ok) throw new Error(crossPreview.error)
+      if (needsKurOnay && !kurOnay) throw new Error('Çapraz kur önizlemesini onaylayın.')
       return createIcraTaksitOdeme(props.alacak.id, props.taksit.id, {
-        tutar: n,
+        ...crossPreview.payload,
         odemeTarihi: dateInputToIso(tarih),
         odemeYontemi,
         tahsilatiYapanPersonelId: personelId || null,
@@ -794,17 +893,45 @@ function OdemeModal(props: { alacak: IcraTahsilatDetayDto; taksit: IcraTahsilatT
         <CardHeader><CardTitle>Taksit ödemesi al — Taksit {props.taksit.taksitNo}</CardTitle></CardHeader>
         <CardBody className="space-y-3">
           {err ? <p className="text-sm text-danger">{err}</p> : null}
-          <MoneyInput label="Tutar" value={tutar} onChange={setTutar} maxValue={Number(props.taksit.kalanTutar)} />
+          <CrossCurrencyPaymentFields
+            alacakParaBirimi={alacakPb}
+            mahsupTutar={mahsupTutar}
+            onMahsupTutarChange={(v) => {
+              setMahsupTutar(v)
+              setKurOnay(false)
+            }}
+            odemeParaBirimi={odemeParaBirimi}
+            onOdemeParaBirimiChange={(v) => {
+              setOdemeParaBirimi(v)
+              setKurOnay(false)
+            }}
+            kasaTutari={kasaTutari}
+            onKasaTutariChange={(v) => {
+              setKasaTutari(v)
+              setKurOnay(false)
+            }}
+            odemeTarihi={tarih}
+            onKurMetaChange={setKurMeta}
+            maxMahsup={Number(props.taksit.kalanTutar)}
+          />
+          {needsKurOnay ? (
+            <label className="flex items-start gap-2 text-xs text-ink">
+              <input type="checkbox" className="mt-0.5" checked={kurOnay} onChange={(e) => setKurOnay(e.target.checked)} />
+              <span>
+                Uygulanacak kur: <strong>{crossPreview.kurOzeti}</strong>
+              </span>
+            </label>
+          ) : null}
           <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
           <div>
-            <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
-            <select className={SELECT_TOUCH} value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value as OfisKasaOdemeYontemiApi)}>
+            <label className={uiType.label}>Ödeme yöntemi</label>
+            <select className={formControlClass} value={odemeYontemi} onChange={(e) => setOdemeYontemi(e.target.value as OfisKasaOdemeYontemiApi)}>
               {ODEME_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <TahsilatiYapanPersonelSelect value={personelId} onChange={setPersonelId} required />
           <div>
-            <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama / not</label>
+            <label className={uiType.label}>Açıklama / not</label>
             <textarea className="min-h-[60px] w-full rounded-md border border-border px-3 py-2 text-sm" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
           </div>
           <div className="flex justify-end gap-2">
@@ -848,7 +975,7 @@ function TaksitDuzenleModal(props: { taksit: IcraTahsilatTaksitDto; onClose: () 
           <Input label="Vade tarihi" type="date" value={vade} onChange={(e) => setVade(e.target.value)} />
           <MoneyInput label="Taksit tutarı" value={tutar} onChange={setTutar} disabled={tamOdendi} />
           <div>
-            <label className="mb-1 block text-xs font-semibold text-ink-muted">Açıklama</label>
+            <label className={uiType.label}>Açıklama</label>
             <textarea className="min-h-[60px] w-full rounded-md border border-border px-3 py-2 text-sm" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
           </div>
           <div className="flex justify-end gap-2">
@@ -879,7 +1006,7 @@ function GecmisModal(props: { alacakId: string; taksit: IcraTahsilatTaksitDto; o
                 <li key={o.id} className="rounded border border-border px-3 py-2">
                   <div className="flex justify-between gap-2">
                     <span>{formatDateTR(o.odemeTarihi)}</span>
-                    <span className="font-semibold tabular-nums">{formatCurrencyTR(Number(o.tutar))}</span>
+                    <span className="font-semibold tabular-nums">{formatMoney(Number(o.tutar), resolveParaBirimi(o.alacakParaBirimi))}</span>
                   </div>
                   <p className="text-xs text-ink-muted">
                     Tahsilatı yapan: {o.tahsilatiYapanAd ?? '—'} · SMM: {o.smmKesildiMi ? 'Kesildi' : 'Bekliyor'}

@@ -1,5 +1,11 @@
 /** Türkiye görüntüleme — masaüstü `formatters.ts` ile uyumlu. */
 
+import { formatMoney } from './paraBirimi'
+
+export { formatMoney, formatMoneyWithCode, formatSignedMoney, formatKurOzeti, formatApproxTryMoney, formatKurOzetiWithSymbols, MONEY_NBSP } from './paraBirimi'
+export type { ParaBirimi, CurrencyBucket } from './paraBirimi'
+export { PARA_BIRIMLERI, PARA_BIRIMI_SEMBOL, PARA_BIRIMI_LABEL, resolveParaBirimi, readCurrencyAmount } from './paraBirimi'
+
 export function formatDateTR(dateValue: string | null | undefined): string {
   if (!dateValue?.trim()) return '—'
   let s = dateValue.trim()
@@ -30,13 +36,9 @@ export function formatDateTimeTR(dateValue: string | null | undefined): string {
   return dt.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+/** Geriye uyumluluk — TRY formatMoney sarmalayıcısı. */
 export function formatCurrencyTR(amount: number): string {
-  if (!Number.isFinite(amount)) return '—'
-  const s = new Intl.NumberFormat('tr-TR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(amount)
-  return `${s} ₺`
+  return formatMoney(amount, 'TRY')
 }
 
 /**

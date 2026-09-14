@@ -18,6 +18,7 @@ import {
   shouldShowLicenseRenewalBanner
 } from '../components/shell/LicenseRenewalBanner'
 import { TopbarActionChip } from '../components/shell/TopbarActionChip'
+import { TcmbHeaderRates, TcmbHeaderRatesMobile } from '../components/kurlar/TcmbHeaderRates'
 import { PROGRAM_ICON_SRC } from '../branding'
 
 import type { AuthUserDto } from '../types/auth'
@@ -88,7 +89,7 @@ export function DashboardShell(): ReactElement {
   const showRenewalHeaderBanner = shouldShowLicenseRenewalBanner(lic) && !showDemoBanner
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] w-full min-h-0 flex-col overflow-hidden bg-canvas md:flex-row">
+    <div className="flex h-[100dvh] max-h-[100dvh] w-full min-w-0 flex-col overflow-hidden bg-canvas md:flex-row">
       <AppSidebar role={session?.user.role} />
       <MobileNavDrawer
         open={navOpen}
@@ -101,7 +102,7 @@ export function DashboardShell(): ReactElement {
         <header className="app-shell-header box-border flex shrink-0 items-center gap-2 border-b border-border bg-panel px-3 shadow-sm md:gap-4 md:px-5">
           <button
             type="button"
-            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-white text-ink md:hidden"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-border bg-white text-ink lg:hidden"
             aria-label="Menüyü aç"
             onClick={() => setNavOpen(true)}
           >
@@ -110,7 +111,7 @@ export function DashboardShell(): ReactElement {
             </svg>
           </button>
 
-          <div className="flex min-w-0 flex-1 items-center gap-2 md:hidden">
+          <div className="flex min-w-0 flex-1 items-center gap-2 lg:hidden">
             <img src={PROGRAM_ICON_SRC} alt="" className="h-8 w-8 shrink-0 rounded-md object-contain" />
             <div className="min-w-0">
               <p className="truncate text-xs font-bold leading-tight text-ink">{session?.tenant.buroAdi ?? '—'}</p>
@@ -120,10 +121,13 @@ export function DashboardShell(): ReactElement {
             </div>
           </div>
 
-          <div className="hidden min-w-0 flex-1 md:block">
+          <div className="hidden min-w-0 flex-1 lg:block">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-muted">Büro</p>
             <p className="truncate text-sm font-bold leading-tight text-ink">{session?.tenant.buroAdi}</p>
           </div>
+
+          <TcmbHeaderRatesMobile />
+          <TcmbHeaderRates />
 
           <div className="flex shrink-0 items-center gap-1.5 md:gap-3">
             {hasBadge ? (
@@ -132,7 +136,7 @@ export function DashboardShell(): ReactElement {
                   type="button"
                   variant="default"
                   badge={onaySayisi}
-                  className="hidden h-11 min-w-11 md:inline-flex md:h-8 md:min-w-0"
+                  className="hidden h-11 min-w-11 lg:inline-flex lg:h-8 lg:min-w-0"
                   onClick={() => setOnayAcik(true)}
                   aria-label={`Onay bekleyen, ${onaySayisi} kayıt`}
                 >
@@ -140,7 +144,7 @@ export function DashboardShell(): ReactElement {
                 </TopbarActionChip>
                 <button
                   type="button"
-                  className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-white text-ink md:hidden"
+                  className="relative inline-flex h-11 w-11 items-center justify-center rounded-lg border border-border bg-white text-ink lg:hidden"
                   onClick={() => setOnayAcik(true)}
                   aria-label={`Onay bekleyen, ${onaySayisi} kayıt`}
                 >
@@ -249,7 +253,7 @@ export function DashboardShell(): ReactElement {
           </div>
         ) : null}
 
-        <main className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain bg-canvas px-3 py-4 md:px-6 md:py-5">
+        <main className="min-h-0 w-full min-w-0 flex-1 overflow-y-auto overscroll-contain bg-canvas px-3 py-4 md:px-6 md:py-5">
           {licenseInfoEksik && lic ? (
             <div className="mb-4 flex flex-col gap-2 rounded-lg border border-sky-300 bg-sky-50 px-3 py-3 text-sm text-sky-950 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:gap-4">
               <p className="min-w-0 font-medium">{lic.bilgiMesaji ?? 'Lisans bitiş tarihi henüz tanımlanmamış.'}</p>

@@ -45,7 +45,7 @@ export function StatCard({
   const trailingNode =
     trailing ??
     (icon ? (
-      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-soft text-primary">{icon}</div>
+      <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary-soft text-primary">{icon}</div>
     ) : null)
 
   return (

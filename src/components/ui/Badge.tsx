@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
+import { uiType } from '../../lib/uiDensity'
 
 const styles = {
   default: 'bg-surface-muted text-ink-muted border-border',
@@ -20,7 +21,9 @@ export function Badge({ children, variant = 'default', className }: BadgeProps):
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-md border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide',
+        'inline-flex h-[21px] items-center rounded-md border px-1.5 py-0',
+        uiType.badge,
+        'uppercase tracking-wide',
         styles[variant],
         className
       )}

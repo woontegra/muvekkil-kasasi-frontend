@@ -7,7 +7,7 @@ import { APP_BASE } from '../config/appPaths'
 import { defaultEndTimeFromStart, formatTimeTR, getRangeForView, getTodayRangeIso, navigateAnchor, pad2, toDateInputValue } from '../lib/randevuCalendar'
 import type { CalendarView, RandevuDto } from '../types/randevu'
 import { cn } from '../lib/cn'
-import { AlertBox, Button, PageLoading } from '../components/ui'
+import { AlertBox, Button, PageHeader, PageLoading } from '../components/ui'
 import { RandevuCalendarView } from '../components/randevu/RandevuCalendarView'
 import { RandevuDetailModal } from '../components/randevu/RandevuDetailModal'
 import { RandevuFormModal, type RandevuFormPrefill } from '../components/randevu/RandevuFormModal'
@@ -80,15 +80,15 @@ export function RandevularPageContent({ initialMuvekkilId, initialView }: Props)
 
   return (
     <div className="w-full space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold tracking-tight text-ink md:text-2xl">Randevular</h1>
-          <p className="mt-1 text-sm text-ink-muted">{headerLabel(view, anchor)}</p>
-        </div>
-        <Button type="button" onClick={() => openCreate(initialMuvekkilId ? { muvekkilId: initialMuvekkilId } : undefined)}>
-          + Yeni Randevu
-        </Button>
-      </div>
+      <PageHeader
+        title="Randevular"
+        description={headerLabel(view, anchor)}
+        actions={
+          <Button type="button" onClick={() => openCreate(initialMuvekkilId ? { muvekkilId: initialMuvekkilId } : undefined)}>
+            + Yeni Randevu
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <Button type="button" variant="outline" size="sm" onClick={() => setAnchor(new Date())}>

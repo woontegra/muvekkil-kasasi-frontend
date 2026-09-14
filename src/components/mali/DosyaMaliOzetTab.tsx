@@ -2,9 +2,10 @@ import type { ReactElement } from 'react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getDosyaMaliOzet } from '../../api/maliOzet'
+import { getDosyaVekalet } from '../../api/vekalet'
 import { AlertBox, Button } from '../ui'
 import { AnimatedNumber } from '../../motion'
-import { formatCurrencyTR } from '../../utils/formatters'
+import { formatCurrencyTR, formatMoney, resolveParaBirimi } from '../../utils/formatters'
 import { cn } from '../../lib/cn'
 import type { DosyaMaliOzetPayload } from '../../types/maliOzet'
 
@@ -24,7 +25,19 @@ function ProgressBar({ value, className }: { value: number; className?: string }
   )
 }
 
-function OzetRow(p: { label: string; value: number; sub?: string; valueClass?: string; indent?: boolean }): ReactElement {
+function OzetRow(p: {
+  label: string
+  value: number
+  sub?: string
+  valueClass?: string
+  indent?: boolean
+  currency?: 'TRY' | 'vekalet'
+  vekaletPb?: ReturnType<typeof resolveParaBirimi>
+}): ReactElement {
+  const fmt =
+    p.currency === 'vekalet' && p.vekaletPb
+      ? (n: number) => formatMoney(n, p.vekaletPb!)
+      : formatCurrencyTR
   return (
     <div className={cn('flex items-baseline justify-between gap-2 border-b border-border/60 py-1.5 last:border-b-0', p.indent && 'pl-3')}>
       <div className="min-w-0 shrink-0">
@@ -32,7 +45,7 @@ function OzetRow(p: { label: string; value: number; sub?: string; valueClass?: s
         {p.sub ? <span className="ml-1.5 text-[10px] text-ink-subtle">{p.sub}</span> : null}
       </div>
       <span className={cn('text-sm font-bold tabular-nums text-ink', p.valueClass)}>
-        <AnimatedNumber value={p.value} format={formatCurrencyTR} />
+        <AnimatedNumber value={p.value} format={fmt} />
       </span>
     </div>
   )
@@ -47,7 +60,7 @@ function OzetSection(p: { title: string; children: ReactElement | ReactElement[]
   )
 }
 
-function OzetPanel({ data }: { data: DosyaMaliOzetPayload }): ReactElement {
+function OzetPanel({ data, vekaletPb }: { data: DosyaMaliOzetPayload; vekaletPb: ReturnType<typeof resolveParaBirimi> }): ReactElement {
   const kararlastirilan = Number(data.kararlastirilanVekalet)
   const tahsilEdilen = Number(data.tahsilEdilenVekalet)
   const kalanVekalet = Number(data.kalanVekalet)
@@ -61,11 +74,11 @@ function OzetPanel({ data }: { data: DosyaMaliOzetPayload }): ReactElement {
 
   return (
     <div className="space-y-2.5">
-      <OzetSection title="Vekalet ücreti">
+      <OzetSection title={`Vekalet ücreti (${vekaletPb})`}>
         <>
-          <OzetRow label="Kararlaştırılan" value={kararlastirilan} />
-          <OzetRow label="Tahsil edilen" value={tahsilEdilen} valueClass="text-emerald-600" />
-          <OzetRow label="Kalan" value={kalanVekalet} valueClass={kalanVekalet > 0 ? 'text-amber-600' : undefined} />
+          <OzetRow label="Kararlaştırılan" value={kararlastirilan} currency="vekalet" vekaletPb={vekaletPb} />
+          <OzetRow label="Tahsil edilen" value={tahsilEdilen} valueClass="text-emerald-600" currency="vekalet" vekaletPb={vekaletPb} />
+          <OzetRow label="Kalan" value={kalanVekalet} valueClass={kalanVekalet > 0 ? 'text-amber-600' : undefined} currency="vekalet" vekaletPb={vekaletPb} />
           <div className="mt-1.5 space-y-1">
             <div className="flex items-baseline justify-between">
               <span className="text-[10px] font-medium text-ink-muted">Tahsilat oranı</span>
@@ -78,7 +91,7 @@ function OzetPanel({ data }: { data: DosyaMaliOzetPayload }): ReactElement {
         </>
       </OzetSection>
 
-      <OzetSection title="Masraf avansı">
+      <OzetSection title="Masraf avansı (TRY)">
         <>
           <OzetRow label="Alınan avans" value={avans} />
           <OzetRow label="Yapılan masraf" value={masraf} valueClass="text-danger" />
@@ -112,6 +125,13 @@ export function DosyaMaliOzetTab({ dosyaId }: Props): ReactElement {
     queryFn: () => getDosyaMaliOzet(dosyaId),
     staleTime: 30_000
   })
+
+  const vekaletQuery = useQuery({
+    queryKey: ['dosya-vekalet-pb', dosyaId],
+    queryFn: () => getDosyaVekalet(dosyaId),
+    staleTime: 60_000
+  })
+  const vekaletPb = resolveParaBirimi(vekaletQuery.data?.vekaletUcreti?.paraBirimi)
 
   if (query.isLoading) {
     return <p className="py-6 text-center text-sm text-ink-muted">Mali özet yükleniyor…</p>
@@ -153,7 +173,7 @@ export function DosyaMaliOzetTab({ dosyaId }: Props): ReactElement {
         ) : null}
       </div>
 
-      <OzetPanel data={activeData} />
+      <OzetPanel data={activeData} vekaletPb={vekaletPb} />
 
       {view === 'buDonem' ? (
         <p className="text-[10px] text-ink-subtle">

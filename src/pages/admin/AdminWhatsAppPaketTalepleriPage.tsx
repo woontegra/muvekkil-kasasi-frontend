@@ -152,8 +152,8 @@ export function AdminWhatsAppPaketTalepleriPage(): ReactElement {
               />
             </div>
           ) : (
-            <div className="w-full max-w-full overflow-x-auto">
-              <Table className="min-w-[1100px]">
+            <div className="w-full max-w-full min-w-0">
+              <Table className="w-full">
                 <THead>
                   <TR>
                     <TH>Büro</TH>

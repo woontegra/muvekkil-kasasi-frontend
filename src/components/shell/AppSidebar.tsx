@@ -81,7 +81,7 @@ export type AppSidebarProps = {
 
 export function AppSidebar({ role }: AppSidebarProps): ReactElement {
   return (
-    <aside className="mk-sidebar relative hidden h-full min-h-0 w-[232px] flex-shrink-0 flex-col md:flex">
+    <aside className="mk-sidebar relative hidden h-full min-h-0 w-[232px] flex-shrink-0 flex-col lg:flex">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-white/[0.04] via-transparent to-black/20" />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-px bg-gradient-to-b from-white/10 via-white/5 to-transparent" />
 
@@ -133,7 +133,7 @@ export function MobileNavDrawer({ open, onClose, role, buroAdi }: MobileNavDrawe
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Ana menü">
+    <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Ana menü">
       <button type="button" className="absolute inset-0 bg-black/45" aria-label="Menüyü kapat" onClick={onClose} />
       <aside className="mk-sidebar relative flex h-full w-[min(20rem,88vw)] max-w-full flex-col shadow-2xl">
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-white/[0.08] px-3 py-3">

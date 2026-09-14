@@ -3,7 +3,7 @@ import type { AuthTenantDto } from '../../types/auth'
 import type { DosyaDto } from '../../types/dosya'
 import type { MuvekkilDto } from '../../types/muvekkil'
 import type { DosyaVekaletOzetDto, VekaletTaksitiDto, VekaletUcretiDto } from '../../types/vekalet'
-import { formatCurrencyTR, formatDateTR } from '../../utils/formatters'
+import { formatDateTR, formatMoney, resolveParaBirimi } from '../../utils/formatters'
 import { mahkemeIcraSatir } from '../../lib/dosyaLabels'
 import { ReceiptPrintLayout } from './ReceiptPrintLayout'
 import { ReceiptSectionTable } from './ReceiptSectionTable'
@@ -21,6 +21,7 @@ type VekaletReceiptProps = {
 /** Ödenmiş vekalet taksiti tahsilat makbuzu — A4 tek sayfa kompakt düzen. */
 export function VekaletReceipt(props: VekaletReceiptProps): ReactElement {
   const { tenant, dosya, muvekkil, vekaletUcreti, vekaletOzet, taksit, printedAt } = props
+  const vekaletPb = resolveParaBirimi(vekaletUcreti?.paraBirimi ?? taksit.paraBirimi)
   const mahIcr = mahkemeIcraSatir(dosya)
   const smmDurum = taksit.smmKesildiMi
     ? `Evet${taksit.smmNo?.trim() ? ` (No: ${taksit.smmNo.trim()})` : ''}${taksit.smmKesimTarihi ? ` — ${formatDateTR(taksit.smmKesimTarihi)}` : ''}`
@@ -58,7 +59,7 @@ export function VekaletReceipt(props: VekaletReceiptProps): ReactElement {
             { label: 'Ödeme tarihi', value: taksit.odemeTarihi ? formatDateTR(taksit.odemeTarihi) : null },
             {
               label: 'Tahsil edilen',
-              value: formatCurrencyTR(Number(taksit.tutar)),
+              value: formatMoney(Number(taksit.tutar), vekaletPb),
               amount: true,
               highlightAmount: true
             },
@@ -72,9 +73,9 @@ export function VekaletReceipt(props: VekaletReceiptProps): ReactElement {
       <ReceiptSectionTable
         title="Vekalet özeti"
         rows={[
-          { label: 'Anlaşılan', value: formatCurrencyTR(Number(vekaletOzet.anlasilan)), amount: true },
-          { label: 'Ödenen toplam', value: formatCurrencyTR(Number(vekaletOzet.odenenToplam)), amount: true },
-          { label: 'Kalan vekalet', value: formatCurrencyTR(Number(vekaletOzet.kalanVekalet)), amount: true },
+          { label: 'Anlaşılan', value: formatMoney(Number(vekaletOzet.anlasilan), vekaletPb), amount: true },
+          { label: 'Ödenen toplam', value: formatMoney(Number(vekaletOzet.odenenToplam), vekaletPb), amount: true },
+          { label: 'Kalan vekalet', value: formatMoney(Number(vekaletOzet.kalanVekalet), vekaletPb), amount: true },
           ...(vekaletUcreti?.aciklama?.trim()
             ? [{ label: 'Vekalet açıklaması', value: vekaletUcreti.aciklama }]
             : [])

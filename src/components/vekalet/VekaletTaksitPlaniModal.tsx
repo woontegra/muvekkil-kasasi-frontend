@@ -10,7 +10,7 @@ import {
   vadeEkleAyYmd,
   yuvarlaTaksitToplam
 } from '../../lib/vekaletTaksitPlani'
-import { formatCurrencyInputTR, formatCurrencyTR, formatDateTR, parsePosTutar } from '../../utils/formatters'
+import { formatCurrencyInputTR, formatDateTR, formatMoney, parsePosTutar, type ParaBirimi } from '../../utils/formatters'
 import type { CreateVekaletTaksitPlaniPayload } from '../../types/vekalet'
 import { cn } from '../../lib/cn'
 
@@ -40,6 +40,7 @@ function todayYmd(): string {
 
 type Props = {
   kalanTaksitlendirme: number
+  paraBirimi: ParaBirimi
   onClose: () => void
   loading: boolean
   error: string | null
@@ -47,7 +48,7 @@ type Props = {
 }
 
 export function VekaletTaksitPlaniModal(props: Props): ReactElement {
-  const { kalanTaksitlendirme, onClose, loading, error, onSubmit } = props
+  const { kalanTaksitlendirme, paraBirimi, onClose, loading, error, onSubmit } = props
   const baslangicDefault = todayYmd()
 
   const [planTipi, setPlanTipi] = useState<PlanTipi>('ESIT')
@@ -145,7 +146,7 @@ export function VekaletTaksitPlaniModal(props: Props): ReactElement {
 
   const onizleme =
     planTipi === 'ESIT' && tutarlar && tutarlar.length > 0 && tutarSayi != null
-      ? `${tutarlar.length} taksit × ${formatCurrencyTR(tutarSayi)} · toplam ${formatCurrencyTR(esitPlanToplam ?? 0)} · ${formatDateTR(baslangic)} — ${formatDateTR(vadeEkleAyYmd(baslangic, tutarlar.length - 1))}`
+      ? `${tutarlar.length} taksit × ${formatMoney(tutarSayi, paraBirimi)} · toplam ${formatMoney(esitPlanToplam ?? 0, paraBirimi)} · ${formatDateTR(baslangic)} — ${formatDateTR(vadeEkleAyYmd(baslangic, tutarlar.length - 1))}`
       : null
 
   function baslangicDegistir(yeni: string): void {
@@ -295,7 +296,7 @@ export function VekaletTaksitPlaniModal(props: Props): ReactElement {
           ) : (
             <p className="text-sm text-ink-muted">
               Taksitlendirilebilir kalan:{' '}
-              <strong className="tabular-nums text-ink">{formatCurrencyTR(kalanTaksitlendirme)}</strong>
+              <strong className="tabular-nums text-ink">{formatMoney(kalanTaksitlendirme, paraBirimi)}</strong>
             </p>
           )}
 
@@ -384,7 +385,7 @@ export function VekaletTaksitPlaniModal(props: Props): ReactElement {
                 </Button>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="min-w-0 max-w-full">
                 <table className="min-w-full text-left text-xs">
                   <thead className="bg-surface-muted/50 text-[11px] uppercase tracking-wide text-ink-muted">
                     <tr>
@@ -461,11 +462,11 @@ export function VekaletTaksitPlaniModal(props: Props): ReactElement {
           <div className="space-y-1 rounded-lg border border-border bg-surface-muted/30 px-3 py-2 text-sm">
             <div className="flex justify-between gap-2">
               <span className="text-ink-muted">Kalan taksitlendirilebilir</span>
-              <strong className="tabular-nums">{formatCurrencyTR(kalanTaksitlendirme)}</strong>
+              <strong className="tabular-nums">{formatMoney(kalanTaksitlendirme, paraBirimi)}</strong>
             </div>
             <div className="flex justify-between gap-2">
               <span className="text-ink-muted">Taksit toplamı</span>
-              <strong className="tabular-nums">{aktifToplam != null ? formatCurrencyTR(aktifToplam) : '—'}</strong>
+              <strong className="tabular-nums">{aktifToplam != null ? formatMoney(aktifToplam, paraBirimi) : '—'}</strong>
             </div>
             <div
               className={cn(
@@ -474,7 +475,7 @@ export function VekaletTaksitPlaniModal(props: Props): ReactElement {
               )}
             >
               <span className="text-ink-muted">Fark</span>
-              <strong className="tabular-nums">{fark != null ? formatCurrencyTR(fark) : '—'}</strong>
+              <strong className="tabular-nums">{fark != null ? formatMoney(fark, paraBirimi) : '—'}</strong>
             </div>
           </div>
 

@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, KeyboardEvent, ReactElement, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
+import { summaryCardShellClass, uiType } from '../../lib/uiDensity'
 
 export type DashboardSummaryTone = 'default' | 'danger' | 'warning'
 
@@ -25,11 +26,6 @@ export type DashboardSummaryCardProps = {
   as?: 'button' | 'div'
   'aria-label'?: string
 }
-
-const SHELL =
-  'motion-card-in relative flex h-full min-h-[9.25rem] w-full flex-col overflow-hidden rounded-xl border bg-panel p-3.5 shadow-card ' +
-  'text-left transition-[transform,box-shadow,border-color,background-color] duration-150 ' +
-  'motion-reduce:hover:translate-y-0'
 
 function toneBorder(tone: DashboardSummaryTone, selected?: boolean): string {
   if (selected) return 'border-primary/50 bg-primary-soft/25 ring-2 ring-primary/20'
@@ -67,7 +63,7 @@ export function DashboardSummaryCard({
   'aria-label': ariaLabel
 }: DashboardSummaryCardProps): ReactElement {
   const shellClass = cn(
-    SHELL,
+    summaryCardShellClass,
     toneBorder(tone, selected),
     toneHover(tone, interactive, disabled),
     disabled && interactive && 'cursor-not-allowed opacity-60 hover:translate-y-0 hover:border-border hover:bg-panel hover:shadow-card',
@@ -77,27 +73,27 @@ export function DashboardSummaryCard({
 
   const body = (
     <>
-      <div className="flex min-h-0 flex-1 gap-3">
+      <div className="flex min-h-0 flex-1 gap-2.5">
         <div className="flex min-w-0 flex-1 flex-col">
-          <div className="flex h-5 items-center gap-1.5">
-            <p className="min-w-0 truncate text-[11px] font-bold uppercase tracking-wide text-ink-muted">{title}</p>
+          <div className="flex h-4 items-center gap-1.5">
+            <p className={cn('min-w-0 truncate', uiType.cardLabel)}>{title}</p>
             {titleBadge ? <span className="shrink-0">{titleBadge}</span> : null}
           </div>
 
-          <div className="mt-1.5 flex min-h-[2.75rem] flex-1 flex-col justify-center overflow-hidden">
+          <div className="mt-1 flex min-h-[2rem] flex-1 flex-col justify-center overflow-hidden">
             {children != null ? (
               children
             ) : typeof value === 'string' || typeof value === 'number' ? (
-              <p className="line-clamp-2 text-lg font-bold tabular-nums leading-tight tracking-tight text-ink">{value}</p>
+              <p className={cn('line-clamp-2', uiType.cardValue)}>{value}</p>
             ) : (
-              <div className="line-clamp-2 text-lg font-bold tabular-nums leading-tight tracking-tight text-ink">{value}</div>
+              <div className={cn('line-clamp-2', uiType.cardValue)}>{value}</div>
             )}
           </div>
 
-          <div className="mt-auto min-h-[2.5rem] overflow-hidden pt-1">
+          <div className="mt-auto min-h-[1.35rem] overflow-hidden pt-0.5">
             {meta != null ? (
               typeof meta === 'string' ? (
-                <p className="line-clamp-2 text-[10px] leading-snug text-ink-muted">{meta}</p>
+                <p className={cn('line-clamp-2', uiType.cardMeta)}>{meta}</p>
               ) : (
                 meta
               )
@@ -106,7 +102,7 @@ export function DashboardSummaryCard({
         </div>
 
         {trailing != null ? (
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center self-start">{trailing}</div>
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center self-start">{trailing}</div>
         ) : null}
       </div>
     </>
@@ -156,7 +152,7 @@ export function dashboardSummaryIconBubble(
   return (
     <span
       className={cn(
-        'flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold',
+        'flex h-7 w-7 items-center justify-center rounded-md text-[11px] font-bold',
         tone === 'danger' ? 'bg-danger/15 text-danger' : 'bg-surface-muted text-ink-muted'
       )}
     >

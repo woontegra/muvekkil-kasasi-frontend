@@ -1,4 +1,6 @@
 import type { OfisKasaOdemeYontemiApi } from './ofisKasasi'
+import type { ParaBirimi } from '../utils/paraBirimi'
+import type { CrossPaymentPayloadFields } from './vekalet'
 
 export type IcraAlacakTuruApi = 'KARSI_TARAF_VEKALET' | 'ICRA_VEKALET'
 export type IcraAlacakDurumApi = 'ACIK' | 'KISMI_ODENDI' | 'ODENDI' | 'GECIKTI' | 'IPTAL'
@@ -18,13 +20,22 @@ export const ICRA_ALACAK_DURUM_LABEL: Record<IcraAlacakDurumApi, string> = {
   IPTAL: 'İptal'
 }
 
+export type IcraCurrencyOzetDto = {
+  toplamAlacak: string
+  tahsilEdilen: string
+  kalanAlacak: string
+}
+
 export type IcraTahsilatOzetDto = {
+  /** Legacy TRY */
   toplamAlacak: string
   tahsilEdilen: string
   kalanAlacak: string
   vadesiGecmisTaksit: number
   buAyTahsilat: string
   smmBekleyen: number
+  byCurrency?: Record<ParaBirimi, IcraCurrencyOzetDto>
+  buAyTahsilatByCurrency?: Record<ParaBirimi, string>
 }
 
 export type IcraTahsilatListeSatirDto = {
@@ -37,6 +48,7 @@ export type IcraTahsilatListeSatirDto = {
   alacakTuru: IcraAlacakTuruApi
   alacakTuruLabel: string
   toplamTutar: string
+  paraBirimi: ParaBirimi
   pesinatTutar: string
   odenenToplam: string
   kalanTutar: string
@@ -45,7 +57,6 @@ export type IcraTahsilatListeSatirDto = {
   durumLabel: string
   kayitTarihi: string
   iptalMi: boolean
-  /** Son tahsilatı yapan personel/kullanıcı adı */
   sonTahsilatciAd?: string | null
   tahsilatiYapanAd?: string | null
 }
@@ -55,6 +66,7 @@ export type IcraTahsilatTaksitDto = {
   alacakId: string
   taksitNo: number
   tutar: string
+  paraBirimi: ParaBirimi
   vadeTarihi: string
   aciklama: string | null
   odenenToplam: string
@@ -72,6 +84,10 @@ export type IcraTahsilatOdemeDto = {
   taksitId: string | null
   odemeTarihi: string
   tutar: string
+  kasaTutari: string
+  alacakParaBirimi: ParaBirimi
+  odemeParaBirimi: ParaBirimi
+  kur: string | null
   odemeYontemi: OfisKasaOdemeYontemiApi
   aciklama: string | null
   smmKesildiMi: boolean
@@ -94,6 +110,7 @@ export type IcraTahsilatDetayDto = {
   dosyaBaslik: string | null
   dosyaNo: string | null
   toplamTutar: string
+  paraBirimi: ParaBirimi
   pesinatTutar: string
   taksitSayisi: number
   ilkVadeTarihi: string
@@ -134,6 +151,7 @@ export type CreateIcraTahsilatPayload = {
   muvekkilId?: string | null
   dosyaId?: string | null
   toplamTutar: number
+  paraBirimi?: ParaBirimi | null
   tahsilatTipi?: IcraTahsilatTipiApi
   pesinatVar?: boolean
   pesinatTutar?: number
@@ -142,10 +160,9 @@ export type CreateIcraTahsilatPayload = {
   tahsilatTarihi?: string
   odemeYontemi: OfisKasaOdemeYontemiApi
   tahsilatiYapanPersonelId?: string | null
-  /** Personel seçilmediyse oturum kullanıcısı (backend resolveTahsilatiYapanPersonel). */
   tahsilatiYapanUserId?: string | null
   aciklama?: string | null
-}
+} & CrossPaymentPayloadFields
 
 export type PatchIcraTaksitPayload = {
   vadeTarihi?: string
@@ -159,7 +176,7 @@ export type CreateIcraTaksitOdemePayload = {
   odemeYontemi: OfisKasaOdemeYontemiApi
   tahsilatiYapanPersonelId?: string | null
   aciklama?: string | null
-}
+} & CrossPaymentPayloadFields
 
 export type IcraTahsilatListResponse = {
   ok: true

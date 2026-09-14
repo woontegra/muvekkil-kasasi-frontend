@@ -1,6 +1,7 @@
 import type { ReactElement, TextareaHTMLAttributes } from 'react'
 import { forwardRef } from 'react'
 import { cn } from '../../lib/cn'
+import { formControlErrorClass, uiType } from '../../lib/uiDensity'
 
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement> & {
   label?: string
@@ -17,7 +18,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
   return (
     <div className="w-full">
       {label ? (
-        <label htmlFor={inputId} className="mb-1 block text-xs font-semibold text-ink-muted">
+        <label htmlFor={inputId} className={uiType.label}>
           {label}
         </label>
       ) : null}
@@ -26,15 +27,16 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(function 
         id={inputId}
         rows={rows}
         className={cn(
-          'w-full rounded-md border bg-white px-3 py-2 text-sm text-ink shadow-inner outline-none transition',
-          'border-border placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/15',
-          error && 'border-danger focus:border-danger focus:ring-danger/20',
+          'w-full rounded-md border border-border bg-white px-2.5 py-2 text-[11px] text-ink shadow-inner outline-none transition',
+          'placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/15',
+          'dark:bg-surface-elevated',
+          error && formControlErrorClass,
           className
         )}
         {...rest}
       />
-      {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
-      {!error && hint ? <p className="mt-1 text-xs text-ink-subtle">{hint}</p> : null}
+      {error ? <p className={cn(uiType.hint, 'text-danger')}>{error}</p> : null}
+      {!error && hint ? <p className={uiType.hint}>{hint}</p> : null}
     </div>
   )
 })

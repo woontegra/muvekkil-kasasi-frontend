@@ -2,9 +2,9 @@ import type { ReactElement, ReactNode } from 'react'
 import { cn } from '../../lib/cn'
 
 export type ResponsiveDataViewProps = {
-  /** Masaüstü tablo (≥ md) */
+  /** Masaüstü tablo (≥ lg) */
   table: ReactNode
-  /** Mobil kart listesi (< md) */
+  /** Tablet/mobil kart listesi (< lg) */
   cards: ReactNode
   className?: string
   empty?: ReactNode
@@ -14,8 +14,8 @@ export type ResponsiveDataViewProps = {
 }
 
 /**
- * Masaüstünde tablo, mobilde kart listesi.
- * Yatay sayfa kaydırması yerine kart görünümü kullanır.
+ * Masaüstünde tablo (≥ lg), tablette/mobilde kart listesi.
+ * Dar viewport’ta sıkışık tablo yerine kart görünümü kullanır.
  */
 export function ResponsiveDataView({
   table,
@@ -31,8 +31,8 @@ export function ResponsiveDataView({
 
   return (
     <div className={cn('w-full min-w-0', className)}>
-      <div className="hidden md:block">{table}</div>
-      <div className="space-y-3 md:hidden">{cards}</div>
+      <div className="hidden lg:block">{table}</div>
+      <div className="space-y-3 lg:hidden">{cards}</div>
     </div>
   )
 }

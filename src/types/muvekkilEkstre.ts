@@ -1,5 +1,7 @@
 /** Backend `MuvekkilEkstrePayload` — frontend yeniden hesaplamaz. */
 
+import type { ParaBirimi } from '../utils/paraBirimi'
+
 export type MuvekkilEkstreDurumLabel =
   | 'Tam Ödendi'
   | 'Kısmi Ödendi'
@@ -31,6 +33,7 @@ export type MuvekkilEkstreDto = {
     icraDairesi: string | null
   }
   vekaletOzeti: {
+    paraBirimi: ParaBirimi
     kararlastirilanToplam: string
     tahsilEdilenToplam: string
     kalanToplam: string
@@ -52,6 +55,12 @@ export type MuvekkilEkstreDto = {
       id: string
       odemeTarihi: string
       tutar: string
+      alacakParaBirimi?: string
+      odemeParaBirimi?: string
+      kasaTutari?: string
+      kur?: string | null
+      kurOzeti?: string | null
+      caprazOzet?: string | null
       odemeYontemi: string
       makbuzNo: string
       aciklama: string | null
@@ -76,7 +85,25 @@ export type MuvekkilEkstreDto = {
     bakiyeSonrasi: string
   }>
   dosyaDisiOfisGelirleri?: {
+    /** Legacy TRY toplamı */
     toplam: string
+    byCurrency: Record<
+      ParaBirimi,
+      {
+        toplam: string
+        hareketler: Array<{
+          id: string
+          tarih: string
+          belgeNo: string
+          kategori: string
+          aciklama: string | null
+          odemeYontemi: string
+          personelAd: string | null
+          tutar: string
+          paraBirimi: ParaBirimi
+        }>
+      }
+    >
     hareketler: Array<{
       id: string
       tarih: string
@@ -86,6 +113,7 @@ export type MuvekkilEkstreDto = {
       odemeYontemi: string
       personelAd: string | null
       tutar: string
+      paraBirimi: ParaBirimi
     }>
   }
   dipnot: string

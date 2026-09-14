@@ -1,3 +1,7 @@
+import type { ParaBirimi } from '../utils/paraBirimi'
+
+export type ReportCurrencyTotals<T extends Record<string, string>> = Partial<Record<ParaBirimi, T>>
+
 export type ReportTenantInfo = {
   buroAdi: string
   telefon: string | null
@@ -14,6 +18,7 @@ export type OfisKasaReportRow = {
   islemTipiLabel: string
   kategoriLabel: string
   tutar: string
+  paraBirimi: ParaBirimi
   odemeYontemiLabel: string
   aciklama: string | null
   belgeNo: string
@@ -37,6 +42,12 @@ export type OfisKasaReportResponse = {
     duzeltmeEtkisi: string
     netBakiye: string
     hareketSayisi: number
+    byCurrency?: ReportCurrencyTotals<{
+      toplamGelir: string
+      toplamGider: string
+      duzeltmeEtkisi: string
+      netBakiye: string
+    }>
   }
   rows: OfisKasaReportRow[]
 }
@@ -48,6 +59,7 @@ export type IcraTahsilatReportAlacakRow = {
   dosyaBaslik: string | null
   alacakTuruLabel: string
   toplamTutar: string
+  paraBirimi: ParaBirimi
   odenenToplam: string
   kalanTutar: string
   taksitSayisi: number
@@ -85,6 +97,11 @@ export type IcraTahsilatReportResponse = {
     smmBekleyen: number
     alacakSayisi: number
     tahsilatSayisi: number
+    byCurrency?: ReportCurrencyTotals<{
+      toplamAlacak: string
+      tahsilEdilen: string
+      kalanAlacak: string
+    }>
   }
   alacaklar: IcraTahsilatReportAlacakRow[]
   tahsilatlar: IcraTahsilatReportTahsilatRow[]

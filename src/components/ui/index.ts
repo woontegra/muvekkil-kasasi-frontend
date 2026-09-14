@@ -14,8 +14,11 @@ export { StatCard } from './StatCard'
 export { Skeleton, SkeletonLines, SkeletonCard, PageLoading } from './Skeleton'
 export { ConfirmProvider, useConfirm, type ConfirmOptions } from './ConfirmDialog'
 export { Table, TBody, TD, TH, THead, TR, TableEmptyRow, type TRProps } from './Table'
+export { ClampTooltipText } from './ClampTooltipText'
 export {
   tableActionsFlexRow,
+  tableActionColClass,
+  tableActionColWideClass,
   tableActionLinkAccentClass,
   tableActionButtonShrinkClass
 } from './tableActionClasses'

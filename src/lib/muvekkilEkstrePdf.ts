@@ -1,6 +1,6 @@
 import type { Content, TDocumentDefinitions, TableCell } from 'pdfmake/interfaces'
 import type { MuvekkilEkstreDto } from '../types/muvekkilEkstre'
-import { formatCurrencyTR, formatDateTR } from '../utils/formatters'
+import { formatDateTR, formatMoney, resolveParaBirimi, type ParaBirimi } from '../utils/formatters'
 
 type PdfMakeBrowser = {
   addVirtualFileSystem: (vfs: unknown) => void
@@ -26,8 +26,8 @@ async function getPdfMake(): Promise<PdfMakeBrowser> {
   return pdfMakeReady
 }
 
-function money(v: string): string {
-  return formatCurrencyTR(Number(v))
+function money(v: string, pb: ParaBirimi = 'TRY'): string {
+  return formatMoney(Number(v), pb)
 }
 
 function ymdToTr(ymd: string): string {
@@ -140,6 +140,7 @@ function dataTable(headers: string[], body: TableCell[][], widths: Array<string 
 /** Aynı `MuvekkilEkstreDto` ile metin tabanlı A4 PDF (ekran görüntüsü değil). */
 export function buildMuvekkilEkstreDocDefinition(ekstre: MuvekkilEkstreDto): TDocumentDefinitions {
   const v = ekstre.vekaletOzeti
+  const vekPb = resolveParaBirimi(v.paraBirimi)
   const a = ekstre.masrafAvansiOzeti
   const contact = [ekstre.buro.telefon, ekstre.buro.eposta, ekstre.buro.adres]
     .map((x) => x?.trim())
@@ -216,15 +217,15 @@ export function buildMuvekkilEkstreDocDefinition(ekstre: MuvekkilEkstreDto): TDo
           stack: [
             sectionTitle('Vekalet ücreti özeti'),
             kvTable([
-              ['Kararlaştırılan', money(v.kararlastirilanToplam)],
-              ['Tahsil edilen', money(v.tahsilEdilenToplam)],
-              ['Kalan', money(v.kalanToplam)],
+              ['Kararlaştırılan', money(v.kararlastirilanToplam, vekPb)],
+              ['Tahsil edilen', money(v.tahsilEdilenToplam, vekPb)],
+              ['Kalan', money(v.kalanToplam, vekPb)],
               ['Tahsilat oranı', `%${v.tahsilatOrani.toLocaleString('tr-TR')}`],
-              ['Gecikmiş toplam', money(v.gecikmisToplam)],
+              ['Gecikmiş toplam', money(v.gecikmisToplam, vekPb)],
               [
                 'Sonraki taksit',
                 v.sonrakiTaksitVade && v.sonrakiTaksitTutar
-                  ? `${ymdToTr(v.sonrakiTaksitVade)} · ${money(v.sonrakiTaksitTutar)}`
+                  ? `${ymdToTr(v.sonrakiTaksitVade)} · ${money(v.sonrakiTaksitTutar, vekPb)}`
                   : '—'
               ]
             ])
@@ -241,9 +242,9 @@ export function buildMuvekkilEkstreDocDefinition(ekstre: MuvekkilEkstreDto): TDo
           ekstre.taksitler.map((t) => [
             String(t.taksitNo),
             ymdToTr(t.vadeTarihi),
-            { text: money(t.taksitTutari), alignment: 'right' },
-            { text: money(t.odenenToplam), alignment: 'right' },
-            { text: money(t.kalanTutar), alignment: 'right' },
+            { text: money(t.taksitTutari, vekPb), alignment: 'right' },
+            { text: money(t.odenenToplam, vekPb), alignment: 'right' },
+            { text: money(t.kalanTutar, vekPb), alignment: 'right' },
             t.durum
           ]),
           [28, 70, '*', '*', '*', 70]
@@ -262,7 +263,14 @@ export function buildMuvekkilEkstreDocDefinition(ekstre: MuvekkilEkstreDto): TDo
         ['Tarih', 'Tutar', 'Yöntem', 'Makbuz', 'Açıklama'],
         t.odemeler.map((o) => [
           formatDateTR(o.odemeTarihi),
-          { text: money(o.tutar), alignment: 'right' },
+          {
+            stack: [
+              { text: money(o.tutar, vekPb), alignment: 'right' },
+              ...(o.caprazOzet
+                ? [{ text: o.caprazOzet, fontSize: 7, color: '#64748b', alignment: 'right' as const }]
+                : [])
+            ]
+          },
           odemeYontemLabel(o.odemeYontemi),
           o.makbuzNo,
           o.aciklama ?? '—'
@@ -322,11 +330,14 @@ export function buildMuvekkilEkstreDocDefinition(ekstre: MuvekkilEkstreDto): TDo
   const ofisGelir = ekstre.dosyaDisiOfisGelirleri
   if (ofisGelir) {
     content.push(sectionTitle('Dosya dışı ofis geliri'))
+    const ofisTotals: [string, string][] = ofisGelir.byCurrency
+      ? (['TRY', 'USD', 'EUR'] as const)
+          .map((pb) => [pb, ofisGelir.byCurrency[pb]?.toplam ?? '0'] as [string, string])
+          .filter(([, t]) => Number(t) > 0)
+          .map(([pb, t]) => [`Toplam ${pb}`, money(t, resolveParaBirimi(pb))])
+      : [['Toplam TRY', money(ofisGelir.toplam, 'TRY')]]
     content.push(
-      kvTable([
-        ['Toplam (bilgi amaçlı)', money(ofisGelir.toplam)],
-        ['Kayıt sayısı', String(ofisGelir.hareketler.length)]
-      ])
+      kvTable([...ofisTotals, ['Kayıt sayısı', String(ofisGelir.hareketler.length)]])
     )
     if (ofisGelir.hareketler.length === 0) {
       content.push({ text: 'Dosya dışı ofis geliri kaydı yok.', style: 'muted' })
@@ -341,7 +352,7 @@ export function buildMuvekkilEkstreDocDefinition(ekstre: MuvekkilEkstreDto): TDo
             h.aciklama ?? '—',
             odemeYontemLabel(h.odemeYontemi),
             h.personelAd?.trim() || '—',
-            { text: money(h.tutar), alignment: 'right' }
+            { text: money(h.tutar, resolveParaBirimi(h.paraBirimi)), alignment: 'right' }
           ]),
           [55, 50, 55, '*', 45, 50, 50]
         )

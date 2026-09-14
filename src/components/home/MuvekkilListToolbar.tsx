@@ -1,6 +1,7 @@
 import type { FormEvent, ReactElement } from 'react'
 import { Button } from '../ui'
 import { cn } from '../../lib/cn'
+import { formControlClass } from '../../lib/uiDensity'
 
 export type MuvekkilListToolbarProps = {
   q: string
@@ -60,8 +61,8 @@ export function MuvekkilListToolbar({
                 placeholder="Ad, telefon veya e-posta…"
                 aria-label="Müvekkil ara"
                 className={cn(
-                  'h-9 w-full rounded-lg border border-border bg-white pl-9 pr-3 text-sm text-ink shadow-sm outline-none transition',
-                  'placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/15'
+                  formControlClass,
+                  'rounded-lg pl-9 shadow-sm'
                 )}
               />
             </div>

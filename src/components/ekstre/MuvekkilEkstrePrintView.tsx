@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { useState } from 'react'
 import type { MuvekkilEkstreDto } from '../../types/muvekkilEkstre'
-import { formatCurrencyTR, formatDateTR } from '../../utils/formatters'
+import { formatDateTR, formatMoney, resolveParaBirimi, type ParaBirimi } from '../../utils/formatters'
 import { ReceiptPrintLayout } from '../receipt/ReceiptPrintLayout'
 import { ReceiptSectionTable } from '../receipt/ReceiptSectionTable'
 
@@ -35,6 +35,7 @@ function mahkemeIcra(ekstre: MuvekkilEkstreDto): string {
 export function MuvekkilEkstrePrintView(props: Props): ReactElement {
   const { ekstre, expandAllPayments } = props
   const v = ekstre.vekaletOzeti
+  const vekPb = resolveParaBirimi(v.paraBirimi)
   const a = ekstre.masrafAvansiOzeti
   const [openIds, setOpenIds] = useState<Record<string, boolean>>({})
 
@@ -79,31 +80,31 @@ export function MuvekkilEkstrePrintView(props: Props): ReactElement {
           rows={[
             {
               label: 'Kararlaştırılan',
-              value: formatCurrencyTR(Number(v.kararlastirilanToplam)),
+              value: formatMoney(Number(v.kararlastirilanToplam), vekPb),
               amount: true
             },
             {
               label: 'Tahsil edilen',
-              value: formatCurrencyTR(Number(v.tahsilEdilenToplam)),
+              value: formatMoney(Number(v.tahsilEdilenToplam), vekPb),
               amount: true
             },
             {
               label: 'Kalan',
-              value: formatCurrencyTR(Number(v.kalanToplam)),
+              value: formatMoney(Number(v.kalanToplam), vekPb),
               amount: true,
               highlightAmount: true
             },
             { label: 'Tahsilat oranı', value: `%${v.tahsilatOrani.toLocaleString('tr-TR')}` },
             {
               label: 'Gecikmiş toplam',
-              value: formatCurrencyTR(Number(v.gecikmisToplam)),
+              value: formatMoney(Number(v.gecikmisToplam), vekPb),
               amount: true
             },
             {
               label: 'Sonraki taksit',
               value:
                 v.sonrakiTaksitVade && v.sonrakiTaksitTutar
-                  ? `${formatDateTR(`${v.sonrakiTaksitVade}T12:00:00+03:00`)} · ${formatCurrencyTR(Number(v.sonrakiTaksitTutar))}`
+                  ? `${formatDateTR(`${v.sonrakiTaksitVade}T12:00:00+03:00`)} · ${formatMoney(Number(v.sonrakiTaksitTutar), vekPb)}`
                   : '—'
             }
           ]}
@@ -131,9 +132,9 @@ export function MuvekkilEkstrePrintView(props: Props): ReactElement {
                   <tr key={t.id} className="receipt-ekstre-taksit-block">
                     <td>{t.taksitNo}</td>
                     <td>{formatDateTR(`${t.vadeTarihi}T12:00:00+03:00`)}</td>
-                    <td className="num">{formatCurrencyTR(Number(t.taksitTutari))}</td>
-                    <td className="num">{formatCurrencyTR(Number(t.odenenToplam))}</td>
-                    <td className="num">{formatCurrencyTR(Number(t.kalanTutar))}</td>
+                    <td className="num">{formatMoney(Number(t.taksitTutari), vekPb)}</td>
+                    <td className="num">{formatMoney(Number(t.odenenToplam), vekPb)}</td>
+                    <td className="num">{formatMoney(Number(t.kalanTutar), vekPb)}</td>
                     <td>{t.durum}</td>
                   </tr>
                 ))}
@@ -170,7 +171,12 @@ export function MuvekkilEkstrePrintView(props: Props): ReactElement {
                         {t.odemeler.map((o) => (
                           <tr key={o.id}>
                             <td>{formatDateTR(o.odemeTarihi)}</td>
-                            <td className="num">{formatCurrencyTR(Number(o.tutar))}</td>
+                            <td className="num">
+                              <div>{formatMoney(Number(o.tutar), vekPb)}</div>
+                              {o.caprazOzet ? (
+                                <div className="text-[10px] font-normal text-ink-muted">{o.caprazOzet}</div>
+                              ) : null}
+                            </td>
                             <td>{odemeYontemLabel(o.odemeYontemi)}</td>
                             <td className="value--mono">{o.makbuzNo}</td>
                             <td>{o.aciklama ?? '—'}</td>
@@ -192,27 +198,27 @@ export function MuvekkilEkstrePrintView(props: Props): ReactElement {
           rows={[
             {
               label: 'Alınan avans',
-              value: formatCurrencyTR(Number(a.toplamAlinanAvans)),
+              value: formatMoney(Number(a.toplamAlinanAvans), 'TRY'),
               amount: true
             },
             {
               label: 'Dosya masrafı',
-              value: formatCurrencyTR(Number(a.toplamMasraf)),
+              value: formatMoney(Number(a.toplamMasraf), 'TRY'),
               amount: true
             },
             {
               label: 'Pozitif düzeltme',
-              value: formatCurrencyTR(Number(a.pozitifDuzeltme)),
+              value: formatMoney(Number(a.pozitifDuzeltme), 'TRY'),
               amount: true
             },
             {
               label: 'Müvekkile iade',
-              value: formatCurrencyTR(Number(a.muvekkileIade)),
+              value: formatMoney(Number(a.muvekkileIade), 'TRY'),
               amount: true
             },
             {
               label: 'Güncel avans bakiyesi',
-              value: formatCurrencyTR(Number(a.guncelBakiye)),
+              value: formatMoney(Number(a.guncelBakiye), 'TRY'),
               amount: true,
               highlightAmount: true
             }
@@ -251,12 +257,12 @@ export function MuvekkilEkstrePrintView(props: Props): ReactElement {
                   <td>{h.islemTuru}</td>
                   <td>{h.aciklama ?? '—'}</td>
                   <td className="num">
-                    {Number(h.giris) > 0 ? formatCurrencyTR(Number(h.giris)) : '—'}
+                    {Number(h.giris) > 0 ? formatMoney(Number(h.giris), 'TRY') : '—'}
                   </td>
                   <td className="num">
-                    {Number(h.cikis) > 0 ? formatCurrencyTR(Number(h.cikis)) : '—'}
+                    {Number(h.cikis) > 0 ? formatMoney(Number(h.cikis), 'TRY') : '—'}
                   </td>
-                  <td className="num">{formatCurrencyTR(Number(h.bakiyeSonrasi))}</td>
+                  <td className="num">{formatMoney(Number(h.bakiyeSonrasi), 'TRY')}</td>
                 </tr>
               ))}
             </tbody>
@@ -267,13 +273,27 @@ export function MuvekkilEkstrePrintView(props: Props): ReactElement {
       {ekstre.dosyaDisiOfisGelirleri ? (
         <ReceiptSectionTable
           title="Dosya dışı ofis geliri"
-          rows={[
-            {
-              label: 'Toplam (bilgi amaçlı)',
-              value: formatCurrencyTR(Number(ekstre.dosyaDisiOfisGelirleri.toplam)),
-              amount: true
-            }
-          ]}
+          rows={
+            ekstre.dosyaDisiOfisGelirleri.byCurrency
+              ? (['TRY', 'USD', 'EUR'] as ParaBirimi[])
+                  .map((pb) => {
+                    const top = ekstre.dosyaDisiOfisGelirleri!.byCurrency![pb]?.toplam
+                    if (top == null || Number(top) === 0) return null
+                    return {
+                      label: `${pb} toplam`,
+                      value: formatMoney(Number(top), pb),
+                      amount: true
+                    }
+                  })
+                  .filter((r): r is { label: string; value: string; amount: true } => r != null)
+              : [
+                  {
+                    label: 'TRY toplam',
+                    value: formatMoney(Number(ekstre.dosyaDisiOfisGelirleri.toplam), 'TRY'),
+                    amount: true
+                  }
+                ]
+          }
         >
           {ekstre.dosyaDisiOfisGelirleri.hareketler.length === 0 ? (
             <p className="receipt-section__empty">Dosya dışı ofis geliri kaydı yok.</p>
@@ -299,7 +319,7 @@ export function MuvekkilEkstrePrintView(props: Props): ReactElement {
                     <td>{h.aciklama ?? '—'}</td>
                     <td>{odemeYontemLabel(h.odemeYontemi)}</td>
                     <td>{h.personelAd?.trim() || '—'}</td>
-                    <td className="num">{formatCurrencyTR(Number(h.tutar))}</td>
+                    <td className="num">{formatMoney(Number(h.tutar), resolveParaBirimi(h.paraBirimi))}</td>
                   </tr>
                 ))}
               </tbody>

@@ -83,8 +83,8 @@ export function AdminPassiveTenantsPage(): ReactElement {
               <EmptyState title="Pasif büro bulunmuyor." description="Büro erişimi kapalı kayıtlı kiracı yok." />
             </div>
           ) : (
-            <div className="w-full max-w-full overflow-x-auto">
-              <Table className="min-w-[960px]">
+            <div className="w-full max-w-full min-w-0">
+              <Table className="w-full">
                 <THead>
                   <TR>
                     <TH>Büro adı</TH>

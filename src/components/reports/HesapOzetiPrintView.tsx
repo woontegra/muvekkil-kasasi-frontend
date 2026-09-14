@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { DosyaHesapOzetiResponse } from '../../types/hesapOzeti'
-import { formatCurrencyTR, formatDateTR } from '../../utils/formatters'
+import { formatCurrencyTR, formatDateTR, formatMoney, resolveParaBirimi } from '../../utils/formatters'
 import { dosyaDurumuLabel, mahkemeIcraSatir } from '../../lib/dosyaLabels'
 import { resolveTaksitRow } from '../../lib/vekaletTaksitOzet'
 import { ReceiptPrintLayout } from '../receipt/ReceiptPrintLayout'
@@ -44,6 +44,7 @@ export function HesapOzetiPrintView(props: Props): ReactElement {
     data
   const mahIcr = mahkemeIcraSatir(dosya)
   const footerTarih = printedAtOverride ?? yazdirmaTarihi
+  const vekaletPb = resolveParaBirimi(vekalet.ucret?.paraBirimi)
 
   return (
     <ReceiptPrintLayout
@@ -129,11 +130,11 @@ export function HesapOzetiPrintView(props: Props): ReactElement {
         <ReceiptSectionTable
           title="Vekalet özeti"
           rows={[
-            { label: 'Anlaşılan', value: formatCurrencyTR(Number(vekalet.ozet.anlasilan)), amount: true },
-            { label: 'Ödenen toplam', value: formatCurrencyTR(Number(vekalet.ozet.odenenToplam)), amount: true },
+            { label: 'Anlaşılan', value: formatMoney(Number(vekalet.ozet.anlasilan), vekaletPb), amount: true },
+            { label: 'Ödenen toplam', value: formatMoney(Number(vekalet.ozet.odenenToplam), vekaletPb), amount: true },
             {
               label: 'Kalan vekalet',
-              value: formatCurrencyTR(Number(vekalet.ozet.kalanVekalet)),
+              value: formatMoney(Number(vekalet.ozet.kalanVekalet), vekaletPb),
               amount: true,
               highlightAmount: true
             },
@@ -158,7 +159,7 @@ export function HesapOzetiPrintView(props: Props): ReactElement {
                 {smmBekleyenler.map((t) => (
                   <tr key={t.id}>
                     <td>{t.taksitNo}</td>
-                    <td className="num">{formatCurrencyTR(Number(t.tutar))}</td>
+                    <td className="num">{formatMoney(Number(t.tutar), vekaletPb)}</td>
                     <td>{formatDateTR(t.odemeTarihi ?? undefined)}</td>
                   </tr>
                 ))}
@@ -191,9 +192,9 @@ export function HesapOzetiPrintView(props: Props): ReactElement {
                   <tr key={t.id}>
                     <td>{t.taksitNo}</td>
                     <td>{formatDateTR(t.vadeTarihi)}</td>
-                    <td className="num">{formatCurrencyTR(Number(row.taksitTutari))}</td>
-                    <td className="num">{formatCurrencyTR(Number(row.odenenToplam))}</td>
-                    <td className="num">{formatCurrencyTR(Number(row.kalanTutar))}</td>
+                    <td className="num">{formatMoney(Number(row.taksitTutari), resolveParaBirimi(t.paraBirimi))}</td>
+                    <td className="num">{formatMoney(Number(row.odenenToplam), resolveParaBirimi(t.paraBirimi))}</td>
+                    <td className="num">{formatMoney(Number(row.kalanTutar), resolveParaBirimi(t.paraBirimi))}</td>
                     <td>{durumEtiket(row.durum)}</td>
                     <td className="value--mono">{row.sonMakbuzNo ?? '—'}</td>
                   </tr>
@@ -209,7 +210,7 @@ export function HesapOzetiPrintView(props: Props): ReactElement {
           <strong>Dosya avans bakiyesi:</strong> {formatCurrencyTR(Number(kasaOzet.bakiye))}
         </p>
         <p className="receipt-print__sonuc-line">
-          <strong>Kalan vekalet ücreti:</strong> {formatCurrencyTR(Number(vekalet.ozet.kalanVekalet))}
+          <strong>Kalan vekalet ücreti:</strong> {formatMoney(Number(vekalet.ozet.kalanVekalet), vekaletPb)}
         </p>
       </div>
 

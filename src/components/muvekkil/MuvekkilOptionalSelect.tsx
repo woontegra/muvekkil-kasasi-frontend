@@ -13,6 +13,7 @@ import {
 import { createPortal } from 'react-dom'
 import { listMuvekkiller } from '../../api/muvekkiller'
 import { cn } from '../../lib/cn'
+import { formControlClass, uiType } from '../../lib/uiDensity'
 import type { MuvekkilDto } from '../../types/muvekkil'
 
 export type MuvekkilOptionalSelectValue = {
@@ -226,7 +227,7 @@ export function MuvekkilOptionalSelect({
 
   return (
     <div ref={rootRef} className={cn('relative', className)}>
-      <label className="mb-1 block text-xs font-semibold text-ink-muted">{label}</label>
+      <label className={uiType.label}>{label}</label>
       <div className="flex gap-2">
         <button
           ref={triggerRef}
@@ -236,8 +237,8 @@ export function MuvekkilOptionalSelect({
           aria-expanded={open}
           aria-controls={open ? listboxId : undefined}
           className={cn(
-            'flex h-11 min-w-0 flex-1 items-center justify-between gap-2 rounded-md border border-border bg-white px-3 text-left text-sm shadow-inner outline-none transition-colors',
-            'focus:border-primary focus:ring-2 focus:ring-primary/15 md:h-9 dark:bg-surface-elevated',
+            formControlClass,
+            'flex min-w-0 flex-1 items-center justify-between gap-2 text-left transition-colors',
             disabled && 'cursor-not-allowed opacity-60',
             !valueId && 'text-ink-muted'
           )}
@@ -255,7 +256,7 @@ export function MuvekkilOptionalSelect({
         {valueId ? (
           <button
             type="button"
-            className="h-11 shrink-0 rounded-md border border-border px-2 text-xs font-semibold text-primary hover:bg-primary/5 md:h-9"
+            className="h-8 shrink-0 rounded-md border border-border px-2 text-[10px] font-semibold text-primary hover:bg-primary/5"
             disabled={disabled}
             onClick={selectClear}
           >
@@ -281,7 +282,7 @@ export function MuvekkilOptionalSelect({
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                   placeholder="Ara (isteğe bağlı)"
-                  className="h-9 w-full rounded-md border border-border bg-white px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/15 dark:bg-surface-elevated"
+                  className={formControlClass}
                   aria-autocomplete="list"
                   aria-controls={listboxId}
                 />

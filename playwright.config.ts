@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 
-const baseURL = process.env.E2E_BASE_URL ?? 'http://localhost:5173'
+const baseURL = process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5174'
 
 export default defineConfig({
   testDir: './e2e',
@@ -25,13 +25,22 @@ export default defineConfig({
       testMatch: /global\.setup\.ts/
     },
     {
+      name: 'responsive-quality',
+      use: {
+        ...devices['Desktop Chrome'],
+        // Access token memory-only; storageState cookie yolu dar — her koşuda form login
+        baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:5174'
+      },
+      testMatch: /responsive-quality\/.*\.spec\.ts/
+    },
+    {
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
         storageState: 'e2e/.auth/user.json'
       },
       dependencies: ['setup'],
-      testIgnore: /global\.setup\.ts|login-inputs\.spec\.ts|cross-tenant-isolation\.spec\.ts|role-matrix\.spec\.ts|auth-session\.spec\.ts|tenant-isolation\.spec\.ts/
+      testIgnore: /global\.setup\.ts|login-inputs\.spec\.ts|cross-tenant-isolation\.spec\.ts|role-matrix\.spec\.ts|auth-session\.spec\.ts|tenant-isolation\.spec\.ts|responsive-quality\//
     },
     {
       name: 'public',

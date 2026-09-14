@@ -14,9 +14,9 @@ import { MuvekkilEditModal } from '../components/muvekkil/MuvekkilEditModal'
 import { MuvekkilKarlilikTab } from '../components/mali/MuvekkilKarlilikTab'
 import { MuvekkilRandevularSection } from '../pages/RandevularPage'
 import { MobileRecordCard, ResponsiveDataView } from '../components/responsive'
-import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionLinkAccentClass } from '../components/ui'
+import { AlertBox, Badge, Button, Card, CardBody, CardHeader, CardTitle, Input, Table, TBody, TD, TH, THead, TR, tableActionColClass, tableActionLinkAccentClass } from '../components/ui'
 import { useToast } from '../toast'
-import { formatCurrencyTR, formatDateTR } from '../utils/formatters'
+import { formatDateTR, formatMoney, resolveParaBirimi } from '../utils/formatters'
 import type { OfisKasaOdemeYontemiApi } from '../types/ofisKasasi'
 
 const OFIS_ODEME_LABELS: Record<OfisKasaOdemeYontemiApi, string> = {
@@ -328,7 +328,7 @@ export function MuvekkilDetailPage(): ReactElement {
                 </p>
               }
               table={
-                <div className="overflow-x-auto rounded-lg border border-border">
+                <div className="min-w-0 max-w-full">
                   <Table>
                     <THead>
                       <TR>
@@ -337,7 +337,7 @@ export function MuvekkilDetailPage(): ReactElement {
                         <TH>Mahkeme / icra</TH>
                         <TH>Dosya no</TH>
                         <TH>Durum</TH>
-                        <TH className="w-[1%] whitespace-nowrap text-right">İşlem</TH>
+                        <TH className={tableActionColClass}>İşlem</TH>
                       </TR>
                     </THead>
                     <TBody>
@@ -350,7 +350,7 @@ export function MuvekkilDetailPage(): ReactElement {
                           <TD>
                             <Badge variant={dosyaDurumuBadgeVariant(d.durum)}>{dosyaDurumuLabel(d.durum)}</Badge>
                           </TD>
-                          <TD className="text-right">
+                          <TD className={tableActionColClass}>
                             <Link
                               to={`${APP_BASE}/muvekkil/${id}/dosya/${d.id}`}
                               className={tableActionLinkAccentClass}
@@ -423,7 +423,7 @@ export function MuvekkilDetailPage(): ReactElement {
                 </p>
               }
               table={
-                <div className="overflow-x-auto rounded-lg border border-border">
+                <div className="min-w-0 max-w-full">
                   <Table>
                     <THead>
                       <TR>
@@ -441,17 +441,17 @@ export function MuvekkilDetailPage(): ReactElement {
                         <TR key={h.id}>
                           <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
                           <TD className="font-mono text-xs">{h.belgeNo}</TD>
-                          <TD className="max-w-[160px] text-sm">
+                          <TD className="max-w-[160px]">
                             {h.kategori}
                             {h.ozelKategoriAdi?.trim() ? (
                               <span className="mt-0.5 block text-[11px] text-ink-muted">({h.ozelKategoriAdi})</span>
                             ) : null}
                           </TD>
-                          <TD className="max-w-[200px] text-sm text-ink-muted">{h.aciklama?.trim() || '—'}</TD>
+                          <TD className="max-w-[200px] text-ink-muted">{h.aciklama?.trim() || '—'}</TD>
                           <TD className="text-xs text-ink-muted">{ofisOdemeLabel(h.odemeYontemi)}</TD>
-                          <TD className="text-sm text-ink-muted">{h.tahsilatiYapanPersonelAd?.trim() || '—'}</TD>
-                          <TD className="text-right text-sm font-semibold tabular-nums">
-                            {formatCurrencyTR(Number(h.tutar))}
+                          <TD className="text-ink-muted">{h.tahsilatiYapanPersonelAd?.trim() || '—'}</TD>
+                          <TD className="text-right font-semibold tabular-nums">
+                            {formatMoney(Number(h.tutar), resolveParaBirimi(h.paraBirimi))}
                           </TD>
                         </TR>
                       ))}
@@ -470,7 +470,7 @@ export function MuvekkilDetailPage(): ReactElement {
                         { label: 'Tarih', value: formatDateTR(h.tarih) },
                         {
                           label: 'Tutar',
-                          value: formatCurrencyTR(Number(h.tutar)),
+                          value: formatMoney(Number(h.tutar), resolveParaBirimi(h.paraBirimi)),
                           numeric: true
                         },
                         { label: 'Ödeme', value: ofisOdemeLabel(h.odemeYontemi) },

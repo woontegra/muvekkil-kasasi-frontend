@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { cn } from '../../lib/cn'
 import { MobileActionBar, MobileRecordCard, ResponsiveDataView } from '../responsive'
 import {
   AlertBox,
@@ -16,6 +17,7 @@ import {
   THead,
   TR,
   tableActionsFlexRow,
+  tableActionColWideClass,
   tableActionButtonShrinkClass,
   tableActionLinkAccentClass
 } from '../ui'
@@ -71,11 +73,11 @@ export function SmmBekleyenHomePanel(props: SmmBekleyenHomePanelProps): ReactEle
         ) : (
           <ResponsiveDataView
             isLoading={loading}
-            loading={<p className="py-8 text-center text-sm text-ink-muted">Yükleniyor…</p>}
+            loading={<p className="py-8 text-center text-[11px] text-ink-muted">Yükleniyor…</p>}
             isEmpty={!loading && items.length === 0}
             empty={<EmptyState title="Kayıt yok" description="SMM bekleyen tahsilat bulunmuyor." />}
             table={
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="min-w-0 max-w-full">
                 <Table>
                   <THead>
                     <TR>
@@ -87,15 +89,15 @@ export function SmmBekleyenHomePanel(props: SmmBekleyenHomePanelProps): ReactEle
                       <TH>Ödeme yöntemi</TH>
                       <TH>Belge no</TH>
                       <TH className="text-center">SMM durumu</TH>
-                      <TH className="min-w-[240px] w-[240px] whitespace-nowrap text-right align-bottom">İşlem</TH>
+                      <TH className={cn(tableActionColWideClass, 'align-bottom')}>İşlem</TH>
                     </TR>
                   </THead>
                   <TBody>
                     {items.map((row) => (
                       <TR key={row.id}>
-                        <TD className="align-middle whitespace-nowrap text-sm">{formatDateTR(row.tahsilatTarihi)}</TD>
-                        <TD className="align-middle text-sm font-medium">{row.muvekkilAd}</TD>
-                        <TD className="max-w-[220px] align-middle text-sm">
+                        <TD className="align-middle whitespace-nowrap">{formatDateTR(row.tahsilatTarihi)}</TD>
+                        <TD className="align-middle font-medium">{row.muvekkilAd}</TD>
+                        <TD className="max-w-[220px] align-middle">
                           <span className="line-clamp-2 font-medium text-ink">{row.dosyaBaslik}</span>
                           <div className="mt-0.5 text-xs text-ink-muted">
                             {row.dosyaNo?.trim() ? (
@@ -107,18 +109,18 @@ export function SmmBekleyenHomePanel(props: SmmBekleyenHomePanelProps): ReactEle
                             {dosyaTuruEtiket(row.dosyaTuru)}
                           </div>
                         </TD>
-                        <TD className="align-middle text-sm">{row.tahsilatTuru}</TD>
-                        <TD className="align-middle text-right text-sm tabular-nums font-semibold">
+                        <TD className="align-middle">{row.tahsilatTuru}</TD>
+                        <TD className="align-middle text-right tabular-nums font-semibold">
                           {formatCurrencyTR(Number(row.tutar))}
                         </TD>
-                        <TD className="align-middle text-sm text-ink-muted">{row.odemeYontemi?.trim() || '—'}</TD>
-                        <TD className="align-middle font-mono text-sm text-ink-muted">{row.belgeNo?.trim() || '—'}</TD>
+                        <TD className="align-middle text-ink-muted">{row.odemeYontemi?.trim() || '—'}</TD>
+                        <TD className="align-middle font-mono text-ink-muted">{row.belgeNo?.trim() || '—'}</TD>
                         <TD className="align-middle text-center">
                           <span className="inline-flex rounded-md bg-warning-soft/80 px-2 py-0.5 text-xs font-semibold text-warning-ink">
                             Bekliyor
                           </span>
                         </TD>
-                        <TD className="min-w-[240px] w-[240px] align-middle text-right">
+                        <TD className={cn(tableActionColWideClass, 'align-middle')}>
                           <div className={tableActionsFlexRow}>
                             <Link
                               to={dosyaHref(row.muvekkilId, row.dosyaId)}

@@ -1,15 +1,19 @@
 import type { FormEvent, ReactElement, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
+import { buildCrossPaymentPayload } from '../../lib/crossCurrencyPayment'
+import { CrossCurrencyPaymentFields } from '../paraBirimi/CrossCurrencyPaymentFields'
 import { TahsilatiYapanPersonelSelect } from '../prim/TahsilatiYapanPersonelSelect'
-import { AlertBox, Button, Input, MoneyInput, ModalScrim } from '../ui'
+import { AlertBox, Button, Input, ModalScrim } from '../ui'
 import { resolveTaksitRow } from '../../lib/vekaletTaksitOzet'
+import type { CrossPaymentKurMeta } from '../../types/kurlar'
 import type { CreateVekaletTaksitOdemePayload, VekaletTaksitiDto } from '../../types/vekalet'
 import type { OdemeYontemiApi } from '../../types/kasa'
 import {
   formatCurrencyInputTR,
-  formatCurrencyTR,
+  formatMoney,
   moneyInputFromAmount,
-  parsePosTutar
+  resolveParaBirimi,
+  type ParaBirimi
 } from '../../utils/formatters'
 
 const ODEME_OPTIONS: { value: OdemeYontemiApi; label: string }[] = [
@@ -39,44 +43,67 @@ export type VekaletTaksitOdemeModalProps = {
 export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): ReactElement {
   const { taksit, onClose, loading, error, onSubmit } = props
   const resolved = resolveTaksitRow(taksit)
+  const alacakParaBirimi = resolveParaBirimi(taksit.paraBirimi)
   const kalanNum = Number(resolved.kalanTutar)
   const odenenNum = Number(resolved.odenenToplam)
   const taksitNum = Number(resolved.taksitTutari)
-  const [tutar, setTutar] = useState('')
+  const [mahsupTutar, setMahsupTutar] = useState('')
+  const [odemeParaBirimi, setOdemeParaBirimi] = useState<ParaBirimi>(alacakParaBirimi)
+  const [kasaTutari, setKasaTutari] = useState('')
   const [odemeTarihi, setOdemeTarihi] = useState(todayInputDate())
   const [odeme, setOdeme] = useState<OdemeYontemiApi>('NAKIT')
   const [aciklama, setAciklama] = useState('')
   const [tahsilatiYapanPersonelId, setTahsilatiYapanPersonelId] = useState('')
   const [localErr, setLocalErr] = useState<string | null>(null)
+  const [kurOnay, setKurOnay] = useState(false)
+  const [kurMeta, setKurMeta] = useState<CrossPaymentKurMeta>({
+    kurKaynagi: null,
+    tcmbKurTarihi: null,
+    tcmbReferansKur: null
+  })
 
   useEffect(() => {
-    // Yalnızca taksit değişince varsayılan tutarı doldur; kalan refetch yazmayı ezmesin.
     if (kalanNum > 0) {
-      setTutar(moneyInputFromAmount(kalanNum))
+      setMahsupTutar(moneyInputFromAmount(kalanNum))
     } else {
-      setTutar('')
+      setMahsupTutar('')
     }
+    setOdemeParaBirimi(alacakParaBirimi)
+    setKasaTutari('')
     setOdemeTarihi(todayInputDate())
     setOdeme('NAKIT')
     setAciklama('')
+    setKurOnay(false)
     setLocalErr(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- kalanNum yalnızca açılışta
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- taksit değişince sıfırla
   }, [taksit.id])
+
+  const crossPreview = buildCrossPaymentPayload(
+    alacakParaBirimi,
+    mahsupTutar,
+    odemeParaBirimi,
+    kasaTutari,
+    kurMeta
+  )
+  const needsKurOnay = crossPreview.ok && crossPreview.kurOzeti != null
 
   const submit = (e?: FormEvent): void => {
     e?.preventDefault()
     setLocalErr(null)
-    const n = parsePosTutar(tutar)
-    if (n == null) {
-      setLocalErr("Tutar 0'dan büyük olmalıdır.")
+    if (!crossPreview.ok) {
+      setLocalErr(crossPreview.error)
       return
     }
-    if (n > kalanNum + 0.0001) {
-      setLocalErr('Tutar taksit kalanını aşamaz.')
+    if (crossPreview.payload.tutar > kalanNum + 0.0001) {
+      setLocalErr('Mahsup tutarı taksit kalanını aşamaz.')
+      return
+    }
+    if (needsKurOnay && !kurOnay) {
+      setLocalErr('Çapraz kur önizlemesini onaylayın.')
       return
     }
     onSubmit({
-      tutar: n,
+      ...crossPreview.payload,
       odemeTarihi: `${odemeTarihi}T12:00:00.000Z`,
       odemeYontemi: odeme,
       aciklama: aciklama.trim() || null,
@@ -98,27 +125,63 @@ export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): Re
             <p className="font-medium text-ink">Taksit #{taksit.taksitNo}</p>
             <div className="mt-1.5 grid gap-1 sm:grid-cols-3">
               <p>
-                Taksit tutarı: <strong className="tabular-nums text-ink">{formatCurrencyTR(taksitNum)}</strong>
+                Taksit tutarı:{' '}
+                <strong className="tabular-nums text-ink">{formatMoney(taksitNum, alacakParaBirimi)}</strong>
               </p>
               <p>
-                Şimdiye kadar ödenen: <strong className="tabular-nums text-ink">{formatCurrencyTR(odenenNum)}</strong>
+                Şimdiye kadar ödenen:{' '}
+                <strong className="tabular-nums text-ink">{formatMoney(odenenNum, alacakParaBirimi)}</strong>
               </p>
               <p>
-                Kalan borç: <strong className="tabular-nums text-ink">{formatCurrencyTR(kalanNum)}</strong>
+                Kalan borç:{' '}
+                <strong className="tabular-nums text-ink">{formatMoney(kalanNum, alacakParaBirimi)}</strong>
               </p>
             </div>
             <p className="mt-1.5">Kısmi ödeme girebilirsiniz; kalan borç kapanana kadar taksit açık kalır.</p>
           </div>
-          <MoneyInput label="Tahsil edilecek tutar" value={tutar} onChange={setTutar} maxValue={kalanNum} />
+          <CrossCurrencyPaymentFields
+            alacakParaBirimi={alacakParaBirimi}
+            mahsupTutar={mahsupTutar}
+            onMahsupTutarChange={(v) => {
+              setMahsupTutar(v)
+              setKurOnay(false)
+            }}
+            odemeParaBirimi={odemeParaBirimi}
+            onOdemeParaBirimiChange={(v) => {
+              setOdemeParaBirimi(v)
+              setKurOnay(false)
+            }}
+            kasaTutari={kasaTutari}
+            onKasaTutariChange={(v) => {
+              setKasaTutari(v)
+              setKurOnay(false)
+            }}
+            odemeTarihi={odemeTarihi}
+            onKurMetaChange={setKurMeta}
+            maxMahsup={kalanNum}
+          />
           <Button
             type="button"
             size="sm"
             variant="outline"
             disabled={kalanNum <= 0}
-            onClick={() => setTutar(formatCurrencyInputTR(kalanNum))}
+            onClick={() => setMahsupTutar(formatCurrencyInputTR(kalanNum))}
           >
             Kalanın tamamını al
           </Button>
+          {needsKurOnay ? (
+            <label className="flex items-start gap-2 text-xs text-ink">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={kurOnay}
+                onChange={(e) => setKurOnay(e.target.checked)}
+              />
+              <span>
+                Uygulanacak kur: <strong>{crossPreview.kurOzeti}</strong> — kaydetmeden önce onaylıyorum.
+              </span>
+            </label>
+          ) : null}
           <Input label="Tarih" type="date" value={odemeTarihi} onChange={(ev) => setOdemeTarihi(ev.target.value)} />
           <div>
             <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>

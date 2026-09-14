@@ -54,11 +54,11 @@ function KarlilikPanel({ data, muvekkilId }: { data: MuvekkilKarlilikPayload; mu
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
         <StatMini label="Dosya sayısı" value={data.toplamDosya} format={(n) => String(Math.round(n))} />
-        <StatMini label="Kararl. vekalet" value={Number(data.kararlastirilanVekalet)} />
-        <StatMini label="Tahsil edilen" value={Number(data.tahsilEdilenVekalet)} valueClass="text-emerald-600" />
-        <StatMini label="Kalan alacak" value={Number(data.kalanAlacak)} valueClass={Number(data.kalanAlacak) > 0 ? 'text-amber-600' : undefined} />
-        <StatMini label="Avans bakiye" value={Number(data.toplamAvansBakiye)} />
-        <StatMini label="Toplam masraf" value={Number(data.toplamDosyaMasrafi)} valueClass="text-danger" />
+        <StatMini label="Kararl. vekalet*" value={Number(data.kararlastirilanVekalet)} />
+        <StatMini label="Tahsil edilen*" value={Number(data.tahsilEdilenVekalet)} valueClass="text-emerald-600" />
+        <StatMini label="Kalan alacak*" value={Number(data.kalanAlacak)} valueClass={Number(data.kalanAlacak) > 0 ? 'text-amber-600' : undefined} />
+        <StatMini label="Avans bakiye (TRY)" value={Number(data.toplamAvansBakiye)} />
+        <StatMini label="Toplam masraf (TRY)" value={Number(data.toplamDosyaMasrafi)} valueClass="text-danger" />
         {Number(data.toplamMasrafAvansiIadesi) > 0 ? (
           <StatMini label="Avans iadesi" value={Number(data.toplamMasrafAvansiIadesi)} valueClass="text-amber-600" />
         ) : null}
@@ -142,6 +142,11 @@ export function MuvekkilKarlilikTab({ muvekkilId }: Props): ReactElement {
       </div>
 
       <KarlilikPanel data={activeData} muvekkilId={muvekkilId} />
+
+      <p className="text-[10px] text-ink-subtle">
+        * Vekalet toplamları dosyalar arası farklı para birimlerini birleştirebilir; kesin tutarlar için dosya detayına bakın.
+        Avans ve masraf tutarları TRY&apos;dir.
+      </p>
 
       {view === 'buDonem' ? (
         <p className="text-[10px] text-ink-subtle">

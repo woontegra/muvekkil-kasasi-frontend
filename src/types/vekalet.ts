@@ -4,12 +4,15 @@ export type TaksitComputedDurumApi = 'ODENMEDI' | 'KISMI_ODENDI' | 'ODENDI' | 'G
 
 export type TaksitSmmDurumApi = 'YOK' | 'BEKLIYOR' | 'KESILDI'
 
+import type { ParaBirimi } from '../utils/paraBirimi'
+
 export type VekaletUcretiDto = {
   id: string
   tenantId: string
   dosyaId: string
   muvekkilId: string
   toplamTutar: string
+  paraBirimi: ParaBirimi
   aciklama: string | null
   createdById: string
   updatedById: string | null
@@ -26,6 +29,7 @@ export type VekaletTaksitiDto = {
   taksitNo: number
   vadeTarihi: string
   tutar: string
+  paraBirimi: ParaBirimi
   odemeDurumu: VekaletTaksitOdemeDurumuApi
   odemeTarihi: string | null
   aciklama: string | null
@@ -60,6 +64,12 @@ export type VekaletTaksitOdemeDto = {
   taksitId: string
   odemeTarihi: string
   tutar: string
+  kasaTutari: string
+  alacakParaBirimi: ParaBirimi
+  odemeParaBirimi: ParaBirimi
+  kur: string | null
+  kurBazParaBirimi: ParaBirimi | null
+  kurKarsiParaBirimi: ParaBirimi | null
   odemeYontemi: import('./kasa').OdemeYontemiApi
   aciklama: string | null
   makbuzNo: string
@@ -92,6 +102,11 @@ export type VekaletOdemeMakbuzDto = {
   kalanVekalet: string
   makbuzNo: string
   smmKesildiMi: boolean
+  /** Makbuz API yanıtında serialize edilmiş ödeme kaydı */
+  odeme?: Pick<
+    VekaletTaksitOdemeDto,
+    'alacakParaBirimi' | 'odemeParaBirimi' | 'kasaTutari' | 'kur' | 'kurBazParaBirimi' | 'kurKarsiParaBirimi'
+  >
 }
 
 export type DosyaVekaletOzetDto = {
@@ -112,6 +127,7 @@ export type DosyaVekaletResponse = {
 
 export type UpsertVekaletPayload = {
   toplamTutar: number
+  paraBirimi?: ParaBirimi | null
   aciklama?: string | null
 }
 
@@ -142,6 +158,14 @@ export type MarkTaksitSmmPayload = {
   smmAciklama?: string | null
 }
 
+export type CrossPaymentPayloadFields = {
+  odemeParaBirimi?: ParaBirimi | null
+  kasaTutari?: number | null
+  kurKaynagi?: import('./kurlar').KurKaynagiApi | null
+  tcmbKurTarihi?: string | null
+  tcmbReferansKur?: number | string | null
+}
+
 export type CreateVekaletTaksitOdemePayload = {
   tutar: number
   odemeTarihi?: string
@@ -149,7 +173,7 @@ export type CreateVekaletTaksitOdemePayload = {
   aciklama?: string | null
   tahsilatiYapanUserId?: string | null
   tahsilatiYapanPersonelId?: string | null
-}
+} & CrossPaymentPayloadFields
 
 export type UpdateVekaletTaksitOdemePayload = {
   tutar?: number

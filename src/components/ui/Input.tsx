@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes, ReactElement } from 'react'
 import { forwardRef } from 'react'
 import { cn } from '../../lib/cn'
+import { formControlClass, formControlErrorClass, uiType } from '../../lib/uiDensity'
 
 export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
   label?: string
@@ -11,9 +12,7 @@ export type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 
 /**
  * Tarih inputlarında özel placeholder katmanı kullanılmaz.
- * Chrome (tr) boş `type="date"` alanında zaten "gg.aa.yyyy" gösterir;
- * üzerine "Tarih seçin" + text-transparent hack'i bazı cihazlarda
- * çift/bulanık metin (ghosting) üretir.
+ * Chrome (tr) boş `type="date"` alanında zaten "gg.aa.yyyy" gösterir.
  */
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   { label, hint, error, className, id, placeholder, ...rest },
@@ -23,9 +22,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
   const isDate = rest.type === 'date'
 
   return (
-    <div className={cn('w-full', error && 'motion-field-error')}>
+    <div className={cn('w-full min-w-0 max-w-full', error && 'motion-field-error')}>
       {label ? (
-        <label htmlFor={inputId} className="mb-1 block text-xs font-semibold text-ink-muted">
+        <label htmlFor={inputId} className={uiType.label}>
           {label}
         </label>
       ) : null}
@@ -35,16 +34,15 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         aria-invalid={error ? true : undefined}
         placeholder={isDate ? undefined : placeholder}
         className={cn(
-          'h-11 w-full min-w-0 rounded-md border bg-white px-3 text-sm text-ink shadow-inner outline-none transition md:h-9',
-          'border-border placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/15',
-          error && 'border-danger focus:border-danger focus:ring-danger/20',
-          isDate && 'min-w-0 appearance-auto',
+          formControlClass,
+          error && formControlErrorClass,
+          isDate && 'appearance-auto',
           className
         )}
         {...rest}
       />
-      {error ? <p className="mt-1 text-xs text-danger">{error}</p> : null}
-      {!error && hint ? <p className="mt-1 text-xs text-ink-subtle">{hint}</p> : null}
+      {error ? <p className={cn(uiType.hint, 'text-danger')}>{error}</p> : null}
+      {!error && hint ? <p className={uiType.hint}>{hint}</p> : null}
     </div>
   )
 })

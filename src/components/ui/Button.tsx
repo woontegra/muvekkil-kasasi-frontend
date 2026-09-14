@@ -1,5 +1,6 @@
 import type { ButtonHTMLAttributes, ReactElement } from 'react'
 import { cn } from '../../lib/cn'
+import { uiType } from '../../lib/uiDensity'
 
 const variants = {
   primary:
@@ -13,10 +14,17 @@ const variants = {
     'bg-danger text-white border border-danger shadow-sm hover:brightness-95 focus-visible:ring-2 focus-visible:ring-danger/35'
 } as const
 
+/**
+ * sm ≈ 31px — sayfa aksiyonları / filtre Uygula-Sıfırla
+ * md ≈ 32px — form birincil (input ile aynı yükseklik ailesi)
+ * lg ≈ 36px — nadir vurgulu CTA
+ * table ≈ 27px — satır içi Düzeltme/Sil
+ */
 const sizes = {
-  sm: 'min-h-11 h-11 px-3 text-xs rounded-md gap-1.5 md:min-h-0 md:h-8',
-  md: 'min-h-11 h-11 px-3.5 text-sm rounded-md gap-2 md:min-h-0 md:h-9',
-  lg: 'min-h-11 h-11 px-4 text-sm rounded-lg gap-2 md:min-h-0 md:h-10'
+  sm: cn('h-[31px] min-h-[31px] gap-1.5 rounded-md px-2.5', uiType.button),
+  md: cn('h-8 min-h-8 gap-1.5 rounded-md px-3', uiType.button),
+  lg: cn('h-9 min-h-9 gap-2 rounded-md px-3.5 text-[12px] font-semibold'),
+  table: cn('h-[27px] min-h-[27px] gap-1 rounded-md px-1.5', uiType.buttonTable)
 } as const
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -44,7 +52,7 @@ export function Button({
       disabled={isDisabled}
       aria-busy={loading || undefined}
       className={cn(
-        'inline-flex items-center justify-center font-semibold select-none',
+        'inline-flex items-center justify-center select-none',
         'transition-[transform,background-color,box-shadow,opacity,filter] duration-150 ease-out',
         'hover:-translate-y-px active:translate-y-0 active:scale-[0.98]',
         'motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100',
@@ -58,7 +66,7 @@ export function Button({
       {loading ? (
         <>
           <span
-            className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent"
+            className="h-3 w-3 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent"
             aria-hidden
           />
           <span>{children}</span>

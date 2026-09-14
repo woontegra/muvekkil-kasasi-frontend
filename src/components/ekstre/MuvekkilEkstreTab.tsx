@@ -5,7 +5,8 @@ import { getMuvekkilEkstre } from '../../api/muvekkilEkstre'
 import { downloadMuvekkilEkstrePdf } from '../../lib/muvekkilEkstrePdf'
 import { AnimatedNumber, Stagger, StaggerItem } from '../../motion'
 import { useToast } from '../../toast'
-import { formatCurrencyTR, formatDateTR } from '../../utils/formatters'
+import { MultiCurrencyTotals } from '../paraBirimi/MultiCurrencyTotals'
+import { formatDateTR, formatMoney, resolveParaBirimi } from '../../utils/formatters'
 import { AlertBox, Button, Input } from '../ui'
 import { ReceiptModal } from '../receipt/ReceiptModal'
 import { MuvekkilEkstrePrintView } from './MuvekkilEkstrePrintView'
@@ -131,14 +132,17 @@ export function MuvekkilEkstreTab(props: Props): ReactElement {
         <p className="text-sm text-ink-muted">Müvekkil ekstresi hazırlanıyor…</p>
       ) : ekstre && v && a ? (
         <>
+          {(() => {
+            const vekPb = resolveParaBirimi(v.paraBirimi)
+            return (
           <Stagger className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             <StaggerItem>
               <div className="rounded-lg border border-border bg-surface-muted/30 px-3 py-2">
-                <p className="text-[11px] font-semibold text-ink-muted">Kararlaştırılan vekalet</p>
+                <p className="text-[11px] font-semibold text-ink-muted">Kararlaştırılan vekalet ({vekPb})</p>
                 <p className="text-sm font-bold tabular-nums text-ink">
                   <AnimatedNumber
                     value={Number(v.kararlastirilanToplam)}
-                    format={(n) => formatCurrencyTR(n)}
+                    format={(n) => formatMoney(n, vekPb)}
                   />
                 </p>
               </div>
@@ -149,7 +153,7 @@ export function MuvekkilEkstreTab(props: Props): ReactElement {
                 <p className="text-sm font-bold tabular-nums text-ink">
                   <AnimatedNumber
                     value={Number(v.tahsilEdilenToplam)}
-                    format={(n) => formatCurrencyTR(n)}
+                    format={(n) => formatMoney(n, vekPb)}
                   />
                 </p>
               </div>
@@ -158,29 +162,41 @@ export function MuvekkilEkstreTab(props: Props): ReactElement {
               <div className="rounded-lg border border-border bg-surface-muted/30 px-3 py-2">
                 <p className="text-[11px] font-semibold text-ink-muted">Kalan vekalet</p>
                 <p className="text-sm font-bold tabular-nums text-ink">
-                  <AnimatedNumber value={Number(v.kalanToplam)} format={(n) => formatCurrencyTR(n)} />
+                  <AnimatedNumber value={Number(v.kalanToplam)} format={(n) => formatMoney(n, vekPb)} />
                 </p>
               </div>
             </StaggerItem>
             <StaggerItem>
               <div className="rounded-lg border border-border bg-surface-muted/30 px-3 py-2">
-                <p className="text-[11px] font-semibold text-ink-muted">Avans bakiyesi</p>
+                <p className="text-[11px] font-semibold text-ink-muted">Avans bakiyesi (TRY)</p>
                 <p className="text-sm font-bold tabular-nums text-ink">
-                  <AnimatedNumber value={Number(a.guncelBakiye)} format={(n) => formatCurrencyTR(n)} />
+                  <AnimatedNumber value={Number(a.guncelBakiye)} format={(n) => formatMoney(n, 'TRY')} />
                 </p>
               </div>
             </StaggerItem>
           </Stagger>
+            )
+          })()}
 
           {ofisGelir ? (
             <div className="rounded-lg border border-border bg-surface-muted/20 px-3 py-2">
               <p className="text-[11px] font-semibold text-ink-muted">Dosya dışı ofis geliri (bilgi)</p>
-              <p className="text-sm font-bold tabular-nums text-ink">
-                {formatCurrencyTR(Number(ofisGelir.toplam))}
-                <span className="ml-2 text-xs font-normal text-ink-muted">
-                  · {ofisGelir.hareketler.length} kayıt — vekalet/masraf toplamlarına dahil değildir
+              <div className="text-sm font-bold tabular-nums text-ink">
+                <MultiCurrencyTotals
+                  amounts={
+                    ofisGelir.byCurrency
+                      ? {
+                          TRY: ofisGelir.byCurrency.TRY?.toplam,
+                          USD: ofisGelir.byCurrency.USD?.toplam,
+                          EUR: ofisGelir.byCurrency.EUR?.toplam
+                        }
+                      : { TRY: ofisGelir.toplam }
+                  }
+                />
+                <span className="mt-1 block text-xs font-normal text-ink-muted">
+                  {ofisGelir.hareketler.length} kayıt — vekalet/masraf toplamlarına dahil değildir
                 </span>
-              </p>
+              </div>
             </div>
           ) : null}
 

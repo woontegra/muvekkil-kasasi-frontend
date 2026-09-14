@@ -166,8 +166,8 @@ export function AdminTenantsPage(): ReactElement {
               />
             </div>
           ) : (
-            <div className="w-full max-w-full overflow-x-auto">
-              <Table className="min-w-[1280px]">
+            <div className="w-full max-w-full min-w-0">
+              <Table className="w-full">
                 <THead>
                   <TR className="bg-slate-50/80">
                     <TH>Büro adı</TH>

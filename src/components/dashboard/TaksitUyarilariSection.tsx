@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import { APP_BASE } from '../../config/appPaths'
+import { cn } from '../../lib/cn'
 import { MobileRecordCard, ResponsiveDataView } from '../responsive'
 import {
   Badge,
@@ -15,10 +16,11 @@ import {
   TH,
   THead,
   TR,
+  tableActionColClass,
   tableActionLinkAccentClass
 } from '../ui'
 import type { TaksitUyariListeSatir, TaksitUyarilariResponse } from '../../types/taksitUyari'
-import { formatCurrencyTR, formatDateTR } from '../../utils/formatters'
+import { formatDateTR, formatMoney, resolveParaBirimi } from '../../utils/formatters'
 
 function rowHref(row: TaksitUyariListeSatir): string {
   if (row.muvekkilId && row.dosyaId) {
@@ -115,7 +117,7 @@ export function TaksitUyarilariSection(props: TaksitUyarilariSectionProps): Reac
               <EmptyState title="Henüz vadesi geçmiş taksit yok" description="Açık taksitler vadesinde veya gelecekte." />
             }
             table={
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <div className="min-w-0 max-w-full">
                 <Table className="text-xs">
                   <THead>
                     <TR>
@@ -124,35 +126,39 @@ export function TaksitUyarilariSection(props: TaksitUyarilariSectionProps): Reac
                       <TH className="text-center">Taksit</TH>
                       <TH className="text-center">Vade</TH>
                       <TH className="text-right">Tutar</TH>
-                      <TH className="text-right">Ödenen</TH>
+                      <TH className="hidden text-right xl:table-cell">Ödenen</TH>
                       <TH className="text-right">Kalan</TH>
                       <TH className="text-center">Durum</TH>
-                      <TH className="w-[1%] text-center">İşlem</TH>
+                      <TH className={cn(tableActionColClass, 'text-center')}>İşlem</TH>
                     </TR>
                   </THead>
                   <TBody>
                     {liste.map((row) => (
                       <TR key={`${row.kaynak}-${row.id}`}>
-                        <TD className="max-w-[8rem] truncate font-medium" title={row.muvekkilAd}>
-                          {row.muvekkilAd}
+                        <TD className="max-w-0">
+                          <span className="block truncate font-medium" title={row.muvekkilAd}>
+                            {row.muvekkilAd}
+                          </span>
                         </TD>
-                        <TD className="max-w-[10rem] truncate text-ink-muted" title={row.dosyaBaslik}>
-                          {row.dosyaBaslik}
-                          {row.kaynak === 'ICRA' ? (
-                            <span className="ml-1 text-[10px] text-ink-subtle">(İcra)</span>
-                          ) : null}
+                        <TD className="max-w-0">
+                          <span className="block truncate text-ink-muted" title={row.dosyaBaslik}>
+                            {row.dosyaBaslik}
+                            {row.kaynak === 'ICRA' ? (
+                              <span className="ml-1 text-[10px] text-ink-subtle">(İcra)</span>
+                            ) : null}
+                          </span>
                         </TD>
                         <TD className="text-center tabular-nums">{row.taksitEtiket}</TD>
-                        <TD className="text-center tabular-nums">{formatDateTR(row.vadeTarihi)}</TD>
-                        <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.tutar))}</TD>
-                        <TD className="text-right tabular-nums">{formatCurrencyTR(Number(row.odenen))}</TD>
-                        <TD className="text-right font-semibold tabular-nums">{formatCurrencyTR(Number(row.kalan))}</TD>
+                        <TD className="whitespace-nowrap text-center tabular-nums">{formatDateTR(row.vadeTarihi)}</TD>
+                        <TD className="whitespace-nowrap text-right tabular-nums">{formatMoney(Number(row.tutar), resolveParaBirimi(row.paraBirimi))}</TD>
+                        <TD className="hidden whitespace-nowrap text-right tabular-nums xl:table-cell">{formatMoney(Number(row.odenen), resolveParaBirimi(row.paraBirimi))}</TD>
+                        <TD className="whitespace-nowrap text-right font-semibold tabular-nums">{formatMoney(Number(row.kalan), resolveParaBirimi(row.paraBirimi))}</TD>
                         <TD className="text-center">
                           <Badge variant="danger" className="!normal-case">
                             Gecikti
                           </Badge>
                         </TD>
-                        <TD className="text-center">
+                        <TD className={cn(tableActionColClass, 'text-center')}>
                           <Link
                             to={rowHref(row)}
                             className={tableActionLinkAccentClass}
@@ -188,9 +194,21 @@ export function TaksitUyarilariSection(props: TaksitUyarilariSectionProps): Reac
                     fields={[
                       { label: 'Taksit', value: row.taksitEtiket },
                       { label: 'Vade', value: formatDateTR(row.vadeTarihi) },
-                      { label: 'Tutar', value: formatCurrencyTR(Number(row.tutar)), numeric: true },
-                      { label: 'Ödenen', value: formatCurrencyTR(Number(row.odenen)), numeric: true },
-                      { label: 'Kalan', value: formatCurrencyTR(Number(row.kalan)), numeric: true }
+                      {
+                        label: 'Tutar',
+                        value: formatMoney(Number(row.tutar), resolveParaBirimi(row.paraBirimi)),
+                        numeric: true
+                      },
+                      {
+                        label: 'Ödenen',
+                        value: formatMoney(Number(row.odenen), resolveParaBirimi(row.paraBirimi)),
+                        numeric: true
+                      },
+                      {
+                        label: 'Kalan',
+                        value: formatMoney(Number(row.kalan), resolveParaBirimi(row.paraBirimi)),
+                        numeric: true
+                      }
                     ]}
                     actions={
                       <Link

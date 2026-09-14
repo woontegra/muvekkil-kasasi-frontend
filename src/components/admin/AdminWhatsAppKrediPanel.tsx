@@ -380,7 +380,7 @@ export function AdminWhatsAppKrediPanel(props: Props): ReactElement | null {
             ) : hareketler.length === 0 ? (
               <p className="text-sm text-slate-500">Henüz hareket yok.</p>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="min-w-0 max-w-full">
                 <Table>
                   <THead>
                     <TR>

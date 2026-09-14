@@ -1,4 +1,4 @@
-import { parsePosTutar } from '../utils/formatters'
+import { parsePosTutar, type ParaBirimi } from '../utils/formatters'
 import type {
   CreateIcraTahsilatPayload,
   IcraAlacakTuruApi,
@@ -26,6 +26,9 @@ export type CreateIcraFormInput = {
   /** Oturum kullanıcı id — yalnızca “giriş yapılmış mı” kontrolü için; payload personel alanına konmaz. */
   currentUserId: string | null
   aciklama: string
+  paraBirimi: ParaBirimi
+  odemeParaBirimi: ParaBirimi
+  kasaTutariRaw: string
 }
 
 export type CreateIcraFormIssue = {
@@ -126,6 +129,7 @@ export function buildCreateIcraTahsilatPayload(
     muvekkilId: input.muvekkilId || null,
     dosyaId: input.dosyaId || null,
     toplamTutar: toplam,
+    paraBirimi: input.paraBirimi,
     tahsilatTipi: tip,
     pesinatVar: pesinat,
     pesinatTutar: pesinat ? parsePosTutar(input.pesinatTutarRaw)! : 0,
@@ -142,6 +146,17 @@ export function buildCreateIcraTahsilatPayload(
   }
   if (pesin || pesinat) {
     payload.tahsilatTarihi = dateInputToIso(input.tahsilatTarihi)
+    if (input.odemeParaBirimi !== input.paraBirimi) {
+      const kasa = parsePosTutar(input.kasaTutariRaw)
+      if (kasa == null) {
+        return {
+          ok: false,
+          issues: [{ field: 'kasaTutari', message: 'Peşin/peşinat tahsilatında farklı PB için kasa tutarı zorunludur.' }]
+        }
+      }
+      payload.odemeParaBirimi = input.odemeParaBirimi
+      payload.kasaTutari = kasa
+    }
   }
 
   return { ok: true, payload }

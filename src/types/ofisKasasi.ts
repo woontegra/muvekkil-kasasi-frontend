@@ -1,5 +1,12 @@
+import type { ParaBirimi } from '../utils/paraBirimi'
+
 /** Backend `OfisKasaIslemTipi` ile uyumlu */
-export type OfisKasaIslemTipiApi = 'GELIR' | 'GIDER' | 'DUZELTME'
+export type OfisKasaIslemTipiApi =
+  | 'GELIR'
+  | 'GIDER'
+  | 'DUZELTME'
+  | 'DOVIZ_CIKIS'
+  | 'DOVIZ_GIRIS'
 
 /** Backend `OfisKasaOnayDurumu` */
 export type OfisKasaOnayDurumuApi = 'ONAYSIZ' | 'ONAYLI' | 'REDDEDILDI'
@@ -51,6 +58,11 @@ export type OfisKasaHareketiDto = {
   ozelKategoriAdi: string | null
   aciklama: string | null
   tutar: string
+  paraBirimi: ParaBirimi
+  dovizDonusumId: string | null
+  kur: string | null
+  kurBazParaBirimi: ParaBirimi | null
+  kurKarsiParaBirimi: ParaBirimi | null
   odemeYontemi: OfisKasaOdemeYontemiApi
   belgeNo: string
   onayDurumu: OfisKasaOnayDurumuApi
@@ -66,13 +78,29 @@ export type OfisKasaHareketiDto = {
   muvekkilId: string | null
   muvekkilAdiSnapshot: string | null
   muvekkil: OfisKasaMuvekkilSnapshotDto | null
+  /** Bağlı tahsilat kaynağı — null ise manuel gelir/gider. */
+  kaynakTipi?: string | null
+  kaynakId?: string | null
   createdById: string
   updatedById: string | null
+  deletedAt?: string | null
+  deletedById?: string | null
+  deleteReason?: string | null
   createdAt: string
   updatedAt: string
 }
 
+export type OfisKasaCurrencyOzetDto = {
+  toplamGelir: string
+  toplamGider: string
+  toplamDuzeltme: string
+  kasaBakiyesi: string
+  buAyGelir: string
+  buAyGider: string
+}
+
 export type OfisKasaOzetDto = {
+  /** Legacy TRY toplamları */
   toplamGelir: string
   toplamGider: string
   toplamDuzeltme: string
@@ -80,6 +108,8 @@ export type OfisKasaOzetDto = {
   onaysizIslemSayisi: number
   buAyGelir: string
   buAyGider: string
+  byCurrency: Record<ParaBirimi, OfisKasaCurrencyOzetDto>
+  bakiyeler: Record<ParaBirimi, string>
 }
 
 export type OfisKasaHareketleriListResponse = {
@@ -100,12 +130,20 @@ export type OfisKasaHareketOneResponse = {
   ofisKasaHareketi: OfisKasaHareketiDto
 }
 
+export type OfisKasaDovizDonusumResponse = {
+  ok: true
+  dovizDonusumId: string
+  cikis: OfisKasaHareketiDto
+  giris: OfisKasaHareketiDto
+}
+
 export type ListOfisKasaHareketleriParams = {
   q?: string
   muvekkilId?: string
   islemTipi?: OfisKasaIslemTipiApi
   onayDurumu?: OfisKasaOnayDurumuApi
   kategori?: string
+  paraBirimi?: ParaBirimi
   startDate?: string
   endDate?: string
   page?: number
@@ -120,6 +158,7 @@ export type CreateOfisKasaHareketiPayload = {
   aciklama?: string | null
   tutar: number
   odemeYontemi: OfisKasaOdemeYontemiApi
+  paraBirimi?: ParaBirimi | null
   /** Yalnızca GELIR — prim hesabı. */
   tahsilatiYapanUserId?: string | null
   tahsilatiYapanPersonelId?: string | null
@@ -132,4 +171,18 @@ export type CreateOfisKasaDuzeltmePayload = {
   tutar: number
   aciklama: string
   odemeYontemi: OfisKasaOdemeYontemiApi
+  paraBirimi?: ParaBirimi | null
+}
+
+export type CreateOfisKasaDovizDonusumPayload = {
+  tarih: string
+  kaynakParaBirimi: ParaBirimi
+  hedefParaBirimi: ParaBirimi
+  kaynakTutar: number
+  hedefTutar: number
+  odemeYontemi: OfisKasaOdemeYontemiApi
+  aciklama?: string | null
+  kurKaynagi?: import('./kurlar').KurKaynagiApi | null
+  tcmbKurTarihi?: string | null
+  tcmbReferansKur?: number | string | null
 }
