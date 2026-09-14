@@ -545,6 +545,7 @@ export function TahsilatMerkeziPage(): ReactElement {
         <VekaletTaksitOdemeModal
           key={odemeRow.id}
           taksit={odemeRow.taksit as VekaletTaksitiDto}
+          dosyaId={odemeRow.dosyaId}
           onClose={() => {
             odemeMu.reset()
             setOdemeRow(null)
@@ -552,6 +553,7 @@ export function TahsilatMerkeziPage(): ReactElement {
           loading={odemeMu.isPending}
           error={resolveOdemeApiError(odemeMu.error)}
           onSubmit={(body) => odemeMu.mutate({ id: odemeRow.id, body })}
+          onStaleSummary={() => invalidateAll(odemeRow.dosyaId)}
         />
       ) : null}
 

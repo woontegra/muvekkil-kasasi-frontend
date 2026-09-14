@@ -100,6 +100,29 @@ export function formatKurOzetiWithSymbols(
   return `1 ${baz} = ${kurStr} ${karsi}`
 }
 
+/** API fixed-2 string → ürün para gösterimi (finansal hesap yok). */
+export function formatMoneyFixed2(fixed2: string, currency: ParaBirimi = 'TRY'): string {
+  const s = String(fixed2 ?? '').trim()
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return '—'
+  const neg = s.startsWith('-')
+  const body = neg ? s.slice(1) : s
+  const [intRaw, fracRaw = '00'] = body.split('.')
+  const frac = `${fracRaw}00`.slice(0, 2)
+  const intFormatted = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  const digits = `${intFormatted},${frac}`
+  const sign = neg ? '-' : ''
+  if (currency === 'TRY') return `${sign}${digits}${MONEY_NBSP}₺`
+  if (currency === 'USD') return `${sign}$${digits}`
+  return `${sign}€${digits}`
+}
+
+export function moneyFixed2NonZero(fixed2: string | null | undefined): boolean {
+  if (fixed2 == null || fixed2 === '') return false
+  const s = String(fixed2).trim()
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return false
+  return !/^[-]?0+(?:\.0+)?$/.test(s)
+}
+
 export type CurrencyBucket<T> = Record<ParaBirimi, T>
 
 export function emptyCurrencyBucket<T>(fill: T): CurrencyBucket<T> {

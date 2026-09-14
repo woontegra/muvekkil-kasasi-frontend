@@ -6,7 +6,9 @@ import type { ReactElement, ReactNode } from 'react'
 import { TcmbHeaderRatesMobile } from './TcmbHeaderRates'
 import { getTcmbRates, tcmbRatesQueryKey } from '../../api/kurlar'
 import type { TcmbRatesAvailableResponse } from '../../types/kurlar'
+import { istanbulTodayYmd } from '../../utils/tcmbFormat'
 import { ToastProvider } from '../../toast'
+import { clearTcmbRefreshInflightForTests } from '../../lib/tcmbRefresh'
 
 vi.mock('../../api/kurlar', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../api/kurlar')>()
@@ -18,19 +20,17 @@ vi.mock('../../api/kurlar', async (importOriginal) => {
 
 const mockedGet = vi.mocked(getTcmbRates)
 
-function todayYmd(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 function sampleRates(overrides?: Partial<TcmbRatesAvailableResponse>): TcmbRatesAvailableResponse {
+  const today = istanbulTodayYmd()
   return {
     ok: true,
     available: true,
-    istenilenTarih: todayYmd(),
-    bulunanTcmbKurTarihi: todayYmd(),
-    effectiveDate: todayYmd(),
+    istenilenTarih: today,
+    bulunanTcmbKurTarihi: today,
+    effectiveDate: today,
     fetchedAt: new Date().toISOString(),
+    lastCheckedAt: new Date().toISOString(),
+    fromCache: false,
     source: 'TCMB',
     sourceLabel: 'TCMB Döviz Alış',
     stale: false,
@@ -59,6 +59,7 @@ function wrapper(qc: QueryClient) {
 afterEach(() => {
   cleanup()
   mockedGet.mockReset()
+  clearTcmbRefreshInflightForTests()
 })
 
 describe('TcmbHeaderRates refresh button', () => {
@@ -68,7 +69,7 @@ describe('TcmbHeaderRates refresh button', () => {
 
   it('kur bilgisinin solunda yenile butonu gösterir', async () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const date = todayYmd()
+    const date = istanbulTodayYmd()
     qc.setQueryData(tcmbRatesQueryKey(date), sampleRates())
 
     render(<TcmbHeaderRatesMobile />, { wrapper: wrapper(qc) })
@@ -85,8 +86,15 @@ describe('TcmbHeaderRates refresh button', () => {
   it('tıklamada forceRefresh gönderir ve disabled olur', async () => {
     const user = userEvent.setup()
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-    const date = todayYmd()
+    const date = istanbulTodayYmd()
     qc.setQueryData(tcmbRatesQueryKey(date), sampleRates())
+
+    render(<TcmbHeaderRatesMobile />, { wrapper: wrapper(qc) })
+    const btn = await screen.findByRole('button', { name: 'TCMB kurlarını yenile' })
+
+    // Mount refetchOnMount: 'always' tamamlandıktan sonra manuel yenilemeyi geciktir.
+    await waitFor(() => expect(mockedGet).toHaveBeenCalled())
+    mockedGet.mockClear()
 
     let resolveFetch!: (v: TcmbRatesAvailableResponse) => void
     mockedGet.mockImplementationOnce(
@@ -96,8 +104,6 @@ describe('TcmbHeaderRates refresh button', () => {
         })
     )
 
-    render(<TcmbHeaderRatesMobile />, { wrapper: wrapper(qc) })
-    const btn = await screen.findByRole('button', { name: 'TCMB kurlarını yenile' })
     await user.click(btn)
 
     expect(btn).toBeDisabled()

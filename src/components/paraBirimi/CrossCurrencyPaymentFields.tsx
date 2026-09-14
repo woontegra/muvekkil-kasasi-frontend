@@ -20,7 +20,7 @@ type Props = {
   onKasaTutariChange: (value: string) => void
   odemeTarihi: string
   onKurMetaChange?: (meta: CrossPaymentKurMeta) => void
-  maxMahsup?: number
+  maxMahsup?: number | string
   mahsupLabel?: string
   disabled?: boolean
 }

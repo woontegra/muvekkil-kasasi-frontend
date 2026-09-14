@@ -8,6 +8,7 @@ export type AyarlarSectionId =
   | 'whatsapp'
   | 'whatsapp-sablonlari'
   | 'kullanici'
+  | 'gelir-gider-kalemleri'
   | 'veri'
   | 'denetim'
   | 'lisans'
@@ -63,6 +64,7 @@ export function buildAyarlarNavItems(opts: AyarlarAccess): AyarlarNavItem[] {
   items.push({ id: 'kullanici', label: 'Kullanıcı & Güvenlik' })
 
   if (opts.isBuroSahibi) {
+    items.push({ id: 'gelir-gider-kalemleri', label: 'Gelir ve Gider Kalemleri' })
     items.push({ id: 'veri', label: 'Veri Aktarımı' })
   }
 
@@ -81,7 +83,7 @@ export function buildAyarlarNavItems(opts: AyarlarAccess): AyarlarNavItem[] {
 export function isAyarlarSectionAllowed(id: AyarlarSectionId, opts: AyarlarAccess): boolean {
   if (id === 'hesap-donemi') return opts.isYonetici
   if (id === 'whatsapp' || id === 'whatsapp-sablonlari') return opts.canViewWhatsApp
-  if (id === 'veri') return opts.isBuroSahibi
+  if (id === 'gelir-gider-kalemleri' || id === 'veri') return opts.isBuroSahibi
   if (id === 'denetim') return opts.canViewAudit
   return true
 }

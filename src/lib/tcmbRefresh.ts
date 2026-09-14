@@ -7,12 +7,13 @@ import {
   tcmbRatesQueryKey
 } from '../api/kurlar'
 import type { TcmbRatesAvailableResponse, TcmbRatesResponse } from '../types/kurlar'
+import { istanbulTodayYmd } from '../utils/tcmbFormat'
 
-export const TCMB_REFRESH_UPDATED_MESSAGE = 'TCMB kurları güncellendi.'
+export const TCMB_REFRESH_UPDATED_MESSAGE = 'TCMB kuru güncellendi.'
 export const TCMB_REFRESH_UNCHANGED_MESSAGE =
-  'TCMB kuru kontrol edildi, yayımlanan kurda değişiklik yok.'
+  'TCMB kuru kontrol edildi, yeni kur yayımlanmamış.'
 export const TCMB_REFRESH_FAILED_MESSAGE =
-  'TCMB kurları şu anda yenilenemedi. Son alınan kur gösterilmeye devam ediyor.'
+  'TCMB’ye şu anda ulaşılamadı; son yayımlanan kur gösteriliyor.'
 
 export type TcmbRefreshOutcome =
   | { status: 'updated'; message: string; data: TcmbRatesAvailableResponse }
@@ -28,21 +29,12 @@ function fingerprint(snap: TcmbRatesAvailableResponse): string {
   ].join('|')
 }
 
-function todayYmd(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
+const inflightByDate = new Map<string, Promise<TcmbRefreshOutcome>>()
 
-/**
- * Manuel yenileme: backend forceRefresh ile TCMB kaynağını sorgular,
- * üst bar + yaklasik-try sorgularını invalidate eder.
- * Hata/stale’de önceki React Query verisi korunur.
- */
-export async function refreshTcmbRatesManually(
+async function refreshTcmbRatesManuallyOnce(
   queryClient: QueryClient,
-  opts?: { date?: string }
+  date: string
 ): Promise<TcmbRefreshOutcome> {
-  const date = opts?.date ?? todayYmd()
   const key = tcmbRatesQueryKey(date)
   const previous = queryClient.getQueryData<TcmbRatesResponse>(key)
 
@@ -70,4 +62,30 @@ export async function refreshTcmbRatesManually(
   } catch {
     return { status: 'failed', message: TCMB_REFRESH_FAILED_MESSAGE }
   }
+}
+
+/**
+ * Manuel yenileme: backend forceRefresh ile TCMB kaynağını sorgular,
+ * üst bar + yaklasik-try sorgularını invalidate eder.
+ * Hata/stale’de önceki React Query verisi korunur.
+ * Art arda tıklamalarda tek uçuş (dedupe).
+ */
+export async function refreshTcmbRatesManually(
+  queryClient: QueryClient,
+  opts?: { date?: string }
+): Promise<TcmbRefreshOutcome> {
+  const date = opts?.date ?? istanbulTodayYmd()
+  const existing = inflightByDate.get(date)
+  if (existing) return existing
+
+  const pending = refreshTcmbRatesManuallyOnce(queryClient, date).finally(() => {
+    inflightByDate.delete(date)
+  })
+  inflightByDate.set(date, pending)
+  return pending
+}
+
+/** Testler için uçuş haritasını temizle. */
+export function clearTcmbRefreshInflightForTests(): void {
+  inflightByDate.clear()
 }

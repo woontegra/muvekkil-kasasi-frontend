@@ -18,7 +18,7 @@ function RateChip(props: { label: string; value: string }): ReactElement {
   )
 }
 
-function useTcmbManualRefresh(): {
+function useTcmbManualRefresh(apiLastCheckedAt: string | null): {
   refreshing: boolean
   lastCheckedAt: string | null
   refresh: () => void
@@ -26,8 +26,12 @@ function useTcmbManualRefresh(): {
   const queryClient = useQueryClient()
   const toast = useToast()
   const [refreshing, setRefreshing] = useState(false)
-  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(null)
+  const [lastCheckedAt, setLastCheckedAt] = useState<string | null>(apiLastCheckedAt)
   const inFlight = useRef(false)
+
+  useEffect(() => {
+    if (apiLastCheckedAt) setLastCheckedAt(apiLastCheckedAt)
+  }, [apiLastCheckedAt])
 
   const refresh = useCallback((): void => {
     if (inFlight.current) return
@@ -36,10 +40,12 @@ function useTcmbManualRefresh(): {
     void (async () => {
       try {
         const outcome = await refreshTcmbRatesManually(queryClient)
-        setLastCheckedAt(new Date().toISOString())
-        if (outcome.status === 'updated') toast.success(outcome.message)
-        else if (outcome.status === 'unchanged') toast.success(outcome.message)
-        else toast.warning(outcome.message)
+        if (outcome.status === 'updated' || outcome.status === 'unchanged') {
+          setLastCheckedAt(outcome.data.lastCheckedAt ?? outcome.data.fetchedAt)
+          toast.success(outcome.message)
+        } else {
+          toast.warning(outcome.message)
+        }
       } finally {
         inFlight.current = false
         setRefreshing(false)
@@ -84,7 +90,11 @@ function RefreshRatesButton(props: {
 
 export function TcmbHeaderRates(): ReactElement {
   const query = useTcmbHeaderRates()
-  const { refreshing, lastCheckedAt, refresh } = useTcmbManualRefresh()
+  const data = query.data
+  const available = data?.available === true
+  const snap = available ? (data as TcmbRatesAvailableResponse) : null
+  const apiLastChecked = snap?.lastCheckedAt ?? snap?.fetchedAt ?? null
+  const { refreshing, lastCheckedAt, refresh } = useTcmbManualRefresh(apiLastChecked)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -96,10 +106,6 @@ export function TcmbHeaderRates(): ReactElement {
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
-
-  const data = query.data
-  const available = data?.available === true
-  const snap = available ? (data as TcmbRatesAvailableResponse) : null
 
   if (query.isLoading && !snap) {
     return (
@@ -130,6 +136,7 @@ export function TcmbHeaderRates(): ReactElement {
   const usdLabel = formatTcmbRateDisplay(snap.usdDovizAlis)
   const eurLabel = formatTcmbRateDisplay(snap.eurDovizAlis)
   const dateLabel = formatDateTR(snap.effectiveDate)
+  const checkedLabel = lastCheckedAt ? formatDateTimeTR(lastCheckedAt) : null
 
   return (
     <div ref={rootRef} className="relative hidden shrink-0 md:block">
@@ -141,6 +148,7 @@ export function TcmbHeaderRates(): ReactElement {
         />
         <button
           type="button"
+          title={checkedLabel ? `Son kontrol: ${checkedLabel}` : undefined}
           className="flex max-w-full flex-col items-end gap-0.5 rounded-md border border-transparent px-1.5 py-1 text-right transition-colors hover:border-border hover:bg-surface-muted/60 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 lg:items-center lg:gap-x-3 lg:py-0.5 xl:flex-row"
           aria-expanded={open}
           aria-haspopup="dialog"
@@ -156,7 +164,11 @@ export function TcmbHeaderRates(): ReactElement {
           </span>
           {snap.stale ? (
             <span className="hidden text-[10px] font-medium text-amber-800 lg:inline">
-              Son alınan kur
+              Son yayımlanan kur
+            </span>
+          ) : snap.fallbackKullanildi ? (
+            <span className="hidden text-[10px] font-medium text-ink-muted lg:inline xl:hidden">
+              TCMB’nin son yayımladığı kur
             </span>
           ) : null}
         </button>
@@ -168,7 +180,7 @@ export function TcmbHeaderRates(): ReactElement {
           aria-label="TCMB referans kurları"
           className="absolute right-0 top-full z-40 mt-1 w-[min(100vw-1.5rem,280px)] rounded-lg border border-border bg-panel p-3 shadow-lg"
         >
-          <TcmbRatesPopoverContent data={snap} />
+          <TcmbRatesPopoverContent data={snap} lastCheckedAt={lastCheckedAt} />
         </div>
       ) : null}
     </div>
@@ -178,7 +190,11 @@ export function TcmbHeaderRates(): ReactElement {
 /** Mobil üst bar — dar ekranda tek düğme + yenile. */
 export function TcmbHeaderRatesMobile(): ReactElement {
   const query = useTcmbHeaderRates()
-  const { refreshing, lastCheckedAt, refresh } = useTcmbManualRefresh()
+  const data = query.data
+  const available = data?.available === true
+  const snap = available ? (data as TcmbRatesAvailableResponse) : null
+  const apiLastChecked = snap?.lastCheckedAt ?? snap?.fetchedAt ?? null
+  const { refreshing, lastCheckedAt, refresh } = useTcmbManualRefresh(apiLastChecked)
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
@@ -190,10 +206,6 @@ export function TcmbHeaderRatesMobile(): ReactElement {
     document.addEventListener('mousedown', onDoc)
     return () => document.removeEventListener('mousedown', onDoc)
   }, [open])
-
-  const data = query.data
-  const available = data?.available === true
-  const snap = available ? (data as TcmbRatesAvailableResponse) : null
 
   if (query.isLoading && !snap) {
     return (
@@ -240,7 +252,7 @@ export function TcmbHeaderRatesMobile(): ReactElement {
       </button>
       {open ? (
         <div className="absolute right-0 top-full z-40 mt-1 w-[min(100vw-1.5rem,280px)] rounded-lg border border-border bg-panel p-3 shadow-lg">
-          <TcmbRatesPopoverContent data={snap} />
+          <TcmbRatesPopoverContent data={snap} lastCheckedAt={lastCheckedAt} />
         </div>
       ) : null}
     </div>

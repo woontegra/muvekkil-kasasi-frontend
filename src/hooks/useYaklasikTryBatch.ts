@@ -37,6 +37,9 @@ export function useYaklasikTryBatch(
     queryFn: () => postTcmbYaklasikTry({ paraBirimi, items: stableItems }),
     enabled: enabled && needs && stableItems.length > 0,
     staleTime: TCMB_QUERY_STALE_MS,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 1
   })
 }

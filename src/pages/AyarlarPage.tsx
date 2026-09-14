@@ -12,6 +12,7 @@ import { SistemBilgisiPanel } from '../components/ayarlar/panels/SistemBilgisiPa
 import { WhatsappSection } from '../components/ayarlar/WhatsappSection'
 import { WhatsappSablonlariPanel } from '../components/ayarlar/panels/WhatsappSablonlariPanel'
 import { VeriAktarimiPanel } from '../components/ayarlar/panels/VeriVeDenetimPanels'
+import { GelirGiderKalemleriPanel } from '../components/ayarlar/panels/GelirGiderKalemleriPanel'
 import {
   buildAyarlarNavItems,
   firstAllowedSection,
@@ -29,6 +30,7 @@ function parseSection(raw: string | null): AyarlarSectionId | null {
     raw === 'whatsapp' ||
     raw === 'whatsapp-sablonlari' ||
     raw === 'kullanici' ||
+    raw === 'gelir-gider-kalemleri' ||
     raw === 'veri' ||
     raw === 'denetim' ||
     raw === 'lisans' ||
@@ -85,6 +87,9 @@ export function AyarlarPage(): ReactElement {
           {activeSection === 'whatsapp' ? <WhatsappSection /> : null}
           {activeSection === 'whatsapp-sablonlari' ? <WhatsappSablonlariPanel /> : null}
           {activeSection === 'kullanici' ? <KullaniciGuvenlikPanel /> : null}
+          {activeSection === 'gelir-gider-kalemleri' && isBuroSahibi ? (
+            <GelirGiderKalemleriPanel />
+          ) : null}
           {activeSection === 'veri' && isBuroSahibi ? <VeriAktarimiPanel /> : null}
           {activeSection === 'denetim' && canViewAudit ? (
             <DenetimKayitlariPanel canViewAudit={canViewAudit} onOpenAudit={() => setAuditModalOpen(true)} />

@@ -82,6 +82,9 @@ export type CreateKasaHareketiPayload = {
   tarih: string
   tutar: number
   aciklama?: string | null
+  /** MASRAF — tenant gider kalemi (zorunlu). */
+  kalemId?: string | null
+  /** @deprecated sunucu kalem snapshot yazar */
   masrafTuru?: string | null
   ozelMasrafAdi?: string | null
   /** Yalnızca MASRAF; zorunlu. */

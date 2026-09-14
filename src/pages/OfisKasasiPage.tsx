@@ -70,8 +70,15 @@ import { previewDovizDonusumKur } from '../lib/crossCurrencyPayment'
 import { TcmbCrossRatePanel } from '../components/kurlar/TcmbCrossRatePanel'
 import { useCrossCurrencyTcmb } from '../hooks/useCrossCurrencyTcmb'
 import {
-  OFIS_KASA_GELIR_KATEGORILERI,
-  OFIS_KASA_GIDER_KATEGORILERI,
+  finansKalemleriQueryKey,
+  listFinansKalemleri
+} from '../api/finansKalemleri'
+import {
+  isDigerGelirKalemAd,
+  isDigerGiderKalemAd,
+  OFIS_KASA_SYSTEM_FILTER_LABELS
+} from '../types/finansKalemi'
+import {
   type CreateOfisKasaDovizDonusumPayload,
   type CreateOfisKasaHareketiPayload
 } from '../types/ofisKasasi'
@@ -204,6 +211,18 @@ export function OfisKasasiPage(): ReactElement {
     queryFn: getOfisKasaOzet
   })
 
+  const gelirKalemleriQuery = useQuery({
+    queryKey: finansKalemleriQueryKey({ tur: 'GELIR', aktif: 'true' }),
+    queryFn: () => listFinansKalemleri({ tur: 'GELIR', aktif: 'true' }),
+    staleTime: 60_000
+  })
+
+  const giderKalemleriQuery = useQuery({
+    queryKey: finansKalemleriQueryKey({ tur: 'GIDER', aktif: 'true' }),
+    queryFn: () => listFinansKalemleri({ tur: 'GIDER', aktif: 'true' }),
+    staleTime: 60_000
+  })
+
   const listQuery = useQuery({
     queryKey: ['ofis-kasasi-hareketleri', listParams],
     queryFn: () => listOfisKasaHareketleri(listParams)
@@ -212,6 +231,7 @@ export function OfisKasasiPage(): ReactElement {
   const invalidateAll = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['ofis-kasasi-ozet'] })
     void queryClient.invalidateQueries({ queryKey: ['ofis-kasasi-hareketleri'] })
+    void queryClient.invalidateQueries({ queryKey: ['muvekkil-karlilik'] })
     invalidateDashboardSummary(queryClient)
   }
 
@@ -295,9 +315,14 @@ export function OfisKasasiPage(): ReactElement {
   const totalPages = Math.max(1, Math.ceil(total / limit))
 
   const kategoriFilterOptions = useMemo(() => {
-    const s = new Set<string>([...OFIS_KASA_GELIR_KATEGORILERI, ...OFIS_KASA_GIDER_KATEGORILERI, 'Düzeltme'])
+    const s = new Set<string>(OFIS_KASA_SYSTEM_FILTER_LABELS)
+    for (const k of gelirKalemleriQuery.data?.items ?? []) s.add(k.ad)
+    for (const k of giderKalemleriQuery.data?.items ?? []) s.add(k.ad)
+    for (const h of items) {
+      if (h.kategori?.trim()) s.add(h.kategori.trim())
+    }
     return Array.from(s).sort((a, b) => a.localeCompare(b, 'tr'))
-  }, [])
+  }, [gelirKalemleriQuery.data?.items, giderKalemleriQuery.data?.items, items])
 
   return (
     <div className="w-full space-y-5">
@@ -824,7 +849,7 @@ function CreateOfisHareketModal(props: {
   const { onClose, loading, error, onSubmit } = props
   const [islemTipi, setIslemTipi] = useState<'GELIR' | 'GIDER'>('GELIR')
   const [tarih, setTarih] = useState(todayInputDate())
-  const [kategori, setKategori] = useState<string>(OFIS_KASA_GELIR_KATEGORILERI[0])
+  const [kalemId, setKalemId] = useState('')
   const [ozel, setOzel] = useState('')
   const [aciklama, setAciklama] = useState('')
   const [tutar, setTutar] = useState('')
@@ -835,12 +860,33 @@ function CreateOfisHareketModal(props: {
   const [muvekkilLabel, setMuvekkilLabel] = useState('')
   const [localErr, setLocalErr] = useState<string | null>(null)
 
-  const kategoriList = islemTipi === 'GELIR' ? OFIS_KASA_GELIR_KATEGORILERI : OFIS_KASA_GIDER_KATEGORILERI
+  const gelirKalemleriQuery = useQuery({
+    queryKey: finansKalemleriQueryKey({ tur: 'GELIR', aktif: 'true' }),
+    queryFn: () => listFinansKalemleri({ tur: 'GELIR', aktif: 'true' }),
+    staleTime: 60_000
+  })
+
+  const giderKalemleriQuery = useQuery({
+    queryKey: finansKalemleriQueryKey({ tur: 'GIDER', aktif: 'true' }),
+    queryFn: () => listFinansKalemleri({ tur: 'GIDER', aktif: 'true' }),
+    staleTime: 60_000
+  })
+
+  const kalemList =
+    islemTipi === 'GELIR' ? (gelirKalemleriQuery.data?.items ?? []) : (giderKalemleriQuery.data?.items ?? [])
+
+  const effectiveKalemId = kalemId || kalemList[0]?.id || ''
+  const selectedKalem = kalemList.find((k) => k.id === effectiveKalemId) ?? null
 
   const submit = (): void => {
     setLocalErr(null)
-    const digerGelir = islemTipi === 'GELIR' && kategori === 'Diğer gelir'
-    const digerGider = islemTipi === 'GIDER' && kategori === 'Diğer gider'
+    if (!effectiveKalemId) {
+      setLocalErr('Kalem listesi yüklenemedi veya boş.')
+      return
+    }
+    const kalemAd = selectedKalem?.ad ?? kalemList.find((k) => k.id === effectiveKalemId)?.ad ?? ''
+    const digerGelir = islemTipi === 'GELIR' && isDigerGelirKalemAd(kalemAd)
+    const digerGider = islemTipi === 'GIDER' && isDigerGiderKalemAd(kalemAd)
     if ((digerGelir || digerGider) && ozel.trim().length < 2) {
       setLocalErr('Diğer gelir/gider için özel kategori adı zorunludur.')
       return
@@ -853,7 +899,7 @@ function CreateOfisHareketModal(props: {
     onSubmit({
       islemTipi,
       tarih: dateInputToIsoUtcNoon(tarih),
-      kategori,
+      kalemId: effectiveKalemId,
       ozelKategoriAdi: digerGelir || digerGider ? ozel.trim() : null,
       aciklama: aciklama.trim() || null,
       tutar: n,
@@ -881,7 +927,7 @@ function CreateOfisHareketModal(props: {
             onChange={(e) => {
               const t = e.target.value as 'GELIR' | 'GIDER'
               setIslemTipi(t)
-              setKategori(t === 'GELIR' ? OFIS_KASA_GELIR_KATEGORILERI[0] : OFIS_KASA_GIDER_KATEGORILERI[0])
+              setKalemId('')
               setOzel('')
               if (t === 'GIDER') {
                 setMuvekkilId('')
@@ -901,20 +947,49 @@ function CreateOfisHareketModal(props: {
         )}
         <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
         <div>
-          <label className={uiType.label}>Kategori</label>
-          <select
-            className="w-full rounded-md border border-border bg-white px-3 py-2 text-sm dark:bg-surface-elevated"
-            value={kategori}
-            onChange={(e) => setKategori(e.target.value)}
-          >
-            {kategoriList.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
+          <label className={uiType.label}>Kalem</label>
+          {(() => {
+            const q = islemTipi === 'GELIR' ? gelirKalemleriQuery : giderKalemleriQuery
+            if (q.isError) {
+              return (
+                <div className="space-y-2">
+                  <AlertBox variant="danger" title="Kalemler yüklenemedi">
+                    Liste alınamadı. Bağlantıyı kontrol edip yeniden deneyin.
+                  </AlertBox>
+                  <Button type="button" size="sm" variant="outline" onClick={() => void q.refetch()}>
+                    Yeniden dene
+                  </Button>
+                </div>
+              )
+            }
+            if (q.isLoading) {
+              return <p className="text-xs text-ink-muted">Kalemler yükleniyor…</p>
+            }
+            if (kalemList.length === 0) {
+              return (
+                <p className="text-xs text-ink-muted">
+                  Aktif kalem yok. Büro sahibi Ayarlar → Gelir ve Gider Kalemleri’nden ekleyebilir.
+                </p>
+              )
+            }
+            return (
+              <select
+                className={formControlClass}
+                value={effectiveKalemId}
+                disabled={loading}
+                onChange={(e) => setKalemId(e.target.value)}
+              >
+                {kalemList.map((k) => (
+                  <option key={k.id} value={k.id}>
+                    {k.ad}
+                  </option>
+                ))}
+              </select>
+            )
+          })()}
         </div>
-        {(islemTipi === 'GELIR' && kategori === 'Diğer gelir') || (islemTipi === 'GIDER' && kategori === 'Diğer gider') ? (
+        {(islemTipi === 'GELIR' && selectedKalem && isDigerGelirKalemAd(selectedKalem.ad)) ||
+        (islemTipi === 'GIDER' && selectedKalem && isDigerGiderKalemAd(selectedKalem.ad)) ? (
           <Input label="Özel kategori adı" value={ozel} onChange={(e) => setOzel(e.target.value)} />
         ) : null}
         <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />

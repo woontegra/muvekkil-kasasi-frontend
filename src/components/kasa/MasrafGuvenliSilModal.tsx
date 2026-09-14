@@ -24,6 +24,8 @@ export type MasrafGuvenliSilOzet = {
   belgeNo: string
   /** Ofis veya dosya kasa silme / iptal modu */
   mode?: GuvenliSilModalMode
+  /** Modal başlığı — verilirse mode başlığını ezer */
+  title?: string
   muvekkilAdi?: string | null
   kategori?: string | null
   paraBirimi?: ParaBirimi | string | null
@@ -67,6 +69,7 @@ export function MasrafGuvenliSilModal(props: Props): ReactElement {
   const [sifre, setSifre] = useState('')
   const [localErr, setLocalErr] = useState<string | null>(null)
   const pb = resolveParaBirimi(ozet.paraBirimi)
+  const modalTitle = ozet.title?.trim() || titleFor(mode)
 
   useEffect(() => {
     setDeleteReason('')
@@ -90,7 +93,7 @@ export function MasrafGuvenliSilModal(props: Props): ReactElement {
   const showGelirFields = mode === 'GELIR_SIL' || mode === 'TAHSILAT_IPTAL'
 
   return (
-    <ModalShell title={titleFor(mode)} onClose={onClose} panelClassName="max-w-md">
+    <ModalShell title={modalTitle} onClose={onClose} panelClassName="max-w-md">
       <div className="space-y-3">
         <p className="text-sm text-ink-muted">{blurbFor(mode)}</p>
 

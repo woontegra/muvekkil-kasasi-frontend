@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { QueryClient } from '@tanstack/react-query'
 import { getTcmbRates, tcmbRatesQueryKey, TCMB_YAKLASIK_TRY_QUERY_KEY } from '../api/kurlar'
 import {
+  clearTcmbRefreshInflightForTests,
   refreshTcmbRatesManually,
   TCMB_REFRESH_FAILED_MESSAGE,
   TCMB_REFRESH_UNCHANGED_MESSAGE,
@@ -27,6 +28,8 @@ function sampleRates(overrides?: Partial<TcmbRatesAvailableResponse>): TcmbRates
     bulunanTcmbKurTarihi: '2026-09-11',
     effectiveDate: '2026-09-11',
     fetchedAt: '2026-09-11T12:00:00.000Z',
+    lastCheckedAt: '2026-09-11T12:00:00.000Z',
+    fromCache: false,
     source: 'TCMB',
     sourceLabel: 'TCMB Döviz Alış',
     stale: false,
@@ -45,6 +48,7 @@ function sampleRates(overrides?: Partial<TcmbRatesAvailableResponse>): TcmbRates
 describe('refreshTcmbRatesManually', () => {
   beforeEach(() => {
     mockedGet.mockReset()
+    clearTcmbRefreshInflightForTests()
   })
 
   it('forceRefresh=true ile TCMB ister ve kur değişince updated mesajı verir', async () => {
@@ -99,5 +103,25 @@ describe('refreshTcmbRatesManually', () => {
     const outcome = await refreshTcmbRatesManually(qc, { date })
     expect(outcome.status).toBe('failed')
     expect(qc.getQueryData(tcmbRatesQueryKey(date))).toEqual(prev)
+  })
+
+  it('art arda çağrılarda tek uçuş kullanır', async () => {
+    const qc = new QueryClient()
+    const date = '2026-09-11'
+    let resolveGet!: (v: TcmbRatesAvailableResponse) => void
+    mockedGet.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveGet = resolve
+        })
+    )
+
+    const p1 = refreshTcmbRatesManually(qc, { date })
+    const p2 = refreshTcmbRatesManually(qc, { date })
+    resolveGet(sampleRates())
+    const [a, b] = await Promise.all([p1, p2])
+    expect(mockedGet).toHaveBeenCalledTimes(1)
+    expect(a.status).toBe('updated')
+    expect(b.status).toBe('updated')
   })
 })

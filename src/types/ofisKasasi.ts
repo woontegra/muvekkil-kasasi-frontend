@@ -153,7 +153,9 @@ export type ListOfisKasaHareketleriParams = {
 export type CreateOfisKasaHareketiPayload = {
   islemTipi: 'GELIR' | 'GIDER'
   tarih: string
-  kategori: string
+  /** Sunucu kalem adını snapshot yazar; istemci göndermek zorunda değil. */
+  kategori?: string
+  kalemId: string
   ozelKategoriAdi?: string | null
   aciklama?: string | null
   tutar: number

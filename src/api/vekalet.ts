@@ -14,6 +14,7 @@ import type {
   VekaletOdemeMakbuzDto,
   VekaletTaksitOdemeDto,
   VekaletTaksitiDto,
+  VekaletSilEtkiAnaliziDto,
   VekaletUcretiDto
 } from '../types/vekalet'
 
@@ -144,8 +145,40 @@ export async function createVekaletPesinOdeme(
   })
 }
 
-export async function deleteVekaletTaksiti(id: string): Promise<{ ok: true }> {
-  return apiFetch(`/api/v1/vekalet-taksitleri/${encodeURIComponent(id)}`, {
-    method: 'DELETE'
+export async function guvenliSilVekaletTaksiti(
+  id: string,
+  payload: { sifre: string; deleteReason: string }
+): Promise<{ ok: true; alreadyDone: boolean; taksitId: string }> {
+  return apiFetch(`/api/v1/vekalet-taksitleri/${encodeURIComponent(id)}/guvenli-sil`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+export async function guvenliSilVekaletTahsilat(
+  odemeId: string,
+  payload: { sifre: string; deleteReason: string }
+): Promise<{ ok: true; alreadyDone: boolean; odemeId: string; taksitId: string; message: string }> {
+  return apiFetch(`/api/v1/vekalet-taksit-odemeleri/${encodeURIComponent(odemeId)}/guvenli-sil`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  })
+}
+
+/** @deprecated Tam vekalet silme kaldırıldı (410). */
+export async function getVekaletSilEtkiAnalizi(
+  dosyaId: string
+): Promise<{ ok: true; analiz: VekaletSilEtkiAnaliziDto }> {
+  return apiFetch(`/api/v1/dosyalar/${encodeURIComponent(dosyaId)}/vekalet/sil-etki-analizi`)
+}
+
+/** @deprecated Tam vekalet silme kaldırıldı (410). */
+export async function guvenliVekaletUcretiSil(
+  dosyaId: string,
+  payload: { sifre: string; deleteReason: string; analysisFingerprint: string }
+): Promise<{ ok: true; alreadyDone: boolean; vekaletUcretiId: string; message: string }> {
+  return apiFetch(`/api/v1/dosyalar/${encodeURIComponent(dosyaId)}/vekalet/guvenli-sil`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
   })
 }

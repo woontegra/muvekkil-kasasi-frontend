@@ -2,7 +2,7 @@
 
 import { formatMoney } from './paraBirimi'
 
-export { formatMoney, formatMoneyWithCode, formatSignedMoney, formatKurOzeti, formatApproxTryMoney, formatKurOzetiWithSymbols, MONEY_NBSP } from './paraBirimi'
+export { formatMoney, formatMoneyWithCode, formatSignedMoney, formatKurOzeti, formatApproxTryMoney, formatKurOzetiWithSymbols, formatMoneyFixed2, moneyFixed2NonZero, MONEY_NBSP } from './paraBirimi'
 export type { ParaBirimi, CurrencyBucket } from './paraBirimi'
 export { PARA_BIRIMLERI, PARA_BIRIMI_SEMBOL, PARA_BIRIMI_LABEL, resolveParaBirimi, readCurrencyAmount } from './paraBirimi'
 

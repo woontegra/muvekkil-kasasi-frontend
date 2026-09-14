@@ -19,27 +19,43 @@ export type DosyaMaliOzetResponse = {
   donemEtiketi: string | null
 }
 
+export type MoneyByCurrency = {
+  TRY: string
+  USD: string
+  EUR: string
+}
+
 export type MuvekkilKarlilikDosya = {
   dosyaId: string
   konuBasligi: string
   dosyaNo: string | null
   durum: string
-  tahsilEdilenVekalet: number
-  buroKarsiladigiGider: number
-  netKazanc: number
+  paraBirimi: 'TRY' | 'USD' | 'EUR'
+  tahsilEdilenVekalet: string
+  buroKarsiladigiGider: string
+  netKazanc: string
+}
+
+export type MuvekkilKarlilikDagilim = {
+  enYuksekKazanc: MuvekkilKarlilikDosya | null
+  enDusukKazanc: MuvekkilKarlilikDosya | null
 }
 
 export type MuvekkilKarlilikPayload = {
   toplamDosya: number
-  kararlastirilanVekalet: string
-  tahsilEdilenVekalet: string
-  kalanAlacak: string
+  kararlastirilanVekalet: MoneyByCurrency
+  tahsilEdilenVekalet: MoneyByCurrency
+  kalanAlacak: MoneyByCurrency
   toplamAvansBakiye: string
   toplamDosyaMasrafi: string
   toplamMasrafAvansiIadesi: string
-  netKazanc: string
-  enYuksekKazanc: MuvekkilKarlilikDosya | null
-  enDusukKazanc: MuvekkilKarlilikDosya | null
+  ofisGeliri: MoneyByCurrency
+  netKazanc: MoneyByCurrency
+  kazancDagilimi: {
+    TRY: MuvekkilKarlilikDagilim | null
+    USD: MuvekkilKarlilikDagilim | null
+    EUR: MuvekkilKarlilikDagilim | null
+  }
 }
 
 export type MuvekkilKarlilikResponse = {

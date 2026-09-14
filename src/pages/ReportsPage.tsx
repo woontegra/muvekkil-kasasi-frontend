@@ -11,6 +11,8 @@ import { ReportPrintShell } from '../components/reports/ReportPrintShell'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, PageHeader } from '../components/ui'
 import { cn } from '../lib/cn'
 import type { IcraTahsilatReportResponse, OfisKasaReportResponse } from '../types/reports'
+import { finansKalemleriQueryKey, listFinansKalemleri } from '../api/finansKalemleri'
+import { OFIS_KASA_SYSTEM_FILTER_LABELS } from '../types/finansKalemi'
 import {
   OFIS_KASA_GELIR_KATEGORILERI,
   OFIS_KASA_GIDER_KATEGORILERI
@@ -82,10 +84,27 @@ export function ReportsPage(): ReactElement {
   const [icraPersonel, setIcraPersonel] = useState('')
   const [icraQ, setIcraQ] = useState('')
 
-  const kategoriOpts = useMemo(
-    () => [...new Set([...OFIS_KASA_GELIR_KATEGORILERI, ...OFIS_KASA_GIDER_KATEGORILERI])],
-    []
-  )
+  const gelirKalemleriQuery = useQuery({
+    queryKey: finansKalemleriQueryKey({ tur: 'GELIR', aktif: 'true' }),
+    queryFn: () => listFinansKalemleri({ tur: 'GELIR', aktif: 'true' }),
+    staleTime: 120_000
+  })
+
+  const giderKalemleriQuery = useQuery({
+    queryKey: finansKalemleriQueryKey({ tur: 'GIDER', aktif: 'true' }),
+    queryFn: () => listFinansKalemleri({ tur: 'GIDER', aktif: 'true' }),
+    staleTime: 120_000
+  })
+
+  const kategoriOpts = useMemo(() => {
+    const s = new Set<string>(OFIS_KASA_SYSTEM_FILTER_LABELS)
+    for (const k of gelirKalemleriQuery.data?.items ?? []) s.add(k.ad)
+    for (const k of giderKalemleriQuery.data?.items ?? []) s.add(k.ad)
+    if (s.size <= OFIS_KASA_SYSTEM_FILTER_LABELS.length) {
+      for (const k of [...OFIS_KASA_GELIR_KATEGORILERI, ...OFIS_KASA_GIDER_KATEGORILERI]) s.add(k)
+    }
+    return [...s].sort((a, b) => a.localeCompare(b, 'tr'))
+  }, [gelirKalemleriQuery.data?.items, giderKalemleriQuery.data?.items])
 
   const personelQuery = useQuery({
     queryKey: ['prim-personel-aktif'],

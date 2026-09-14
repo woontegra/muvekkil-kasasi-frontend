@@ -2,8 +2,12 @@ import { apiFetch } from './client'
 import type { ParaBirimi } from '../utils/paraBirimi'
 import type { TcmbCaprazResponse, TcmbRatesResponse } from '../types/kurlar'
 
-/** Backend TCMB cache TTL ile hizalı (~6 saat). */
-export const TCMB_QUERY_STALE_MS = 6 * 60 * 60 * 1000
+/** Backend TCMB cache TTL ile hizalı (60 dk). */
+export const TCMB_QUERY_STALE_MS = 60 * 60 * 1000
+/** Bugünün bülteni henüz yokken istemci yeniden sorgu aralığı. */
+export const TCMB_AWAITING_TODAY_STALE_MS = 15 * 60 * 1000
+/** Uygulama açıkken arka plan kontrol aralığı. */
+export const TCMB_REFETCH_INTERVAL_MS = 60 * 60 * 1000
 
 export const TCMB_RATES_QUERY_KEY = ['tcmb-rates'] as const
 export const TCMB_CAPRAZ_QUERY_KEY = ['tcmb-capraz'] as const

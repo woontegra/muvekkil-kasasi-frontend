@@ -19,10 +19,15 @@ export type TcmbRatesAvailableResponse = {
   bulunanTcmbKurTarihi: string
   effectiveDate: string
   fetchedAt: string
+  /** Backend son kontrol zamanı (ISO) */
+  lastCheckedAt?: string
+  /** true → backend bellek cache; false → bu istekte canlı TCMB */
+  fromCache?: boolean
   source: 'TCMB'
   sourceLabel: string
   stale: boolean
   fallbackKullanildi: boolean
+  cacheNote?: string | null
   usdDovizAlis: string
   usdDovizSatis: string
   eurDovizAlis: string

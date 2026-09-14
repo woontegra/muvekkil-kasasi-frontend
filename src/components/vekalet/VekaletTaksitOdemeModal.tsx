@@ -1,5 +1,7 @@
 import type { FormEvent, ReactElement, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { getDosyaVekalet } from '../../api/vekalet'
 import { buildCrossPaymentPayload } from '../../lib/crossCurrencyPayment'
 import { CrossCurrencyPaymentFields } from '../paraBirimi/CrossCurrencyPaymentFields'
 import { TahsilatiYapanPersonelSelect } from '../prim/TahsilatiYapanPersonelSelect'
@@ -9,9 +11,8 @@ import type { CrossPaymentKurMeta } from '../../types/kurlar'
 import type { CreateVekaletTaksitOdemePayload, VekaletTaksitiDto } from '../../types/vekalet'
 import type { OdemeYontemiApi } from '../../types/kasa'
 import {
-  formatCurrencyInputTR,
-  formatMoney,
-  moneyInputFromAmount,
+  formatMoneyFixed2,
+  moneyFixed2NonZero,
   resolveParaBirimi,
   type ParaBirimi
 } from '../../utils/formatters'
@@ -32,21 +33,48 @@ function selectClassName(): string {
   return 'w-full rounded-md border border-border bg-white px-3 py-2 text-sm text-ink shadow-sm focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25 dark:bg-surface-elevated'
 }
 
+function moneyInputFromFixed2(fixed2: string): string {
+  const s = String(fixed2 ?? '').trim()
+  if (!/^-?\d+(\.\d+)?$/.test(s)) return ''
+  const [intRaw, fracRaw = '00'] = s.replace(/^-/, '').split('.')
+  const frac = `${fracRaw}00`.slice(0, 2)
+  const intFormatted = intRaw.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+  return `${intFormatted},${frac}`
+}
+
 export type VekaletTaksitOdemeModalProps = {
   taksit: VekaletTaksitiDto
+  dosyaId: string
   onClose: () => void
   loading: boolean
   error: string | null
   onSubmit: (body: CreateVekaletTaksitOdemePayload) => void
+  onStaleSummary?: () => void
 }
 
 export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): ReactElement {
-  const { taksit, onClose, loading, error, onSubmit } = props
-  const resolved = resolveTaksitRow(taksit)
+  const { taksit, dosyaId, onClose, loading, error, onSubmit, onStaleSummary } = props
+  const queryClient = useQueryClient()
   const alacakParaBirimi = resolveParaBirimi(taksit.paraBirimi)
-  const kalanNum = Number(resolved.kalanTutar)
-  const odenenNum = Number(resolved.odenenToplam)
-  const taksitNum = Number(resolved.taksitTutari)
+
+  /** Modal açıkken kanonik özet — backend ile aynı kaynaktan. */
+  const ozetQuery = useQuery({
+    queryKey: ['vekalet', dosyaId, 'taksit-odeme-modal', taksit.id],
+    queryFn: async () => {
+      const pack = await getDosyaVekalet(dosyaId)
+      const row = pack.taksitler.find((t) => t.id === taksit.id)
+      if (!row) throw new Error('Taksit bulunamadı.')
+      return resolveTaksitRow(row)
+    },
+    staleTime: 0,
+    refetchOnMount: 'always'
+  })
+
+  const kalanStr = ozetQuery.data?.kalanTutar ?? resolveTaksitRow(taksit).kalanTutar
+  const odenenStr = ozetQuery.data?.odenenToplam ?? resolveTaksitRow(taksit).odenenToplam
+  const taksitStr = ozetQuery.data?.taksitTutari ?? resolveTaksitRow(taksit).taksitTutari
+  const kalanActive = moneyFixed2NonZero(kalanStr)
+
   const [mahsupTutar, setMahsupTutar] = useState('')
   const [odemeParaBirimi, setOdemeParaBirimi] = useState<ParaBirimi>(alacakParaBirimi)
   const [kasaTutari, setKasaTutari] = useState('')
@@ -63,9 +91,9 @@ export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): Re
   })
 
   useEffect(() => {
-    if (kalanNum > 0) {
-      setMahsupTutar(moneyInputFromAmount(kalanNum))
-    } else {
+    if (ozetQuery.data && kalanActive) {
+      setMahsupTutar(moneyInputFromFixed2(kalanStr))
+    } else if (ozetQuery.data && !kalanActive) {
       setMahsupTutar('')
     }
     setOdemeParaBirimi(alacakParaBirimi)
@@ -75,8 +103,15 @@ export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): Re
     setAciklama('')
     setKurOnay(false)
     setLocalErr(null)
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- taksit değişince sıfırla
-  }, [taksit.id])
+  }, [taksit.id, ozetQuery.dataUpdatedAt, alacakParaBirimi, kalanStr, kalanActive])
+
+  useEffect(() => {
+    if (error && /STALE_PAYMENT_SUMMARY|güncelliğini yitirdi/i.test(error)) {
+      void queryClient.invalidateQueries({ queryKey: ['vekalet', dosyaId] })
+      void ozetQuery.refetch()
+      onStaleSummary?.()
+    }
+  }, [error, dosyaId, queryClient, ozetQuery, onStaleSummary])
 
   const crossPreview = buildCrossPaymentPayload(
     alacakParaBirimi,
@@ -90,12 +125,12 @@ export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): Re
   const submit = (e?: FormEvent): void => {
     e?.preventDefault()
     setLocalErr(null)
-    if (!crossPreview.ok) {
-      setLocalErr(crossPreview.error)
+    if (ozetQuery.isFetching || !ozetQuery.data) {
+      setLocalErr('Güncel kalan tutar yükleniyor…')
       return
     }
-    if (crossPreview.payload.tutar > kalanNum + 0.0001) {
-      setLocalErr('Mahsup tutarı taksit kalanını aşamaz.')
+    if (!crossPreview.ok) {
+      setLocalErr(crossPreview.error)
       return
     }
     if (needsKurOnay && !kurOnay) {
@@ -107,7 +142,8 @@ export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): Re
       odemeTarihi: `${odemeTarihi}T12:00:00.000Z`,
       odemeYontemi: odeme,
       aciklama: aciklama.trim() || null,
-      tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null
+      tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null,
+      expectedKalanTutar: kalanStr
     })
   }
 
@@ -123,20 +159,30 @@ export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): Re
           {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
           <div className="rounded-md border border-border bg-surface-muted/40 px-3 py-2 text-xs text-ink-muted">
             <p className="font-medium text-ink">Taksit #{taksit.taksitNo}</p>
-            <div className="mt-1.5 grid gap-1 sm:grid-cols-3">
-              <p>
-                Taksit tutarı:{' '}
-                <strong className="tabular-nums text-ink">{formatMoney(taksitNum, alacakParaBirimi)}</strong>
-              </p>
-              <p>
-                Şimdiye kadar ödenen:{' '}
-                <strong className="tabular-nums text-ink">{formatMoney(odenenNum, alacakParaBirimi)}</strong>
-              </p>
-              <p>
-                Kalan borç:{' '}
-                <strong className="tabular-nums text-ink">{formatMoney(kalanNum, alacakParaBirimi)}</strong>
-              </p>
-            </div>
+            {ozetQuery.isLoading ? (
+              <p className="mt-1.5">Kanonik kalan tutar yükleniyor…</p>
+            ) : (
+              <div className="mt-1.5 grid gap-1 sm:grid-cols-3">
+                <p>
+                  Taksit tutarı:{' '}
+                  <strong className="tabular-nums text-ink">
+                    {formatMoneyFixed2(taksitStr, alacakParaBirimi)}
+                  </strong>
+                </p>
+                <p>
+                  Şimdiye kadar ödenen:{' '}
+                  <strong className="tabular-nums text-ink">
+                    {formatMoneyFixed2(odenenStr, alacakParaBirimi)}
+                  </strong>
+                </p>
+                <p>
+                  Kalan borç:{' '}
+                  <strong className="tabular-nums text-ink">
+                    {formatMoneyFixed2(kalanStr, alacakParaBirimi)}
+                  </strong>
+                </p>
+              </div>
+            )}
             <p className="mt-1.5">Kısmi ödeme girebilirsiniz; kalan borç kapanana kadar taksit açık kalır.</p>
           </div>
           <CrossCurrencyPaymentFields
@@ -158,14 +204,14 @@ export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): Re
             }}
             odemeTarihi={odemeTarihi}
             onKurMetaChange={setKurMeta}
-            maxMahsup={kalanNum}
+            maxMahsup={kalanStr}
           />
           <Button
             type="button"
             size="sm"
             variant="outline"
-            disabled={kalanNum <= 0}
-            onClick={() => setMahsupTutar(formatCurrencyInputTR(kalanNum))}
+            disabled={!kalanActive || ozetQuery.isFetching}
+            onClick={() => setMahsupTutar(moneyInputFromFixed2(kalanStr))}
           >
             Kalanın tamamını al
           </Button>
@@ -199,7 +245,7 @@ export function VekaletTaksitOdemeModal(props: VekaletTaksitOdemeModalProps): Re
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               Vazgeç
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading || ozetQuery.isFetching}>
               {loading ? 'Kaydediliyor…' : 'Ödemeyi Kaydet'}
             </Button>
           </div>

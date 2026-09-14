@@ -1,21 +1,17 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   getTcmbCapraz,
   getTcmbRates,
+  TCMB_AWAITING_TODAY_STALE_MS,
   TCMB_QUERY_STALE_MS,
+  TCMB_REFETCH_INTERVAL_MS,
+  TCMB_YAKLASIK_TRY_QUERY_KEY,
   tcmbCaprazQueryKey,
   tcmbRatesQueryKey
 } from '../api/kurlar'
 import type { ParaBirimi } from '../utils/paraBirimi'
+import { istanbulTodayYmd } from '../utils/tcmbFormat'
 import type { TcmbRatesResponse } from '../types/kurlar'
-
-/** Bugünün bülteni henüz yokken (fallback, stale değil) kısa istemci cache. */
-const TCMB_AWAITING_TODAY_STALE_MS = 20 * 60 * 1000
-
-function todayYmd(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
 
 function ratesStaleTime(data: TcmbRatesResponse | undefined): number {
   if (data?.available && data.fallbackKullanildi && !data.stale) {
@@ -26,14 +22,21 @@ function ratesStaleTime(data: TcmbRatesResponse | undefined): number {
 
 /** Dashboard üst bar — güncel TCMB USD/EUR alış. */
 export function useTcmbHeaderRates() {
-  const date = todayYmd()
+  const date = istanbulTodayYmd()
+  const queryClient = useQueryClient()
   return useQuery({
     queryKey: tcmbRatesQueryKey(date),
-    queryFn: () => getTcmbRates({ date }),
+    queryFn: async () => {
+      const data = await getTcmbRates({ date })
+      void queryClient.invalidateQueries({ queryKey: [...TCMB_YAKLASIK_TRY_QUERY_KEY] })
+      return data
+    },
     staleTime: (q) => ratesStaleTime(q.state.data),
     gcTime: TCMB_QUERY_STALE_MS * 2,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: TCMB_REFETCH_INTERVAL_MS,
     retry: 1
   })
 }
@@ -52,8 +55,9 @@ export function useTcmbCaprazKur(
     enabled: active,
     staleTime: TCMB_QUERY_STALE_MS,
     gcTime: TCMB_QUERY_STALE_MS * 2,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
     retry: 1
   })
 }

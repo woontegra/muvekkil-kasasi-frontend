@@ -74,6 +74,8 @@ export type VekaletTaksitOdemeDto = {
   aciklama: string | null
   makbuzNo: string
   smmKesildiMi: boolean
+  iptalAt?: string | null
+  makbuzDurumu?: string
   kasaHareketId: string | null
   ofisKasaHareketId: string | null
   tahsilatiYapanUserId: string | null
@@ -173,6 +175,8 @@ export type CreateVekaletTaksitOdemePayload = {
   aciklama?: string | null
   tahsilatiYapanUserId?: string | null
   tahsilatiYapanPersonelId?: string | null
+  /** Modal açılışındaki kanonik kalan (fixed-2 string). */
+  expectedKalanTutar?: string | null
 } & CrossPaymentPayloadFields
 
 export type UpdateVekaletTaksitOdemePayload = {
@@ -201,4 +205,20 @@ export type CreateTekVekaletTaksitiPayload = {
   vadeTarihi: string
   tutar?: number
   aciklama?: string | null
+}
+
+export type VekaletSilEtkiAnaliziDto = {
+  vekaletUcretiId: string
+  toplamTutar: string
+  paraBirimi: ParaBirimi
+  aktifTaksitSayisi: number
+  odenmisKismiTaksitSayisi: number
+  aktifTahsilatSayisi: number
+  mahsupByCurrency: Record<string, string>
+  kasaGirisByCurrency: Record<string, string>
+  makbuzSayisi: number
+  smmFlags: { taksitWithSmmNo: number; odemeSmmKesilmedi: number }
+  planliBildirimSayisi: number
+  fingerprint: string
+  afterState: string[]
 }

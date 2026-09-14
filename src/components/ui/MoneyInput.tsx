@@ -36,17 +36,40 @@ type Props = {
   allowZero?: boolean
   /** Düzeltme vb. için negatif tutara izin ver */
   allowNegative?: boolean
-  /** Üst sınır (TL). Aşılınca input bu değere sabitlenir. */
-  maxValue?: number
+  /** Üst sınır (fixed-2 string veya number). Aşılınca input bu değere sabitlenir. */
+  maxValue?: number | string
   'aria-label'?: string
 }
 
-function applyMax(formatted: string, maxValue: number | undefined): string {
-  if (maxValue == null || !Number.isFinite(maxValue)) return formatted
+/** fixed-2 API string veya number → karşılaştırma için kuruş (Number float kullanmadan). */
+function maxValueToCents(maxValue: number | string | undefined): number | null {
+  if (maxValue == null) return null
+  if (typeof maxValue === 'string') {
+    const s = maxValue.trim()
+    if (!/^-?\d+(\.\d{1,2})?$/.test(s)) return null
+    const neg = s.startsWith('-')
+    const body = neg ? s.slice(1) : s
+    const [i, f = ''] = body.split('.')
+    const cents = Number.parseInt(i, 10) * 100 + Number.parseInt(`${f}00`.slice(0, 2), 10)
+    return neg ? -cents : cents
+  }
+  if (!Number.isFinite(maxValue)) return null
+  return Math.round(maxValue * 100)
+}
+
+function applyMax(formatted: string, maxValue: number | string | undefined): string {
+  const maxCents = maxValueToCents(maxValue)
+  if (maxCents == null) return formatted
   if (!formatted.trim()) return formatted
   const n = parseCurrencyInputTR(formatted)
-  if (n == null || n <= maxValue) return formatted
-  return formatMoneyTypingTR(String(maxValue).replace('.', ','))
+  if (n == null) return formatted
+  const nCents = Math.round(n * 100)
+  if (nCents <= maxCents) return formatted
+  const abs = Math.abs(maxCents)
+  const intPart = Math.floor(abs / 100)
+  const frac = String(abs % 100).padStart(2, '0')
+  const sign = maxCents < 0 ? '-' : ''
+  return formatMoneyTypingTR(`${sign}${intPart},${frac}`)
 }
 
 /**
@@ -199,7 +222,12 @@ export function MoneyInput(props: Props): ReactElement {
       onChange('')
       return
     }
-    if (maxValue != null && Number.isFinite(maxValue) && n > maxValue) n = maxValue
+    if (maxValue != null) {
+      const maxCents = maxValueToCents(maxValue)
+      if (maxCents != null && Math.round(n * 100) > maxCents) {
+        n = maxCents / 100
+      }
+    }
     const pretty = formatCurrencyInputTR(n)
     setDraft(pretty)
     onChange(pretty)

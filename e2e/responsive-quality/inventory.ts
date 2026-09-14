@@ -65,6 +65,7 @@ export const ADMIN_ROUTE_PATTERNS = [
 
 const DOSYA_TABS = [
   { id: 'kasa', label: 'Kasa Hareketleri', activate: 'tab' as const, value: 'Kasa Hareketleri' },
+  /** vekalet sekmesi: BURO_SAHIBI «Sil» → güvenli iptal modalı (etki analizi + şifre) */
   { id: 'vekalet', label: 'Anlaşılan vekalet', activate: 'tab' as const, value: 'Anlaşılan vekalet' },
   { id: 'smm', label: 'SMM Takibi', activate: 'tab' as const, value: 'SMM Takibi' },
   { id: 'makbuz', label: 'Makbuzlar', activate: 'tab' as const, value: 'Makbuzlar' },
@@ -79,6 +80,7 @@ const AYARLAR_BOLUMLER = [
   'whatsapp',
   'whatsapp-sablonlari',
   'kullanici',
+  'gelir-gider-kalemleri',
   'veri',
   'denetim',
   'lisans',
