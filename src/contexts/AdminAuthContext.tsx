@@ -4,15 +4,16 @@ import { adminLoginRequest, adminMeRequest } from '../api/adminApi'
 import {
   adminApiFetch,
   getAdminAccessToken,
+  hasAdminSessionHint,
   purgeLegacyAdminAccessTokenStorage,
-  setAdminAccessToken
+  setAdminAccessToken,
+  setAdminSessionHint
 } from '../api/adminClient'
 import { getAccessToken } from '../api/accessTokenMemory'
 import { joinApiUrl } from '../api/apiBase'
 import { refreshAdminAccessTokenOnce } from '../api/refreshAdminAccess'
 import type { AdminUserDto } from '../types/admin'
 import { isPlatformAdminRole } from '../lib/adminRoles'
-import { useAuth } from './AuthContext'
 import { subscribeAdminSessionEvents } from './adminSessionEvents'
 
 function canUseAdminPanel(user: AdminUserDto | null | undefined): user is AdminUserDto {
@@ -26,7 +27,7 @@ type AdminAuthContextValue = {
   login: (identifier: string, sifre: string) => Promise<void>
   logout: () => void
   refreshMe: () => Promise<void>
-  /** Tenant oturumu + linkedUserId ile admin oturumu aç (parolasız). */
+  /** Yalnızca /admin giriş kapısı — linked SuperAdmin için parolasız elevate. */
   elevateFromTenant: () => Promise<boolean>
   applyAdminSession: (adminAccessToken: string, adminUser: AdminUserDto) => void
   clearAdminSession: () => void
@@ -35,17 +36,18 @@ type AdminAuthContextValue = {
 const AdminAuthContext = createContext<AdminAuthContextValue | null>(null)
 
 export function AdminAuthProvider({ children }: { children: ReactNode }): ReactElement {
-  const { isAuthenticated: tenantAuthed, loading: tenantLoading } = useAuth()
   const [admin, setAdmin] = useState<AdminUserDto | null>(null)
   const [loading, setLoading] = useState(true)
 
   const clearAdminSession = useCallback(() => {
     setAdminAccessToken(null)
+    setAdminSessionHint(false)
     setAdmin(null)
   }, [])
 
   const applyAdminSession = useCallback((adminAccessToken: string, adminUser: AdminUserDto) => {
     setAdminAccessToken(adminAccessToken)
+    setAdminSessionHint(true)
     setAdmin(adminUser)
   }, [])
 
@@ -88,39 +90,47 @@ export function AdminAuthProvider({ children }: { children: ReactNode }): ReactE
     })
   }, [applyAdminSession, clearAdminSession])
 
+  /**
+   * Global bootstrap: yalnız bellek token veya önceki admin oturum ipucu varsa
+   * admin refresh dener. Tenant ekranlarında kör refresh/elevate YOK.
+   * Elevate yalnızca AdminAuthGate (/admin) üzerinden yapılır.
+   */
   useEffect(() => {
     purgeLegacyAdminAccessTokenStorage()
     let cancelled = false
     async function boot(): Promise<void> {
       try {
-        if (!getAdminAccessToken()) {
+        const hasMemoryToken = !!getAdminAccessToken()
+        const hasHint = hasAdminSessionHint()
+        if (!hasMemoryToken && !hasHint) {
+          if (!cancelled) {
+            setAdmin(null)
+            setLoading(false)
+          }
+          return
+        }
+
+        if (!hasMemoryToken) {
           const token = await refreshAdminAccessTokenOnce()
           if (!token) {
-            if (getAccessToken()) {
-              const ok = await elevateFromTenant()
-              if (!cancelled && !ok) setAdmin(null)
-            } else if (!cancelled) {
-              setAdmin(null)
-            }
+            // Cookie yok/geçersiz — ipucunu temizle; elevate’i burada deneme.
+            if (!cancelled) clearAdminSession()
             if (!cancelled) setLoading(false)
             return
           }
         }
+
         const r = await adminMeRequest()
         if (!cancelled) {
           if (canUseAdminPanel(r.adminUser)) {
             setAdmin(r.adminUser)
+            setAdminSessionHint(true)
           } else {
             clearAdminSession()
           }
         }
       } catch {
-        if (getAccessToken()) {
-          const ok = await elevateFromTenant()
-          if (!cancelled && !ok) clearAdminSession()
-        } else if (!cancelled) {
-          clearAdminSession()
-        }
+        if (!cancelled) clearAdminSession()
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -129,15 +139,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }): ReactE
     return () => {
       cancelled = true
     }
-  }, [clearAdminSession, elevateFromTenant])
-
-  // Sayfa yenilemede tenant oturumu admin’den sonra hazır olursa sessiz elevate.
-  useEffect(() => {
-    if (tenantLoading || loading) return
-    if (!tenantAuthed) return
-    if (admin && canUseAdminPanel(admin)) return
-    void elevateFromTenant()
-  }, [tenantLoading, loading, tenantAuthed, admin, elevateFromTenant])
+  }, [clearAdminSession])
 
   const login = useCallback(async (identifier: string, sifre: string) => {
     const r = await adminLoginRequest(identifier, sifre)

@@ -1,13 +1,15 @@
 import { joinApiUrl } from './apiBase'
 import { friendlyClientErrorMessage } from './client'
-import {
-  getAdminAccessToken,
-  purgeLegacyAdminAccessTokenStorage,
-  setAdminAccessToken
-} from './adminAccessTokenMemory'
+import { getAdminAccessToken } from './adminAccessTokenMemory'
 import { refreshAdminAccessTokenOnce } from './refreshAdminAccess'
 
-export { getAdminAccessToken, setAdminAccessToken, purgeLegacyAdminAccessTokenStorage }
+export {
+  getAdminAccessToken,
+  hasAdminSessionHint,
+  purgeLegacyAdminAccessTokenStorage,
+  setAdminAccessToken,
+  setAdminSessionHint
+} from './adminAccessTokenMemory'
 
 const PUBLIC_ADMIN_PATHS = new Set([
   '/api/v1/admin/auth/login',

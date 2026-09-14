@@ -815,6 +815,13 @@ export function DosyaDetailPage(): ReactElement {
       invalidateVekalet()
       setVekModal(null)
       toast.success('Taksit silindi.')
+    },
+    onError: (err) => {
+      const msg =
+        err instanceof ApiError
+          ? err.message
+          : resolveOdemeApiError(err) ?? 'Taksit silinemedi.'
+      toast.error(msg)
     }
   })
 
