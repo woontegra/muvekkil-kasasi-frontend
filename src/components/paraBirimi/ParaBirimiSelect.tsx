@@ -12,7 +12,7 @@ type Props = {
   onChange: (value: ParaBirimi) => void
   label?: string
   disabled?: boolean
-  /** Gider vb. yalnızca TRY seçenekleri */
+  /** Yalnızca TRY seçenekleri (nadir kısıt) */
   tryOnly?: boolean
   className?: string
   size?: 'sm' | 'md'
@@ -35,7 +35,7 @@ export function ParaBirimiSelect(props: Props): ReactElement {
             'bg-surface-muted/40 text-ink-muted'
           )}
         >
-          TRY {PARA_BIRIMI_SEMBOL.TRY} — Giderler yalnızca TL
+          TRY {PARA_BIRIMI_SEMBOL.TRY}
         </div>
       </div>
     )

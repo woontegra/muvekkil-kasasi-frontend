@@ -20,11 +20,17 @@ function currencySummaryRows(data: OfisKasaReportResponse): { label: string; val
     return (['TRY', 'USD', 'EUR'] as ParaBirimi[]).flatMap((pb) => {
       const bucket = bc[pb]
       if (!bucket) return []
-      return [
-        { label: `${pb} — gelir`, value: formatMoney(Number(bucket.toplamGelir), pb) },
-        { label: `${pb} — gider`, value: formatMoney(Number(bucket.toplamGider), pb) },
-        { label: `${pb} — net`, value: formatMoney(Number(bucket.netBakiye), pb) }
-      ]
+      const gelir = Number(bucket.toplamGelir)
+      const gider = Number(bucket.toplamGider)
+      const net = Number(bucket.netBakiye)
+      if (gelir === 0 && gider === 0 && net === 0) return []
+      const rows: { label: string; value: string }[] = []
+      if (gelir !== 0) rows.push({ label: `${pb} — gelir`, value: formatMoney(gelir, pb) })
+      if (gider !== 0) rows.push({ label: `${pb} — gider`, value: formatMoney(gider, pb) })
+      if (gelir !== 0 || gider !== 0) {
+        rows.push({ label: `${pb} — net`, value: formatMoney(net, pb) })
+      }
+      return rows
     })
   }
   return [

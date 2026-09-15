@@ -350,6 +350,7 @@ export function OfisKasasiPage(): ReactElement {
           value={
             ozet?.byCurrency ? (
               <MultiCurrencyTotals
+                labelPrefix="Bu ay gelir"
                 amounts={{
                   TRY: ozet.byCurrency.TRY.buAyGelir,
                   USD: ozet.byCurrency.USD.buAyGelir,
@@ -369,6 +370,7 @@ export function OfisKasasiPage(): ReactElement {
           value={
             ozet?.byCurrency ? (
               <MultiCurrencyTotals
+                labelPrefix="Bu ay gider"
                 amounts={{
                   TRY: ozet.byCurrency.TRY.buAyGider,
                   USD: ozet.byCurrency.USD.buAyGider,
@@ -380,7 +382,7 @@ export function OfisKasasiPage(): ReactElement {
               '—'
             )
           }
-          sub="Giderler yalnızca TRY"
+          sub="Para birimine göre ayrı"
           className="border border-orange-400/50 bg-orange-50/85 dark:border-orange-900/45 dark:bg-orange-950/25"
         />
         <StatCard
@@ -798,6 +800,7 @@ export function OfisKasasiPage(): ReactElement {
       {duzeltFor ? (
         <DuzeltOfisModal
           belgeNo={duzeltFor.belgeNo}
+          paraBirimi={hareketParaBirimi(duzeltFor)}
           onClose={() => setDuzeltFor(null)}
           loading={duzeltmeMu.isPending}
           error={duzeltmeMu.error instanceof Error ? duzeltmeMu.error.message : null}
@@ -904,7 +907,7 @@ function CreateOfisHareketModal(props: {
       aciklama: aciklama.trim() || null,
       tutar: n,
       odemeYontemi: odeme,
-      paraBirimi: islemTipi === 'GIDER' ? 'TRY' : paraBirimi,
+      paraBirimi,
       ...(islemTipi === 'GELIR'
         ? {
             tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null,
@@ -929,10 +932,10 @@ function CreateOfisHareketModal(props: {
               setIslemTipi(t)
               setKalemId('')
               setOzel('')
+              setParaBirimi('TRY')
               if (t === 'GIDER') {
                 setMuvekkilId('')
                 setMuvekkilLabel('')
-                setParaBirimi('TRY')
               }
             }}
           >
@@ -940,11 +943,7 @@ function CreateOfisHareketModal(props: {
             <option value="GIDER">Gider</option>
           </select>
         </div>
-        {islemTipi === 'GELIR' ? (
-          <ParaBirimiSelect label="Para birimi" value={paraBirimi} onChange={setParaBirimi} disabled={loading} />
-        ) : (
-          <ParaBirimiSelect label="Para birimi" value="TRY" onChange={() => undefined} tryOnly disabled={loading} />
-        )}
+        <ParaBirimiSelect label="Para birimi" value={paraBirimi} onChange={setParaBirimi} disabled={loading} />
         <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
         <div>
           <label className={uiType.label}>Kalem</label>
@@ -993,11 +992,7 @@ function CreateOfisHareketModal(props: {
           <Input label="Özel kategori adı" value={ozel} onChange={(e) => setOzel(e.target.value)} />
         ) : null}
         <Input label="Açıklama (isteğe bağlı)" value={aciklama} onChange={(e) => setAciklama(e.target.value)} />
-        <MoneyInput
-          label={islemTipi === 'GIDER' ? 'Tutar (TRY)' : `Tutar (${paraBirimi})`}
-          value={tutar}
-          onChange={setTutar}
-        />
+        <MoneyInput label={`Tutar (${paraBirimi})`} value={tutar} onChange={setTutar} />
         <div>
           <label className={uiType.label}>Ödeme yöntemi</label>
           <select
@@ -1068,12 +1063,19 @@ function RejectOfisModal(props: {
 
 function DuzeltOfisModal(props: {
   belgeNo: string
+  paraBirimi: ParaBirimi
   onClose: () => void
   loading: boolean
   error: string | null
-  onSubmit: (body: { tarih: string; tutar: number; aciklama: string; odemeYontemi: OfisKasaOdemeYontemiApi }) => void
+  onSubmit: (body: {
+    tarih: string
+    tutar: number
+    aciklama: string
+    odemeYontemi: OfisKasaOdemeYontemiApi
+    paraBirimi: ParaBirimi
+  }) => void
 }): ReactElement {
-  const { belgeNo, onClose, loading, error, onSubmit } = props
+  const { belgeNo, paraBirimi, onClose, loading, error, onSubmit } = props
   const [tarih, setTarih] = useState(todayInputDate())
   const [tutar, setTutar] = useState('')
   const [aciklama, setAciklama] = useState('')
@@ -1095,7 +1097,8 @@ function DuzeltOfisModal(props: {
       tarih: dateInputToIsoUtcNoon(tarih),
       tutar: n,
       aciklama: aciklama.trim(),
-      odemeYontemi: odeme
+      odemeYontemi: odeme,
+      paraBirimi
     })
   }
 
@@ -1104,10 +1107,14 @@ function DuzeltOfisModal(props: {
       <div className="space-y-3">
         {error ? <AlertBox variant="danger" title="Hata">{error}</AlertBox> : null}
         {localErr ? <p className="text-xs text-danger">{localErr}</p> : null}
-        <p className="text-xs text-ink-muted">Orijinal kayıt değişmez; yeni düzeltme satırı onay bekler.</p>
+        <p className="text-xs text-ink-muted">
+          Orijinal kayıt değişmez; yeni düzeltme satırı onay bekler. Para birimi kaynak kayıttan gelir (
+          {paraBirimi}) ve değiştirilemez.
+        </p>
         <Input label="Tarih" type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} />
+        <ParaBirimiSelect label="Para birimi" value={paraBirimi} onChange={() => undefined} disabled />
         <MoneyInput
-          label="Tutar (pozitif veya negatif)"
+          label={`Tutar (${paraBirimi}, pozitif veya negatif)`}
           value={tutar}
           onChange={setTutar}
           allowNegative

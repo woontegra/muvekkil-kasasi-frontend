@@ -97,6 +97,7 @@ function moneyCards(
 function hasCurrencyActivity(data: MuvekkilKarlilikPayload, c: ParaBirimi): boolean {
   if (moneyFixed2NonZero(data.netKazanc[c])) return true
   if (moneyFixed2NonZero(data.ofisGeliri[c])) return true
+  if (moneyFixed2NonZero(data.gider?.[c] ?? '0')) return true
   if (moneyFixed2NonZero(data.kararlastirilanVekalet[c])) return true
   if (moneyFixed2NonZero(data.tahsilEdilenVekalet[c])) return true
   if (moneyFixed2NonZero(data.kalanAlacak[c])) return true
@@ -205,9 +206,9 @@ function KarlilikPanel({ data, muvekkilId }: { data: MuvekkilKarlilikPayload; mu
         ) : null}
         {moneyFixed2NonZero(data.toplamDosyaMasrafi) ? (
           <StatMini
-            label="Gider · Toplam masraf (TRY)"
+            label="Toplam masraf (TRY)"
             valueText={formatMoneyFixed2(data.toplamDosyaMasrafi, 'TRY')}
-            tone="gider"
+            tone="info"
           />
         ) : null}
         {moneyFixed2NonZero(data.toplamMasrafAvansiIadesi) ? (
@@ -218,6 +219,7 @@ function KarlilikPanel({ data, muvekkilId }: { data: MuvekkilKarlilikPayload; mu
           />
         ) : null}
         {moneyCards('Gelir', data.ofisGeliri, 'gelir')}
+        {moneyCards('Gider', data.gider ?? { TRY: '0.00', USD: '0.00', EUR: '0.00' }, 'gider')}
         {netCards}
       </div>
 

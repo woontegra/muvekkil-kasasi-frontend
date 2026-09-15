@@ -15,11 +15,13 @@ type Props = {
   /** Yalnızca sıfır olmayanları göster */
   hideZero?: boolean
   compact?: boolean
+  /** Örn. "Bu ay gider" → "Bu ay gider (TRY)" */
+  labelPrefix?: string
 }
 
 /** Para birimine göre ayrılmış tutar listesi — tek sahte TL toplamı yok. */
 export function MultiCurrencyTotals(props: Props): ReactElement {
-  const { amounts, className, hideZero = true, compact: _compact = false } = props
+  const { amounts, className, hideZero = true, compact: _compact = false, labelPrefix } = props
   const rows = PARA_BIRIMLERI.map((pb) => ({
     pb,
     value: readCurrencyAmount(amounts, pb)
@@ -29,7 +31,7 @@ export function MultiCurrencyTotals(props: Props): ReactElement {
     return <span className={cn('text-ink-muted', className)}>—</span>
   }
 
-  if (rows.length === 1) {
+  if (rows.length === 1 && !labelPrefix) {
     const r = rows[0]!
     return (
       <span className={cn('font-semibold tabular-nums text-ink', className)}>
@@ -47,7 +49,9 @@ export function MultiCurrencyTotals(props: Props): ReactElement {
             'flex items-baseline justify-between gap-2 text-[11px] tabular-nums'
           )}
         >
-          <span className="text-ink-muted">{r.pb}</span>
+          <span className="text-ink-muted">
+            {labelPrefix ? `${labelPrefix} (${r.pb})` : r.pb}
+          </span>
           <span className="font-semibold text-ink">{formatMoney(r.value, r.pb)}</span>
         </div>
       ))}

@@ -50,6 +50,8 @@ export type MuvekkilKarlilikPayload = {
   toplamDosyaMasrafi: string
   toplamMasrafAvansiIadesi: string
   ofisGeliri: MoneyByCurrency
+  /** Net’ten düşülen gider (PB bağımsız). */
+  gider: MoneyByCurrency
   netKazanc: MoneyByCurrency
   kazancDagilimi: {
     TRY: MuvekkilKarlilikDagilim | null
