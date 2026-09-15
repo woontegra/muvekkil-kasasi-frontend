@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ReactElement, ReactNode } from 'react'
 import { useMemo, useState } from 'react'
-import { invalidateDashboardSummary } from '../api/dashboard'
+import { invalidateFinancialQueries } from '../lib/financialQueryInvalidation'
 import {
   approveOfisKasaHareketi,
   createOfisKasaDovizDonusum,
@@ -229,10 +229,14 @@ export function OfisKasasiPage(): ReactElement {
   })
 
   const invalidateAll = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['ofis-kasasi-ozet'] })
-    void queryClient.invalidateQueries({ queryKey: ['ofis-kasasi-hareketleri'] })
-    void queryClient.invalidateQueries({ queryKey: ['muvekkil-karlilik'] })
-    invalidateDashboardSummary(queryClient)
+    invalidateFinancialQueries(queryClient, {
+      ofisKasa: true,
+      karlilik: true,
+      dashboard: true,
+      maliKontrol: true,
+      vekalet: false,
+      kasa: false
+    })
   }
 
   const approveMu = useMutation({
@@ -908,10 +912,10 @@ function CreateOfisHareketModal(props: {
       tutar: n,
       odemeYontemi: odeme,
       paraBirimi,
+      muvekkilId: muvekkilId || null,
       ...(islemTipi === 'GELIR'
         ? {
-            tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null,
-            muvekkilId: muvekkilId || null
+            tahsilatiYapanPersonelId: tahsilatiYapanPersonelId || null
           }
         : {})
     })
@@ -934,8 +938,7 @@ function CreateOfisHareketModal(props: {
               setOzel('')
               setParaBirimi('TRY')
               if (t === 'GIDER') {
-                setMuvekkilId('')
-                setMuvekkilLabel('')
+                setTahsilatiYapanPersonelId('')
               }
             }}
           >
@@ -1007,19 +1010,17 @@ function CreateOfisHareketModal(props: {
             ))}
           </select>
         </div>
+        <MuvekkilOptionalSelect
+          valueId={muvekkilId}
+          valueLabel={muvekkilLabel}
+          disabled={loading}
+          onChange={(next) => {
+            setMuvekkilId(next?.id ?? '')
+            setMuvekkilLabel(next?.gorunenAd ?? '')
+          }}
+        />
         {islemTipi === 'GELIR' ? (
-          <>
-            <MuvekkilOptionalSelect
-              valueId={muvekkilId}
-              valueLabel={muvekkilLabel}
-              disabled={loading}
-              onChange={(next) => {
-                setMuvekkilId(next?.id ?? '')
-                setMuvekkilLabel(next?.gorunenAd ?? '')
-              }}
-            />
-            <TahsilatiYapanPersonelSelect value={tahsilatiYapanPersonelId} onChange={setTahsilatiYapanPersonelId} />
-          </>
+          <TahsilatiYapanPersonelSelect value={tahsilatiYapanPersonelId} onChange={setTahsilatiYapanPersonelId} />
         ) : null}
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} disabled={loading}>

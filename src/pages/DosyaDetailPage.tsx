@@ -12,8 +12,8 @@ import {
   listKasaHareketleri,
   rejectKasaHareketi
 } from '../api/kasa'
-import { invalidateDashboardSummary } from '../api/dashboard'
 import { invalidateSmmBekleyen } from '../api/smm'
+import { invalidateFinancialQueries } from '../lib/financialQueryInvalidation'
 import { getDosya } from '../api/dosyalar'
 import { getDosyaHesapOzeti } from '../api/hesapOzeti'
 import { getDosyaMakbuzlari } from '../api/makbuzlar'
@@ -369,7 +369,7 @@ function DosyaSmmBekleyenBanner(props: { count: number; onGoVekalet?: () => void
           Vekalet sekmesine git
         </Button>
       ) : null}
-    </div>
+      </div>
   )
 }
 
@@ -416,7 +416,7 @@ function VekaletOzetRow(props: {
                             : null
                       }
                     />
-                  </div>
+      </div>
                 ) : null}
               </TD>
               <TD className="align-top text-right font-semibold tabular-nums">
@@ -433,7 +433,7 @@ function VekaletOzetRow(props: {
                             : null
                       }
                     />
-                  </div>
+      </div>
                 ) : null}
               </TD>
               <TD className="align-top text-right font-semibold tabular-nums">
@@ -643,11 +643,16 @@ export function DosyaDetailPage(): ReactElement {
   })
 
   const invalidateKasa = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['kasa-hareketleri', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['kasa-ozet', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['dosya-hesap-ozeti', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['dosya-makbuzlar', dosyaId] })
-    invalidateDashboardSummary(queryClient)
+    invalidateFinancialQueries(queryClient, {
+      dosyaId,
+      muvekkilId: muvekkilIdFromUrl,
+      ofisKasa: true,
+      vekalet: false,
+      kasa: true,
+      karlilik: true,
+      dashboard: true,
+      maliKontrol: true
+    })
   }
 
   const approveMu = useMutation({
@@ -707,17 +712,19 @@ export function DosyaDetailPage(): ReactElement {
   })
 
   const invalidateVekalet = (): void => {
-    void queryClient.invalidateQueries({ queryKey: ['vekalet', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['kasa-hareketleri', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['kasa-ozet', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['dosya-hesap-ozeti', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['dosya-makbuzlar', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['dosya-mali-ozet', dosyaId] })
+    invalidateFinancialQueries(queryClient, {
+      dosyaId,
+      muvekkilId: muvekkilIdFromUrl,
+      ofisKasa: true,
+      vekalet: true,
+      kasa: true,
+      karlilik: true,
+      dashboard: true,
+      maliKontrol: true
+    })
     void queryClient.invalidateQueries({ queryKey: ['muvekkil-ekstre', dosyaId] })
-    void queryClient.invalidateQueries({ queryKey: ['ofis-kasa'] })
     void queryClient.invalidateQueries({ queryKey: ['prim'] })
     void queryClient.invalidateQueries({ queryKey: ['dosya', dosyaId] })
-    invalidateDashboardSummary(queryClient)
   }
 
   const satirGuvenliSilMu = useMutation({
@@ -741,7 +748,6 @@ export function DosyaDetailPage(): ReactElement {
     onSuccess: () => {
       invalidateVekalet()
       void queryClient.invalidateQueries({ queryKey: ['taksit-odemeler'] })
-      void queryClient.invalidateQueries({ queryKey: ['ofis-kasa'] })
       setVekModal(null)
       toast.success('Silindi.')
     },
@@ -815,8 +821,8 @@ export function DosyaDetailPage(): ReactElement {
       setVekModal((prev) => (prev?.type === 'odeme-edit' ? { type: 'odeme-gecmisi', t: prev.t } : null))
       toast.success('Tahsilat güncellendi.')
     },
-    onError: () => {
-      toast.error('Tahsilat güncellenemedi.')
+    onError: (err) => {
+      toast.error(resolveOdemeApiError(err) ?? 'Tahsilat güncellenemedi.')
     }
   })
   const smmOdemeMu = useMutation({
@@ -1387,74 +1393,74 @@ export function DosyaDetailPage(): ReactElement {
                     empty={<p className="py-6 text-center text-[11px] text-ink-muted">Henüz kasa hareketi yok.</p>}
                     table={
                       <div className="min-w-0 max-w-full">
-                        <Table>
-                          <THead>
-                            <TR>
-                              <TH>Tarih</TH>
-                              <TH>Belge no</TH>
-                              <TH>Tip</TH>
-                              <TH>Açıklama / masraf</TH>
-                              <TH>Ödeme</TH>
-                              <TH>Onay</TH>
-                              <TH className="text-right">Tutar</TH>
-                              <TH>İşlem</TH>
-                            </TR>
-                          </THead>
-                          <TBody>
+                    <Table>
+                      <THead>
+                        <TR>
+                          <TH>Tarih</TH>
+                          <TH>Belge no</TH>
+                          <TH>Tip</TH>
+                          <TH>Açıklama / masraf</TH>
+                          <TH>Ödeme</TH>
+                          <TH>Onay</TH>
+                          <TH className="text-right">Tutar</TH>
+                          <TH>İşlem</TH>
+                        </TR>
+                      </THead>
+                      <TBody>
                             {kasaItems.map((h) => {
-                              const isDuz = h.tip === 'DUZELTME'
-                              const onaysiz = h.onayDurumu === 'ONAYSIZ'
-                              const onayli = h.onayDurumu === 'ONAYLI'
-                              const reddedildi = h.onayDurumu === 'REDDEDILDI'
+                            const isDuz = h.tip === 'DUZELTME'
+                            const onaysiz = h.onayDurumu === 'ONAYSIZ'
+                            const onayli = h.onayDurumu === 'ONAYLI'
+                            const reddedildi = h.onayDurumu === 'REDDEDILDI'
                               const kasaRowId = dosyaFocusElementId('kasa', h.id)
-                              return (
-                                <TR
-                                  key={h.id}
+                            return (
+                              <TR
+                                key={h.id}
                                   id={kasaRowId}
-                                  className={cn(
-                                    isDuz && 'border-l-4 border-l-amber-500 bg-amber-50/40 dark:bg-amber-950/20',
+                                className={cn(
+                                  isDuz && 'border-l-4 border-l-amber-500 bg-amber-50/40 dark:bg-amber-950/20',
                                     onaysiz && !isDuz && 'bg-warning-soft/30',
                                     isRowHighlighted(kasaRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
+                                )}
+                              >
+                                <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
+                                <TD className="font-mono text-xs tabular-nums text-ink">{h.belgeNo}</TD>
+                                <TD>
+                                  <div className="flex flex-wrap items-center gap-1">
+                                      <span className="font-medium">{tipLabel(h.tip)}</span>
+                                    {isDuz ? (
+                                      <Badge variant="warning" className="!normal-case">
+                                        Düzeltme
+                                      </Badge>
+                                    ) : null}
+                                  </div>
+                                  {isDuz && h.orijinalBelgeNo ? (
+                                    <p className="mt-0.5 text-[11px] text-ink-muted">Orijinal: {h.orijinalBelgeNo}</p>
+                                  ) : null}
+                                </TD>
+                                  <TD className="max-w-[220px] text-ink-muted">{aciklamaCell(h)}</TD>
+                                <TD className="text-xs text-ink-muted">{odemeLabel(h.odemeYontemi)}</TD>
+                                <TD>
+                                  <Badge
+                                    variant={
+                                      onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'
+                                    }
+                                    className="!normal-case"
+                                  >
+                                    {onayLabel(h.onayDurumu)}
+                                  </Badge>
+                                  {reddedildi && h.redSebebi?.trim() ? (
+                                    <p className="mt-1 max-w-[180px] text-[11px] text-danger">{h.redSebebi}</p>
+                                  ) : null}
+                                </TD>
+                                <TD
+                                  className={cn(
+                                      'text-right font-semibold tabular-nums',
+                                    signedDisplayAmount(h) < 0 ? 'text-danger' : 'text-ink'
                                   )}
                                 >
-                                  <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
-                                  <TD className="font-mono text-xs tabular-nums text-ink">{h.belgeNo}</TD>
-                                  <TD>
-                                    <div className="flex flex-wrap items-center gap-1">
-                                      <span className="font-medium">{tipLabel(h.tip)}</span>
-                                      {isDuz ? (
-                                        <Badge variant="warning" className="!normal-case">
-                                          Düzeltme
-                                        </Badge>
-                                      ) : null}
-                                    </div>
-                                    {isDuz && h.orijinalBelgeNo ? (
-                                      <p className="mt-0.5 text-[11px] text-ink-muted">Orijinal: {h.orijinalBelgeNo}</p>
-                                    ) : null}
-                                  </TD>
-                                  <TD className="max-w-[220px] text-ink-muted">{aciklamaCell(h)}</TD>
-                                  <TD className="text-xs text-ink-muted">{odemeLabel(h.odemeYontemi)}</TD>
-                                  <TD>
-                                    <Badge
-                                      variant={
-                                        onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'
-                                      }
-                                      className="!normal-case"
-                                    >
-                                      {onayLabel(h.onayDurumu)}
-                                    </Badge>
-                                    {reddedildi && h.redSebebi?.trim() ? (
-                                      <p className="mt-1 max-w-[180px] text-[11px] text-danger">{h.redSebebi}</p>
-                                    ) : null}
-                                  </TD>
-                                  <TD
-                                    className={cn(
-                                      'text-right font-semibold tabular-nums',
-                                      signedDisplayAmount(h) < 0 ? 'text-danger' : 'text-ink'
-                                    )}
-                                  >
-                                    {formatCurrencyTR(signedDisplayAmount(h))}
-                                  </TD>
+                                  {formatCurrencyTR(signedDisplayAmount(h))}
+                                </TD>
                                   <TD className={cn(tableActionColWideClass, 'align-middle')}>
                                     <DosyaKasaHareketIslemCell
                                       hareket={h}
@@ -1478,13 +1484,13 @@ export function DosyaDetailPage(): ReactElement {
                                       onDuzeltme={() => setModal({ type: 'duzeltme', hareket: h })}
                                       onGuvenliSil={() => setModal({ type: 'masraf-sil', hareket: h })}
                                     />
-                                  </TD>
-                                </TR>
-                              )
+                                </TD>
+                              </TR>
+                            )
                             })}
-                          </TBody>
-                        </Table>
-                      </div>
+                      </TBody>
+                    </Table>
+                  </div>
                     }
                     cards={
                       <>
@@ -1738,11 +1744,11 @@ export function DosyaDetailPage(): ReactElement {
                       })
                       if (intent.mode === 'create') {
                         return (
-                          <p className="text-xs text-ink-muted">
-                            {canVekaletDuzenle
+                      <p className="text-xs text-ink-muted">
+                        {canVekaletDuzenle
                               ? 'Henüz vekalet ücreti tanımlanmadı. «Vekalet ücreti ekle» ile başlayabilirsiniz.'
-                              : 'Vekalet ücreti tanımlanmadı. Taksit eklemek için önce yönetici tanımlamalıdır.'}
-                          </p>
+                          : 'Vekalet ücreti tanımlanmadı. Taksit eklemek için önce yönetici tanımlamalıdır.'}
+                      </p>
                         )
                       }
                       if (intent.mode === 'initialize') {
@@ -1758,7 +1764,7 @@ export function DosyaDetailPage(): ReactElement {
                       }
                       return null
                     })()}
-                  </div>
+                    </div>
                   <ResponsiveDataView
                     isEmpty={vekaletData.taksitler.length === 0}
                     empty={<p className="py-6 text-center text-[11px] text-ink-muted">Taksit kaydı yok.</p>}
@@ -1775,10 +1781,10 @@ export function DosyaDetailPage(): ReactElement {
                               ? ` · ${yaklasikQ.data.kurBilgiSatiri}`
                               : null}
                           </p>
-                        ) : null}
-                        <Table>
-                          <THead>
-                            <TR>
+                  ) : null}
+                    <Table>
+                      <THead>
+                        <TR>
                               <TH className="!py-2">Taksit no</TH>
                               <TH className="!py-2">Vade tarihi</TH>
                               <TH className="!py-2 text-right">Taksit tutarı</TH>
@@ -1805,13 +1811,13 @@ export function DosyaDetailPage(): ReactElement {
                               <TH className="!py-2">Makbuz son</TH>
                               <TH className="!py-2">SMM</TH>
                               <TH className="!py-2 text-right">İşlem</TH>
-                            </TR>
-                          </THead>
-                          <TBody>
+                        </TR>
+                      </THead>
+                      <TBody>
                             {vekaletData.taksitler.map((t) => {
                               const row = resolveTaksitRow(t)
                               const taksitPb = resolveParaBirimi(t.paraBirimi)
-                              const iptal = t.odemeDurumu === 'IPTAL'
+                            const iptal = t.odemeDurumu === 'IPTAL'
                               const odenebilir = !iptal && Number(row.kalanTutar) > 0
                               const taksitRowId = dosyaFocusElementId('taksit', t.id)
                               const tlTutar = yaklasikByKey(
@@ -1822,7 +1828,7 @@ export function DosyaDetailPage(): ReactElement {
                                 yaklasikQ.data,
                                 `taksit.${t.id}.kalan`
                               )
-                              return (
+                            return (
                                 <TR
                                   key={t.id}
                                   id={taksitRowId}
@@ -1835,7 +1841,7 @@ export function DosyaDetailPage(): ReactElement {
                                   <TD className="whitespace-nowrap text-ink-muted !py-1.5">{formatDateTR(t.vadeTarihi)}</TD>
                                   <TD className="text-right font-semibold tabular-nums !py-1.5">
                                     {formatMoney(Number(row.taksitTutari), taksitPb)}
-                                  </TD>
+                                </TD>
                                   {showFxTlCols ? (
                                     <TD className="text-right !py-1.5">
                                       <BugunkuTlKarsilikCell
@@ -1843,7 +1849,7 @@ export function DosyaDetailPage(): ReactElement {
                                         value={tlTutar.gosterim}
                                       />
                                     </TD>
-                                  ) : null}
+                                      ) : null}
                                   <TD className="text-right tabular-nums !py-1.5">{formatMoney(Number(row.odenenToplam), taksitPb)}</TD>
                                   <TD className="text-right font-semibold tabular-nums !py-1.5">
                                     {formatMoney(Number(row.kalanTutar), taksitPb)}
@@ -1859,11 +1865,11 @@ export function DosyaDetailPage(): ReactElement {
                                   <TD className="!py-1.5">
                                     <Badge variant={taksitDurumBadge(row.durum)} className="!normal-case">
                                       {taksitDurumLabel(row.durum)}
-                                    </Badge>
+                                      </Badge>
                                     {t.hatirlatmaOzet ? (
                                       <p className="mt-0.5 text-[10px] text-ink-muted">{t.hatirlatmaOzet}</p>
                                     ) : null}
-                                  </TD>
+                                </TD>
                                   <TD className="whitespace-nowrap text-ink-muted !py-1.5">{formatDateTR(row.sonOdemeTarihi ?? undefined)}</TD>
                                   <TD className="font-mono text-[11px] !py-1.5">{row.sonMakbuzNo?.trim() ? row.sonMakbuzNo : '—'}</TD>
                                   <TD className="!py-1.5">{smmDurumRozet(row.smmDurumu)}</TD>
@@ -1871,7 +1877,7 @@ export function DosyaDetailPage(): ReactElement {
                                     <div className={tableActionsFlexRow}>
                                       {odenebilir && canTaksitOdendi ? (
                                         <button
-                                          type="button"
+                                        type="button"
                                           className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
                                           title="Ödeme al"
                                           disabled={odemeTaksitMu.isPending}
@@ -1882,7 +1888,7 @@ export function DosyaDetailPage(): ReactElement {
                                         >
                                           ₺
                                         </button>
-                                      ) : null}
+                                    ) : null}
                                       <button
                                         type="button"
                                         className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
@@ -1901,11 +1907,11 @@ export function DosyaDetailPage(): ReactElement {
                                       </button>
                                       {row.smmDurumu === 'BEKLIYOR' && canSmmIsaretle ? (
                                         <button
-                                          type="button"
+                                        type="button"
                                           className={cn(vekaletIconBtnClass, tableActionButtonShrinkClass)}
                                           title="SMM Kesildi"
                                           disabled={smmOdemeMu.isPending}
-                                          onClick={() => {
+                                        onClick={() => {
                                             const odemeId = resolveSmmBekleyenOdemeId(t, vekaletData?.smmBekleyen ?? [])
                                             if (odemeId) smmOdemeMu.mutate(odemeId)
                                           }}
@@ -1959,15 +1965,15 @@ export function DosyaDetailPage(): ReactElement {
                                         >
                                           Sil
                                         </button>
-                                      ) : null}
-                                    </div>
-                                  </TD>
-                                </TR>
-                              )
+                                    ) : null}
+                                  </div>
+                                </TD>
+                              </TR>
+                            )
                             })}
-                          </TBody>
-                        </Table>
-                      </div>
+                      </TBody>
+                    </Table>
+                  </div>
                     }
                     cards={
                       <>
@@ -2153,17 +2159,17 @@ export function DosyaDetailPage(): ReactElement {
                 <ResponsiveDataView
                   table={
                     <div className="min-w-0 max-w-full">
-                      <Table>
-                        <THead>
-                          <TR>
+                  <Table>
+                    <THead>
+                      <TR>
                             <TH>Tahsilat tarihi</TH>
-                            <TH className="text-right">Tutar</TH>
-                            <TH>Makbuz no</TH>
+                        <TH className="text-right">Tutar</TH>
+                        <TH>Makbuz no</TH>
                             <TH>SMM durumu</TH>
-                            <TH>İşlem</TH>
-                          </TR>
-                        </THead>
-                        <TBody>
+                        <TH>İşlem</TH>
+                      </TR>
+                    </THead>
+                    <TBody>
                           {vekaletData.smmBekleyen.map((row) => {
                             const r = row as { id: string; odemeTarihi?: string; tutar?: string; makbuzNo?: string }
                             const odemeRowId = dosyaFocusElementId('odeme', r.id)
@@ -2181,28 +2187,28 @@ export function DosyaDetailPage(): ReactElement {
                                     SMM bekliyor
                                   </Badge>
                                 </TD>
-                                <TD>
-                                  {canSmmIsaretle ? (
-                                    <Button
-                                      type="button"
-                                      size="sm"
+                          <TD>
+                            {canSmmIsaretle ? (
+                              <Button
+                                type="button"
+                                size="sm"
                                       variant="secondary"
-                                      className="h-7 px-2 text-[11px]"
+                                className="h-7 px-2 text-[11px]"
                                       disabled={smmOdemeMu.isPending}
                                       onClick={() => smmOdemeMu.mutate(r.id)}
-                                    >
-                                      SMM kesildi
-                                    </Button>
-                                  ) : (
-                                    <span className="text-[11px] text-ink-muted">Yetki yok</span>
-                                  )}
-                                </TD>
-                              </TR>
+                              >
+                                SMM kesildi
+                              </Button>
+                            ) : (
+                              <span className="text-[11px] text-ink-muted">Yetki yok</span>
+                            )}
+                          </TD>
+                        </TR>
                             )
                           })}
-                        </TBody>
-                      </Table>
-                    </div>
+                    </TBody>
+                  </Table>
+                </div>
                   }
                   cards={
                     <>
@@ -2268,7 +2274,7 @@ export function DosyaDetailPage(): ReactElement {
               ) : makbuzData && hesapData ? (
                 <div className="grid w-full grid-cols-1 gap-5 min-[1200px]:grid-cols-2 min-[1200px]:items-stretch">
                   <MakbuzPanelShell title="Avans makbuzları" count={avansMakbuzRows.length}>
-                    {avansMakbuzRows.length === 0 ? (
+                            {avansMakbuzRows.length === 0 ? (
                       <p className="text-xs text-ink-muted">Henüz avans makbuzu yok.</p>
                     ) : (
                       <ul className="divide-y divide-border/70">
@@ -2284,29 +2290,29 @@ export function DosyaDetailPage(): ReactElement {
                               </span>
                               <MakbuzActionButtons
                                 onView={() => {
-                                  const full = hesapData.kasaHareketleri.find((x) => x.id === row.id)
-                                  if (!full) return
-                                  setReceiptModal({
-                                    kind: 'advance',
-                                    hareket: full,
-                                    printRootId: `adv-rcpt-${row.id}-${Date.now()}`,
+                                          const full = hesapData.kasaHareketleri.find((x) => x.id === row.id)
+                                          if (!full) return
+                                          setReceiptModal({
+                                            kind: 'advance',
+                                            hareket: full,
+                                            printRootId: `adv-rcpt-${row.id}-${Date.now()}`,
                                     printedAt: new Date().toISOString()
                                   })
                                 }}
                                 onPrint={() => {
-                                  const full = hesapData.kasaHareketleri.find((x) => x.id === row.id)
-                                  if (!full) return
-                                  const printedAt = new Date().toISOString()
-                                  setReceiptModal({
-                                    kind: 'advance',
-                                    hareket: full,
-                                    printRootId: `adv-rcpt-${row.id}-${Date.now()}`,
-                                    printedAt
-                                  })
-                                  window.setTimeout(() => window.print(), 400)
-                                }}
+                                          const full = hesapData.kasaHareketleri.find((x) => x.id === row.id)
+                                          if (!full) return
+                                          const printedAt = new Date().toISOString()
+                                          setReceiptModal({
+                                            kind: 'advance',
+                                            hareket: full,
+                                            printRootId: `adv-rcpt-${row.id}-${Date.now()}`,
+                                            printedAt
+                                          })
+                                          window.setTimeout(() => window.print(), 400)
+                                        }}
                               />
-                            </div>
+                                    </div>
                             {row.aciklama?.trim() ? (
                               <p className="mt-1.5 truncate text-xs text-ink-muted">{row.aciklama.trim()}</p>
                             ) : null}
@@ -2317,7 +2323,7 @@ export function DosyaDetailPage(): ReactElement {
                   </MakbuzPanelShell>
 
                   <MakbuzPanelShell title="Vekalet makbuzları" count={vekaletMakbuzListe.length}>
-                    {vekaletMakbuzListe.length === 0 ? (
+                            {vekaletMakbuzListe.length === 0 ? (
                       <p className="text-xs text-ink-muted">Henüz vekalet makbuzu yok.</p>
                     ) : (
                       <ul className="divide-y divide-border/70">
@@ -2352,7 +2358,7 @@ export function DosyaDetailPage(): ReactElement {
                                 <MakbuzActionButtons
                                   onView={async () => {
                                     const res = await getVekaletOdemeMakbuz(odemeId)
-                                    setReceiptModal({
+                                          setReceiptModal({
                                       kind: 'vekalet-odeme',
                                       makbuz: res.makbuz,
                                       printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
@@ -2361,24 +2367,24 @@ export function DosyaDetailPage(): ReactElement {
                                   }}
                                   onPrint={async () => {
                                     const res = await getVekaletOdemeMakbuz(odemeId)
-                                    const printedAt = new Date().toISOString()
-                                    setReceiptModal({
+                                          const printedAt = new Date().toISOString()
+                                          setReceiptModal({
                                       kind: 'vekalet-odeme',
                                       makbuz: res.makbuz,
                                       printRootId: `vek-odeme-${odemeId}-${Date.now()}`,
-                                      printedAt
-                                    })
-                                    window.setTimeout(() => window.print(), 400)
-                                  }}
+                                            printedAt
+                                          })
+                                          window.setTimeout(() => window.print(), 400)
+                                        }}
                                 />
-                              </div>
+                                    </div>
                             </li>
                           )
                         })}
                       </ul>
                     )}
                   </MakbuzPanelShell>
-                </div>
+                      </div>
               ) : (
                 <p className="text-sm text-ink-muted">Makbuz listesi yüklenemedi.</p>
               )}
@@ -2594,7 +2600,7 @@ function VekaletPesinOdemeModal(props: {
           onClick={() => setMahsupTutar(formatCurrencyInputTR(kalanNum))}
         >
           Kalanın tamamını al
-        </Button>
+          </Button>
         {needsKurOnay ? (
           <label className="flex items-start gap-2 text-xs text-ink">
             <input type="checkbox" className="mt-0.5" checked={kurOnay} onChange={(e) => setKurOnay(e.target.checked)} />
@@ -2732,13 +2738,13 @@ function VekaletOdemeEditModal(props: {
       setLocalErr('Çapraz kur önizlemesini onaylayın.')
       return
     }
-    onSubmit({
+              onSubmit({
       ...crossPreview.payload,
-      odemeTarihi: `${odemeTarihi}T12:00:00.000Z`,
+                odemeTarihi: `${odemeTarihi}T12:00:00.000Z`,
       odemeYontemi,
-      aciklama: aciklama.trim() || null
-    })
-  }
+                aciklama: aciklama.trim() || null
+              })
+            }
 
   return (
     <ModalShell title="Tahsilatı düzenle" onClose={onClose} wide>
@@ -3107,9 +3113,9 @@ function MasrafModal(props: {
               {kalemList.map((k) => (
                 <option key={k.id} value={k.id}>
                   {k.ad}
-                </option>
-              ))}
-            </select>
+              </option>
+            ))}
+          </select>
           )}
         </div>
         {diger ? (

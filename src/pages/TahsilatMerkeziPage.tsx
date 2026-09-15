@@ -3,10 +3,9 @@ import { AnimatePresence, motion } from 'framer-motion'
 import type { ReactElement } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { invalidateDashboardSummary } from '../api/dashboard'
 import { listMuvekkilDosyalari } from '../api/dosyalar'
 import { listMuvekkiller } from '../api/muvekkiller'
-import { invalidateSmmBekleyen } from '../api/smm'
+import { invalidateFinancialQueries } from '../lib/financialQueryInvalidation'
 import {
   invalidateTahsilatMerkezi,
   listTahsilatMerkezi,
@@ -156,11 +155,16 @@ export function TahsilatMerkeziPage(): ReactElement {
 
   const invalidateAll = (dosyaIdForVekalet?: string): void => {
     invalidateTahsilatMerkezi(qc)
-    invalidateDashboardSummary(qc)
-    invalidateSmmBekleyen(qc)
+    invalidateFinancialQueries(qc, {
+      dosyaId: dosyaIdForVekalet,
+      ofisKasa: true,
+      vekalet: Boolean(dosyaIdForVekalet),
+      kasa: Boolean(dosyaIdForVekalet),
+      karlilik: true,
+      dashboard: true,
+      maliKontrol: true
+    })
     if (dosyaIdForVekalet) {
-      void qc.invalidateQueries({ queryKey: ['vekalet', dosyaIdForVekalet] })
-      void qc.invalidateQueries({ queryKey: ['ofis-kasa'] })
       void qc.invalidateQueries({ queryKey: ['prim'] })
     }
   }
