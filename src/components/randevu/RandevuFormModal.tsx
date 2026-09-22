@@ -173,8 +173,9 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
 
   return (
     <ModalScrim onClose={onClose} draggable={false} innerAsDialog innerClassName={RANDEVU_FORM_MODAL_WIDTH}>
-      <RandevuModalPanel>
+      <RandevuModalPanel data-testid="randevu-form-modal">
         <RandevuModalHeader
+          compact
           title={isEdit ? 'Randevuyu Düzenle' : 'Yeni Randevu'}
           subtitle={
             isEdit
@@ -184,7 +185,7 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
         />
 
         <form onSubmit={onSubmit}>
-          <RandevuModalBody className="space-y-4">
+          <RandevuModalBody compact className="space-y-3">
             {formError ? (
               <AlertBox variant="danger" title="Hata">
                 {formError}
@@ -195,7 +196,7 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
               <Input value={baslik} onChange={(e) => setBaslik(e.target.value)} required />
             </RandevuFormField>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <RandevuFormField label="Müvekkil">
                 <Input
                   placeholder="Müvekkil ara…"
@@ -210,12 +211,12 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
                   }}
                 />
                 {showMuvekkilDropdown ? (
-                  <ul className="mt-1 max-h-32 overflow-y-auto rounded-md border border-border bg-white text-sm shadow-sm">
+                  <ul className="mt-1 max-h-28 overflow-y-auto rounded-md border border-border bg-white text-[11px] shadow-sm">
                     {(muvekkilQuery.data?.items ?? []).map((m) => (
                       <li key={m.id}>
                         <button
                           type="button"
-                          className="w-full px-3 py-2 text-left transition-colors hover:bg-primary/5"
+                          className="w-full px-2.5 py-1.5 text-left transition-colors hover:bg-primary/5"
                           onClick={() => {
                             setMuvekkilId(m.id)
                             setMuvekkilQ('')
@@ -229,8 +230,8 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
                   </ul>
                 ) : null}
                 {muvekkilId ? (
-                  <p className="mt-1 text-xs text-ink-muted">
-                    Seçili müvekkil: <span className="font-medium text-ink">{selectedMuvekkilLabel}</span>
+                  <p className="mt-1 text-[10px] text-ink-muted">
+                    Seçili: <span className="font-medium text-ink">{selectedMuvekkilLabel}</span>
                     <button
                       type="button"
                       className="ml-2 text-primary hover:underline"
@@ -263,7 +264,7 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
               </RandevuFormField>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <RandevuFormField label="Tarih" required>
                 <Input type="date" value={tarih} onChange={(e) => setTarih(e.target.value)} required />
               </RandevuFormField>
@@ -283,7 +284,7 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
               </RandevuFormField>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <RandevuFormField label="Başlangıç" required>
                 <Input type="time" value={baslangicSaati} onChange={(e) => setBaslangicSaati(e.target.value)} required />
               </RandevuFormField>
@@ -297,7 +298,7 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
             </RandevuFormField>
 
             <RandevuFormField label="Açıklama">
-              <Textarea value={aciklama} onChange={(e) => setAciklama(e.target.value)} rows={3} />
+              <Textarea value={aciklama} onChange={(e) => setAciklama(e.target.value)} rows={2} className="!py-1.5" />
             </RandevuFormField>
 
             <RandevuHatirlatmaField
@@ -309,12 +310,13 @@ export function RandevuFormModal({ mode, randevu, prefill, onClose, onSaved }: P
           </RandevuModalBody>
 
           <RandevuModalFooter
+            compact
             right={
               <>
-                <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={onClose}>
+                <Button type="button" variant="outline" size="sm" className="w-full sm:w-auto" onClick={onClose}>
                   Vazgeç
                 </Button>
-                <Button type="submit" className="w-full sm:w-auto" disabled={saveMu.isPending}>
+                <Button type="submit" size="sm" className="w-full sm:w-auto" disabled={saveMu.isPending}>
                   {isEdit ? 'Değişiklikleri Kaydet' : 'Randevu Oluştur'}
                 </Button>
               </>

@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useEffect, useState, type ReactElement } from 'react'
 import { getRandevuHatirlatmaPlan } from '../../api/bildirimPlan'
 import type { BildirimPlanModu } from '../../api/bildirimPlan'
-import { RandevuFormField } from './RandevuModalChrome'
+import { formControlClass, uiType } from '../../lib/uiDensity'
+import { RandevuFormField, randevuFormSelectClass } from './RandevuModalChrome'
 
 const PRESETS = [
   { ruleKey: 'OFFSET_30', offsetDk: 30, label: '30 dk önce' },
@@ -50,7 +51,7 @@ export function RandevuHatirlatmaField({ muvekkilSecili, randevuId, value, onCha
   if (!muvekkilSecili) {
     return (
       <RandevuFormField label="WhatsApp Hatırlatması">
-        <p className="text-xs text-ink-muted">Müvekkil seçildiğinde hatırlatma planı ayarlanabilir.</p>
+        <p className={uiType.helper}>Müvekkil seçildiğinde hatırlatma planı ayarlanabilir.</p>
       </RandevuFormField>
     )
   }
@@ -99,7 +100,7 @@ export function RandevuHatirlatmaField({ muvekkilSecili, randevuId, value, onCha
   return (
     <RandevuFormField label="WhatsApp Hatırlatması">
       <select
-        className="w-full rounded-md border border-border px-3 py-2 text-sm"
+        className={randevuFormSelectClass}
         value={value.mode}
         onChange={(e) => {
           const mode = e.target.value as BildirimPlanModu
@@ -116,48 +117,48 @@ export function RandevuHatirlatmaField({ muvekkilSecili, randevuId, value, onCha
       </select>
 
       {value.mode === 'OZEL' ? (
-        <div className="mt-2 space-y-2 rounded-md border border-border/70 bg-surface-muted/20 p-3">
-          {PRESETS.map((p) => {
-            const active = value.kurallar?.find((k) => k.offsetDk === p.offsetDk)?.aktifMi ?? false
-            return (
-              <label key={p.offsetDk} className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={active}
-                  onChange={(e) => togglePreset(p.offsetDk, p.ruleKey, e.target.checked)}
-                />
-                {p.label}
-              </label>
-            )
-          })}
-          <div className="flex flex-wrap items-end gap-2 border-t border-border/60 pt-2">
-            <label className="text-xs text-ink-muted">
-              Özel zaman
-              <div className="mt-1 flex gap-1">
-                <input
-                  type="number"
-                  min={1}
-                  className="w-16 rounded border border-border px-2 py-1 text-sm"
-                  value={customDk}
-                  onChange={(e) => setCustomDk(e.target.value)}
-                />
-                <select
-                  className="rounded border border-border px-2 py-1 text-sm"
-                  value={customUnit}
-                  onChange={(e) => setCustomUnit(e.target.value as 'dk' | 'saat' | 'gun')}
-                >
-                  <option value="dk">dk</option>
-                  <option value="saat">saat</option>
-                  <option value="gun">gün</option>
-                </select>
-              </div>
-            </label>
-            <button type="button" className="text-xs font-semibold text-primary hover:underline" onClick={addCustom}>
+        <div className="mt-1.5 space-y-1.5 rounded-md border border-border/70 bg-surface-muted/20 px-2.5 py-2">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-4">
+            {PRESETS.map((p) => {
+              const active = value.kurallar?.find((k) => k.offsetDk === p.offsetDk)?.aktifMi ?? false
+              return (
+                <label key={p.offsetDk} className="inline-flex items-center gap-1.5">
+                  <input
+                    type="checkbox"
+                    checked={active}
+                    onChange={(e) => togglePreset(p.offsetDk, p.ruleKey, e.target.checked)}
+                  />
+                  <span className={uiType.helper}>{p.label}</span>
+                </label>
+              )
+            })}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 border-t border-border/60 pt-1.5">
+            <span className={uiType.helper}>Özel</span>
+            <input
+              type="number"
+              min={1}
+              className={`${formControlClass} !h-7 w-14`}
+              value={customDk}
+              onChange={(e) => setCustomDk(e.target.value)}
+              aria-label="Özel hatırlatma süresi"
+            />
+            <select
+              className={`${formControlClass} !h-7 w-auto`}
+              value={customUnit}
+              onChange={(e) => setCustomUnit(e.target.value as 'dk' | 'saat' | 'gun')}
+              aria-label="Özel hatırlatma birimi"
+            >
+              <option value="dk">dk</option>
+              <option value="saat">saat</option>
+              <option value="gun">gün</option>
+            </select>
+            <button type="button" className="text-[10px] font-semibold text-primary hover:underline" onClick={addCustom}>
               Ekle
             </button>
           </div>
           {(value.kurallar ?? []).filter((k) => k.aktifMi && k.ruleKey === 'CUSTOM').length > 0 ? (
-            <p className="text-[10px] text-ink-muted">
+            <p className={uiType.helper}>
               Özel:{' '}
               {(value.kurallar ?? [])
                 .filter((k) => k.aktifMi && k.ruleKey === 'CUSTOM')
@@ -169,7 +170,7 @@ export function RandevuHatirlatmaField({ muvekkilSecili, randevuId, value, onCha
       ) : null}
 
       {value.mode === 'VARSAYILAN' ? (
-        <p className="mt-1 text-[10px] text-ink-muted">Ayarlar → WhatsApp → Randevu Hatırlatmaları uygulanır.</p>
+        <p className={`mt-1 ${uiType.helper}`}>Ayarlar → WhatsApp → Randevu Hatırlatmaları uygulanır.</p>
       ) : null}
     </RandevuFormField>
   )
