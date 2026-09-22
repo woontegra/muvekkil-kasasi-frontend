@@ -47,7 +47,6 @@ import {
 import { TaksitHatirlatmaPlanModal } from '../components/vekalet/TaksitHatirlatmaPlanModal'
 import { VekaletSatirGuvenliSilFlow } from '../components/vekalet/VekaletSatirGuvenliSilFlow'
 import { MasrafGuvenliSilModal } from '../components/kasa/MasrafGuvenliSilModal'
-import { DosyaKasaHareketIslemCell } from '../components/kasa/DosyaKasaHareketIslemCell'
 import { DosyaKasaHareketTableRow } from '../components/kasa/DosyaKasaHareketTableRow'
 import {
   canShowDosyaKasaDuzeltme,
@@ -81,7 +80,6 @@ import {
   THead,
   TR,
   tableActionButtonShrinkClass,
-  tableActionColWideClass,
   tableActionsFlexRow,
   useConfirm,
   DraggablePanel
@@ -1411,7 +1409,6 @@ export function DosyaDetailPage(): ReactElement {
                       </THead>
                       <TBody>
                             {kasaItems.map((h) => {
-                            const isDuz = h.tip === 'DUZELTME'
                               const kasaRowId = dosyaFocusElementId('kasa', h.id)
                             return (
                               <DosyaKasaHareketTableRow
