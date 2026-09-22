@@ -5,11 +5,16 @@ import { Link } from 'react-router-dom'
 import { fetchIcraTahsilatReport, fetchOfisKasaReport } from '../api/reports'
 import { APP_BASE } from '../config/appPaths'
 import { listPrimPersoneller } from '../api/primPersonel'
+import { FinancePeriodSelector } from '../components/mali/FinancePeriodSelector'
 import { IcraTahsilatReportSheet } from '../components/reports/IcraTahsilatReportSheet'
 import { OfisKasaReportSheet } from '../components/reports/OfisKasaReportSheet'
 import { ReportPrintShell } from '../components/reports/ReportPrintShell'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, PageHeader } from '../components/ui'
 import { cn } from '../lib/cn'
+import {
+  resolveFinancePeriodRange,
+  type FinancePeriodRange
+} from '../lib/financePeriodRange'
 import type { IcraTahsilatReportResponse, OfisKasaReportResponse } from '../types/reports'
 import { finansKalemleriQueryKey, listFinansKalemleri } from '../api/finansKalemleri'
 import { OFIS_KASA_SYSTEM_FILTER_LABELS } from '../types/finansKalemi'
@@ -19,16 +24,6 @@ import {
 } from '../types/ofisKasasi'
 
 type ReportKind = 'ofis-kasa' | 'icra-tahsilat' | null
-
-function todayInputDate(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
-function monthStartInputDate(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
-}
 
 function dateInputToIso(dateStr: string): string {
   return `${dateStr}T12:00:00.000Z`
@@ -70,15 +65,17 @@ export function ReportsPage(): ReactElement {
   const [ofisPreview, setOfisPreview] = useState<OfisKasaReportResponse | null>(null)
   const [icraPreview, setIcraPreview] = useState<IcraTahsilatReportResponse | null>(null)
 
-  const [ofisBas, setOfisBas] = useState(monthStartInputDate())
-  const [ofisBit, setOfisBit] = useState(todayInputDate())
+  const [ofisPeriod, setOfisPeriod] = useState<FinancePeriodRange>(() =>
+    resolveFinancePeriodRange('THIS_MONTH')
+  )
   const [ofisTip, setOfisTip] = useState('')
   const [ofisKategori, setOfisKategori] = useState('')
   const [ofisOnay, setOfisOnay] = useState('')
   const [ofisQ, setOfisQ] = useState('')
 
-  const [icraBas, setIcraBas] = useState(monthStartInputDate())
-  const [icraBit, setIcraBit] = useState(todayInputDate())
+  const [icraPeriod, setIcraPeriod] = useState<FinancePeriodRange>(() =>
+    resolveFinancePeriodRange('THIS_MONTH')
+  )
   const [icraTur, setIcraTur] = useState('')
   const [icraDurum, setIcraDurum] = useState('')
   const [icraPersonel, setIcraPersonel] = useState('')
@@ -112,29 +109,46 @@ export function ReportsPage(): ReactElement {
     staleTime: 60_000
   })
 
+  const ofisBas = ofisPeriod.bas ?? ''
+  const ofisBit = ofisPeriod.bit ?? ''
+  const icraBas = icraPeriod.bas ?? ''
+  const icraBit = icraPeriod.bit ?? ''
+
   const ofisMu = useMutation({
-    mutationFn: () =>
-      fetchOfisKasaReport({
+    mutationFn: () => {
+      if (!ofisBas || !ofisBit) {
+        throw new Error(
+          'Rapor için başlangıç ve bitiş tarihi seçin (Tüm Zamanlar rapor API’sinde desteklenmez).'
+        )
+      }
+      return fetchOfisKasaReport({
         startDate: dateInputToIso(ofisBas),
         endDate: dateInputToIso(ofisBit),
         islemTipi: ofisTip || undefined,
         kategori: ofisKategori || undefined,
         onayDurumu: ofisOnay || undefined,
         q: ofisQ.trim() || undefined
-      }),
+      })
+    },
     onSuccess: (data) => setOfisPreview(data)
   })
 
   const icraMu = useMutation({
-    mutationFn: () =>
-      fetchIcraTahsilatReport({
+    mutationFn: () => {
+      if (!icraBas || !icraBit) {
+        throw new Error(
+          'Rapor için başlangıç ve bitiş tarihi seçin (Tüm Zamanlar rapor API’sinde desteklenmez).'
+        )
+      }
+      return fetchIcraTahsilatReport({
         startDate: dateInputToIso(icraBas),
         endDate: dateInputToIso(icraBit),
         alacakTuru: icraTur || undefined,
         durum: icraDurum || undefined,
         tahsilatiYapanPersonelId: icraPersonel || undefined,
         q: icraQ.trim() || undefined
-      }),
+      })
+    },
     onSuccess: (data) => setIcraPreview(data)
   })
 
@@ -187,9 +201,8 @@ export function ReportsPage(): ReactElement {
             <CardTitle className="text-base">Ofis Kasa Raporu — filtreler</CardTitle>
           </CardHeader>
           <CardBody className="space-y-3 px-3 py-3 sm:px-4">
+            <FinancePeriodSelector value={ofisPeriod} onChange={setOfisPeriod} />
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <Input label="Başlangıç" type="date" value={ofisBas} onChange={(e) => setOfisBas(e.target.value)} />
-              <Input label="Bitiş" type="date" value={ofisBit} onChange={(e) => setOfisBit(e.target.value)} />
               <label className="block text-xs">
                 <span className="mb-1 block font-semibold text-ink-muted">İşlem tipi</span>
                 <select
@@ -244,7 +257,11 @@ export function ReportsPage(): ReactElement {
                 {ofisMu.error instanceof Error ? ofisMu.error.message : 'Rapor alınamadı.'}
               </AlertBox>
             ) : null}
-            <Button type="button" disabled={ofisMu.isPending} onClick={() => ofisMu.mutate()}>
+            <Button
+              type="button"
+              disabled={ofisMu.isPending || !ofisBas || !ofisBit}
+              onClick={() => ofisMu.mutate()}
+            >
               {ofisMu.isPending ? 'Hazırlanıyor…' : 'Raporu hazırla'}
             </Button>
           </CardBody>
@@ -257,9 +274,8 @@ export function ReportsPage(): ReactElement {
             <CardTitle className="text-base">İcra Tahsilat Raporu — filtreler</CardTitle>
           </CardHeader>
           <CardBody className="space-y-3 px-3 py-3 sm:px-4">
+            <FinancePeriodSelector value={icraPeriod} onChange={setIcraPeriod} />
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              <Input label="Başlangıç" type="date" value={icraBas} onChange={(e) => setIcraBas(e.target.value)} />
-              <Input label="Bitiş" type="date" value={icraBit} onChange={(e) => setIcraBit(e.target.value)} />
               <label className="block text-xs">
                 <span className="mb-1 block font-semibold text-ink-muted">Alacak türü</span>
                 <select
@@ -314,7 +330,11 @@ export function ReportsPage(): ReactElement {
                 {icraMu.error instanceof Error ? icraMu.error.message : 'Rapor alınamadı.'}
               </AlertBox>
             ) : null}
-            <Button type="button" disabled={icraMu.isPending} onClick={() => icraMu.mutate()}>
+            <Button
+              type="button"
+              disabled={icraMu.isPending || !icraBas || !icraBit}
+              onClick={() => icraMu.mutate()}
+            >
               {icraMu.isPending ? 'Hazırlanıyor…' : 'Raporu hazırla'}
             </Button>
           </CardBody>

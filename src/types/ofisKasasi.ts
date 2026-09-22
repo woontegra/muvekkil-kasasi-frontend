@@ -54,6 +54,7 @@ export type OfisKasaHareketiDto = {
   tenantId: string
   islemTipi: OfisKasaIslemTipiApi
   tarih: string
+  economicTarih?: string
   kategori: string
   ozelKategoriAdi: string | null
   aciklama: string | null
@@ -71,6 +72,18 @@ export type OfisKasaHareketiDto = {
   redSebebi: string | null
   orijinalHareketId: string | null
   orijinalBelgeNo: string | null
+  orijinalIslemTipi?: OfisKasaIslemTipiApi | null
+  orijinalTutar?: string | null
+  duzeltildi?: boolean
+  orphanWarning?: boolean
+  bagliIslemUyari?: string | null
+  bakiyeEtkisi?: string | null
+  bakiyeEtkisiSign?: 'positive' | 'negative' | 'zero' | null
+  bakiyeEtkisiDisplay?: string | null
+  eskiTutar?: string | null
+  yeniTutar?: string | null
+  duzeltenUserId?: string | null
+  duzeltenUserAd?: string | null
   otomatikOnayMi: boolean
   tahsilatiYapanUserId: string | null
   tahsilatiYapanPersonelId: string | null
@@ -97,6 +110,10 @@ export type OfisKasaCurrencyOzetDto = {
   kasaBakiyesi: string
   buAyGelir: string
   buAyGider: string
+  donemGelir?: string
+  donemGider?: string
+  donemDuzeltmeEtkisi?: string
+  donemNet?: string
 }
 
 export type OfisKasaOzetDto = {
@@ -106,10 +123,26 @@ export type OfisKasaOzetDto = {
   toplamDuzeltme: string
   kasaBakiyesi: string
   onaysizIslemSayisi: number
+  onaysizIslemSayisiDonem?: number
   buAyGelir: string
   buAyGider: string
+  period?: {
+    preset: string
+    bas: string | null
+    bit: string | null
+    etiket: string
+  }
   byCurrency: Record<ParaBirimi, OfisKasaCurrencyOzetDto>
   bakiyeler: Record<ParaBirimi, string>
+  donem?: Record<
+    ParaBirimi,
+    {
+      donemGelir: string
+      donemGider: string
+      donemDuzeltmeEtkisi: string
+      donemNet: string
+    }
+  >
 }
 
 export type OfisKasaHareketleriListResponse = {

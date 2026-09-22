@@ -140,7 +140,7 @@ export function HomePage(): ReactElement {
 
   const ofisOzetQuery = useQuery({
     queryKey: ['ofis-kasasi-ozet'],
-    queryFn: getOfisKasaOzet,
+    queryFn: () => getOfisKasaOzet(),
     staleTime: 30_000,
     retry: 1
   })

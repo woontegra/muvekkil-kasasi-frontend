@@ -69,6 +69,11 @@ import { ParaBirimiFilterSelect, ParaBirimiSelect } from '../components/paraBiri
 import { previewDovizDonusumKur } from '../lib/crossCurrencyPayment'
 import { TcmbCrossRatePanel } from '../components/kurlar/TcmbCrossRatePanel'
 import { useCrossCurrencyTcmb } from '../hooks/useCrossCurrencyTcmb'
+import { FinancePeriodSelector } from '../components/mali/FinancePeriodSelector'
+import {
+  resolveFinancePeriodRange,
+  type FinancePeriodRange
+} from '../lib/financePeriodRange'
 import {
   finansKalemleriQueryKey,
   listFinansKalemleri
@@ -185,10 +190,12 @@ export function OfisKasasiPage(): ReactElement {
   const [onayDurumu, setOnayDurumu] = useState<'' | OfisKasaOnayDurumuApi>('')
   const [kategori, setKategori] = useState('')
   const [filterParaBirimi, setFilterParaBirimi] = useState<'' | ParaBirimi>('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [period, setPeriod] = useState<FinancePeriodRange>(() => resolveFinancePeriodRange('THIS_MONTH'))
   const [page, setPage] = useState(1)
   const limit = 50
+
+  const startDate = period.bas ?? ''
+  const endDate = period.bit ?? ''
 
   const listParams = useMemo(
     () => ({
@@ -207,8 +214,13 @@ export function OfisKasasiPage(): ReactElement {
   )
 
   const ozetQuery = useQuery({
-    queryKey: ['ofis-kasasi-ozet'],
-    queryFn: getOfisKasaOzet
+    queryKey: ['ofis-kasasi-ozet', period.preset, period.bas, period.bit],
+    queryFn: () =>
+      getOfisKasaOzet({
+        periodPreset: period.preset,
+        bas: period.bas,
+        bit: period.bit
+      })
   })
 
   const gelirKalemleriQuery = useQuery({
@@ -346,19 +358,53 @@ export function OfisKasasiPage(): ReactElement {
         </AlertBox>
       ) : null}
 
-      <CurrencyBalanceCards bakiyeler={ozet?.bakiyeler} />
+      <CurrencyBalanceCards
+        bakiyeler={ozet?.bakiyeler}
+        breakdowns={
+          ozet?.byCurrency
+            ? {
+                TRY: {
+                  gelir: ozet.byCurrency.TRY.toplamGelir,
+                  gider: ozet.byCurrency.TRY.toplamGider,
+                  duzeltme: ozet.byCurrency.TRY.toplamDuzeltme
+                },
+                USD: {
+                  gelir: ozet.byCurrency.USD.toplamGelir,
+                  gider: ozet.byCurrency.USD.toplamGider,
+                  duzeltme: ozet.byCurrency.USD.toplamDuzeltme
+                },
+                EUR: {
+                  gelir: ozet.byCurrency.EUR.toplamGelir,
+                  gider: ozet.byCurrency.EUR.toplamGider,
+                  duzeltme: ozet.byCurrency.EUR.toplamDuzeltme
+                }
+              }
+            : undefined
+        }
+      />
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="rounded-lg border border-border/70 bg-panel px-3 py-2.5">
+        <FinancePeriodSelector
+          value={period}
+          onChange={(next) => {
+            setPeriod(next)
+            setPage(1)
+          }}
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          label="Bu ay gelir (onaylı)"
+          label="Dönem Geliri"
           value={
-            ozet?.byCurrency ? (
+            ozet?.donem || ozet?.byCurrency ? (
               <MultiCurrencyTotals
-                labelPrefix="Bu ay gelir"
+                labelPrefix="Gelir"
+                hideZero={false}
                 amounts={{
-                  TRY: ozet.byCurrency.TRY.buAyGelir,
-                  USD: ozet.byCurrency.USD.buAyGelir,
-                  EUR: ozet.byCurrency.EUR.buAyGelir
+                  TRY: ozet.donem?.TRY.donemGelir ?? ozet.byCurrency.TRY.donemGelir ?? ozet.byCurrency.TRY.buAyGelir,
+                  USD: ozet.donem?.USD.donemGelir ?? ozet.byCurrency.USD.donemGelir ?? ozet.byCurrency.USD.buAyGelir,
+                  EUR: ozet.donem?.EUR.donemGelir ?? ozet.byCurrency.EUR.donemGelir ?? ozet.byCurrency.EUR.buAyGelir
                 }}
                 compact
               />
@@ -366,19 +412,20 @@ export function OfisKasasiPage(): ReactElement {
               '—'
             )
           }
-          sub="Para birimine göre ayrı"
+          sub={period.etiket}
           className="border border-emerald-300/60 bg-emerald-50/80 dark:border-emerald-900/50 dark:bg-emerald-950/25"
         />
         <StatCard
-          label="Bu ay gider (onaylı)"
+          label="Dönem Gideri"
           value={
-            ozet?.byCurrency ? (
+            ozet?.donem || ozet?.byCurrency ? (
               <MultiCurrencyTotals
-                labelPrefix="Bu ay gider"
+                labelPrefix="Gider"
+                hideZero={false}
                 amounts={{
-                  TRY: ozet.byCurrency.TRY.buAyGider,
-                  USD: ozet.byCurrency.USD.buAyGider,
-                  EUR: ozet.byCurrency.EUR.buAyGider
+                  TRY: ozet.donem?.TRY.donemGider ?? ozet.byCurrency.TRY.donemGider ?? ozet.byCurrency.TRY.buAyGider,
+                  USD: ozet.donem?.USD.donemGider ?? ozet.byCurrency.USD.donemGider ?? ozet.byCurrency.USD.buAyGider,
+                  EUR: ozet.donem?.EUR.donemGider ?? ozet.byCurrency.EUR.donemGider ?? ozet.byCurrency.EUR.buAyGider
                 }}
                 compact
               />
@@ -386,13 +433,34 @@ export function OfisKasasiPage(): ReactElement {
               '—'
             )
           }
-          sub="Para birimine göre ayrı"
+          sub={period.etiket}
           className="border border-orange-400/50 bg-orange-50/85 dark:border-orange-900/45 dark:bg-orange-950/25"
         />
         <StatCard
-          label="Onaysız işlem"
-          value={ozet ? String(ozet.onaysizIslemSayisi) : '—'}
-          sub="Onay bekliyor"
+          label="Dönem Neti"
+          value={
+            ozet?.donem || ozet?.byCurrency ? (
+              <MultiCurrencyTotals
+                labelPrefix="Net"
+                hideZero={false}
+                amounts={{
+                  TRY: ozet.donem?.TRY.donemNet ?? ozet.byCurrency.TRY.donemNet ?? '0',
+                  USD: ozet.donem?.USD.donemNet ?? ozet.byCurrency.USD.donemNet ?? '0',
+                  EUR: ozet.donem?.EUR.donemNet ?? ozet.byCurrency.EUR.donemNet ?? '0'
+                }}
+                compact
+              />
+            ) : (
+              '—'
+            )
+          }
+          sub={period.etiket}
+          className="border border-sky-300/60 bg-sky-50/80 dark:border-sky-900/50 dark:bg-sky-950/25"
+        />
+        <StatCard
+          label="Onaysız İşlem"
+          value={String(ozet?.onaysizIslemSayisiDonem ?? ozet?.onaysizIslemSayisi ?? '—')}
+          sub="Seçilen dönemde / onay bekliyor"
           className="border border-amber-400/55 bg-amber-50/90 dark:border-amber-900/45 dark:bg-amber-950/25"
         />
       </div>
@@ -430,8 +498,7 @@ export function OfisKasasiPage(): ReactElement {
               setOnayDurumu('')
               setKategori('')
               setFilterParaBirimi('')
-              setStartDate('')
-              setEndDate('')
+              setPeriod(resolveFinancePeriodRange('THIS_MONTH'))
               setPage(1)
             }}
             desktopFiltersClassName="!mt-0"
@@ -520,7 +587,15 @@ export function OfisKasasiPage(): ReactElement {
                   label="Başlangıç"
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setPeriod({
+                      preset: 'CUSTOM',
+                      bas: e.target.value || null,
+                      bit: period.bit,
+                      etiket: 'Özel Tarih'
+                    })
+                    setPage(1)
+                  }}
                 />
               </div>
               <div className="min-w-0 flex-1 md:w-[142px] md:flex-none">
@@ -528,7 +603,15 @@ export function OfisKasasiPage(): ReactElement {
                   label="Bitiş"
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    setPeriod({
+                      preset: 'CUSTOM',
+                      bas: period.bas,
+                      bit: e.target.value || null,
+                      etiket: 'Özel Tarih'
+                    })
+                    setPage(1)
+                  }}
                 />
               </div>
             </div>

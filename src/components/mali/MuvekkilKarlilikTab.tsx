@@ -3,10 +3,16 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { getMuvekkilKarlilik } from '../../api/maliOzet'
-import { AlertBox, Button, Card, CardBody } from '../ui'
+import { AlertBox, Card, CardBody } from '../ui'
 import { formatMoneyFixed2, moneyFixed2NonZero, type ParaBirimi } from '../../utils/formatters'
 import { cn } from '../../lib/cn'
 import { APP_BASE } from '../../config/appPaths'
+import {
+  resolveFinancePeriodRange,
+  type FinancePeriodRange
+} from '../../lib/financePeriodRange'
+import { pickKarlilikPayload } from '../../lib/karlilikPeriod'
+import { FinancePeriodSelector } from './FinancePeriodSelector'
 import type {
   MoneyByCurrency,
   MuvekkilKarlilikDagilim,
@@ -15,7 +21,6 @@ import type {
 } from '../../types/maliOzet'
 
 type Props = { muvekkilId: string }
-type ViewMode = 'tumZamanlar' | 'buDonem'
 
 /** Kârlılık kart tonları — pastel, etiket + renk birlikte. */
 type StatTone = 'neutral' | 'info' | 'gelir' | 'gider' | 'net-pos' | 'net-neg' | 'net-zero'
@@ -248,11 +253,18 @@ function KarlilikPanel({ data, muvekkilId }: { data: MuvekkilKarlilikPayload; mu
 }
 
 export function MuvekkilKarlilikTab({ muvekkilId }: Props): ReactElement {
-  const [view, setView] = useState<ViewMode>('tumZamanlar')
+  const [period, setPeriod] = useState<FinancePeriodRange>(() =>
+    resolveFinancePeriodRange('ALL_TIME')
+  )
 
   const query = useQuery({
-    queryKey: ['muvekkil-karlilik', muvekkilId],
-    queryFn: () => getMuvekkilKarlilik(muvekkilId),
+    queryKey: ['muvekkil-karlilik', muvekkilId, period.preset, period.bas, period.bit],
+    queryFn: () =>
+      getMuvekkilKarlilik(muvekkilId, {
+        periodPreset: period.preset,
+        bas: period.bas,
+        bit: period.bit
+      }),
     staleTime: 30_000
   })
 
@@ -271,31 +283,13 @@ export function MuvekkilKarlilikTab({ muvekkilId }: Props): ReactElement {
   const data = query.data
   if (!data) return <p className="py-6 text-center text-sm text-ink-muted">Veri yok.</p>
 
-  const activeData = view === 'buDonem' && data.buDonem ? data.buDonem : data.tumZamanlar
+  const activeData = pickKarlilikPayload(data, period)
+  const isPeriodView = period.preset !== 'ALL_TIME'
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={view === 'tumZamanlar' ? 'secondary' : 'ghost'}
-          className={cn(view === 'tumZamanlar' && 'ring-2 ring-primary/25')}
-          onClick={() => setView('tumZamanlar')}
-        >
-          Tüm zamanlar
-        </Button>
-        {data.buDonem ? (
-          <Button
-            type="button"
-            size="sm"
-            variant={view === 'buDonem' ? 'secondary' : 'ghost'}
-            className={cn(view === 'buDonem' && 'ring-2 ring-primary/25')}
-            onClick={() => setView('buDonem')}
-          >
-            {data.donemEtiketi ?? 'Bu dönem'}
-          </Button>
-        ) : null}
+      <div className="rounded-lg border border-border/70 bg-panel px-3 py-2.5">
+        <FinancePeriodSelector value={period} onChange={setPeriod} />
       </div>
 
       <KarlilikPanel data={activeData} muvekkilId={muvekkilId} />
@@ -306,9 +300,9 @@ export function MuvekkilKarlilikTab({ muvekkilId }: Props): ReactElement {
         birimindeki gider.
       </p>
 
-      {view === 'buDonem' ? (
+      {isPeriodView ? (
         <p className="text-[10px] text-ink-subtle">
-          Dönem görünümünde yalnızca dönem içi tahsilatlar ve hareketler hesaplanır.
+          Dönem görünümünde yalnızca seçilen aralıktaki tahsilatlar ve hareketler hesaplanır.
         </p>
       ) : null}
     </div>

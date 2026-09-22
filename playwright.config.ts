@@ -40,12 +40,12 @@ export default defineConfig({
         storageState: 'e2e/.auth/user.json'
       },
       dependencies: ['setup'],
-      testIgnore: /global\.setup\.ts|login-inputs\.spec\.ts|cross-tenant-isolation\.spec\.ts|role-matrix\.spec\.ts|auth-session\.spec\.ts|tenant-isolation\.spec\.ts|responsive-quality\/|tahsilat-merkezi-table-layout\.spec\.ts|randevu-form-modal-layout\.spec\.ts/
+      testIgnore: /global\.setup\.ts|login-inputs\.spec\.ts|cross-tenant-isolation\.spec\.ts|role-matrix\.spec\.ts|auth-session\.spec\.ts|tenant-isolation\.spec\.ts|responsive-quality\/|tahsilat-merkezi-table-layout\.spec\.ts|randevu-form-modal-layout\.spec\.ts|ofis-finans-duzeltme-layout\.spec\.ts/
     },
     {
       name: 'public',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /login-inputs\.spec\.ts|tenant-isolation\.spec\.ts|auth-session\.spec\.ts|cross-tenant-isolation\.spec\.ts|role-matrix\.spec\.ts|tahsilat-merkezi-table-layout\.spec\.ts|randevu-form-modal-layout\.spec\.ts/
+      testMatch: /login-inputs\.spec\.ts|tenant-isolation\.spec\.ts|auth-session\.spec\.ts|cross-tenant-isolation\.spec\.ts|role-matrix\.spec\.ts|tahsilat-merkezi-table-layout\.spec\.ts|randevu-form-modal-layout\.spec\.ts|ofis-finans-duzeltme-layout\.spec\.ts/
     },
     {
       name: 'mobile',

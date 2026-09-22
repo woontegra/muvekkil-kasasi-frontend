@@ -26,6 +26,7 @@ export type KasaHareketiDto = {
   muvekkilId: string
   tip: KasaHareketTipiApi
   tarih: string
+  economicTarih?: string
   masrafTuru: string | null
   ozelMasrafAdi: string | null
   aciklama: string | null
@@ -39,6 +40,15 @@ export type KasaHareketiDto = {
   redSebebi: string | null
   orijinalHareketId: string | null
   orijinalBelgeNo: string | null
+  duzeltildi?: boolean
+  orphanWarning?: boolean
+  bagliIslemUyari?: string | null
+  bakiyeEtkisi?: string | null
+  bakiyeEtkisiSign?: 'positive' | 'negative' | 'zero' | null
+  bakiyeEtkisiDisplay?: string | null
+  eskiTutar?: string | null
+  yeniTutar?: string | null
+  duzeltenUserAd?: string | null
   otomatikOnayMi: boolean
   tahsilatiYapanUserId: string | null
   tahsilatiYapanPersonelId: string | null

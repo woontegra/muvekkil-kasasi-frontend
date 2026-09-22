@@ -48,6 +48,7 @@ import { TaksitHatirlatmaPlanModal } from '../components/vekalet/TaksitHatirlatm
 import { VekaletSatirGuvenliSilFlow } from '../components/vekalet/VekaletSatirGuvenliSilFlow'
 import { MasrafGuvenliSilModal } from '../components/kasa/MasrafGuvenliSilModal'
 import { DosyaKasaHareketIslemCell } from '../components/kasa/DosyaKasaHareketIslemCell'
+import { DosyaKasaHareketTableRow } from '../components/kasa/DosyaKasaHareketTableRow'
 import {
   canShowDosyaKasaDuzeltme,
   canShowDosyaKasaGuvenliSil,
@@ -94,6 +95,8 @@ import { CrossCurrencyPaymentFields } from '../components/paraBirimi/CrossCurren
 import type { CrossPaymentKurMeta } from '../types/kurlar'
 import {
   formatCurrencyTR,
+  formatBalanceImpact,
+  balanceImpactTone,
   formatDateTR,
   formatCurrencyInputTR,
   formatMoney,
@@ -1409,83 +1412,39 @@ export function DosyaDetailPage(): ReactElement {
                       <TBody>
                             {kasaItems.map((h) => {
                             const isDuz = h.tip === 'DUZELTME'
-                            const onaysiz = h.onayDurumu === 'ONAYSIZ'
-                            const onayli = h.onayDurumu === 'ONAYLI'
-                            const reddedildi = h.onayDurumu === 'REDDEDILDI'
                               const kasaRowId = dosyaFocusElementId('kasa', h.id)
                             return (
-                              <TR
+                              <DosyaKasaHareketTableRow
                                 key={h.id}
-                                  id={kasaRowId}
-                                className={cn(
-                                  isDuz && 'border-l-4 border-l-amber-500 bg-amber-50/40 dark:bg-amber-950/20',
-                                    onaysiz && !isDuz && 'bg-warning-soft/30',
-                                    isRowHighlighted(kasaRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
-                                )}
-                              >
-                                <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
-                                <TD className="font-mono text-xs tabular-nums text-ink">{h.belgeNo}</TD>
-                                <TD>
-                                  <div className="flex flex-wrap items-center gap-1">
-                                      <span className="font-medium">{tipLabel(h.tip)}</span>
-                                    {isDuz ? (
-                                      <Badge variant="warning" className="!normal-case">
-                                        Düzeltme
-                                      </Badge>
-                                    ) : null}
-                                  </div>
-                                  {isDuz && h.orijinalBelgeNo ? (
-                                    <p className="mt-0.5 text-[11px] text-ink-muted">Orijinal: {h.orijinalBelgeNo}</p>
-                                  ) : null}
-                                </TD>
-                                  <TD className="max-w-[220px] text-ink-muted">{aciklamaCell(h)}</TD>
-                                <TD className="text-xs text-ink-muted">{odemeLabel(h.odemeYontemi)}</TD>
-                                <TD>
-                                  <Badge
-                                    variant={
-                                      onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'
-                                    }
-                                    className="!normal-case"
-                                  >
-                                    {onayLabel(h.onayDurumu)}
-                                  </Badge>
-                                  {reddedildi && h.redSebebi?.trim() ? (
-                                    <p className="mt-1 max-w-[180px] text-[11px] text-danger">{h.redSebebi}</p>
-                                  ) : null}
-                                </TD>
-                                <TD
-                                  className={cn(
-                                      'text-right font-semibold tabular-nums',
-                                    signedDisplayAmount(h) < 0 ? 'text-danger' : 'text-ink'
-                                  )}
-                                >
-                                  {formatCurrencyTR(signedDisplayAmount(h))}
-                                </TD>
-                                  <TD className={cn(tableActionColWideClass, 'align-middle')}>
-                                    <DosyaKasaHareketIslemCell
-                                      hareket={h}
-                                      role={role}
-                                      yonetici={canYoneticiIslem}
-                                      approvePending={approveMu.isPending}
-                                      deletePending={deleteMu.isPending}
-                                      guvenliSilPending={masrafGuvenliSilMu.isPending}
-                                      onApprove={() => approveMu.mutate(h.id)}
-                                      onReject={() => setModal({ type: 'reject', hareket: h })}
-                                      onHardDelete={() => {
-                                        void confirm({
-                                          title: 'Kayıt silinsin mi?',
-                                          message: 'Bu onaysız kaydı silmek istediğinize emin misiniz?',
-                                          confirmLabel: 'Sil',
-                                          danger: true
-                                        }).then((ok) => {
-                                          if (ok) deleteMu.mutate(h.id)
-                                        })
-                                      }}
-                                      onDuzeltme={() => setModal({ type: 'duzeltme', hareket: h })}
-                                      onGuvenliSil={() => setModal({ type: 'masraf-sil', hareket: h })}
-                                    />
-                                </TD>
-                              </TR>
+                                hareket={h}
+                                role={role}
+                                yonetici={canYoneticiIslem}
+                                rowId={kasaRowId}
+                                highlighted={isRowHighlighted(kasaRowId)}
+                                highlightClassName={DOSYA_FOCUS_HIGHLIGHT_CLASS}
+                                odemeLabel={odemeLabel}
+                                onayLabel={onayLabel}
+                                aciklamaText={aciklamaCell(h)}
+                                tipLabel={tipLabel(h.tip)}
+                                signedAmount={signedDisplayAmount(h)}
+                                approvePending={approveMu.isPending}
+                                deletePending={deleteMu.isPending}
+                                guvenliSilPending={masrafGuvenliSilMu.isPending}
+                                onApprove={() => approveMu.mutate(h.id)}
+                                onReject={() => setModal({ type: 'reject', hareket: h })}
+                                onHardDelete={() => {
+                                  void confirm({
+                                    title: 'Kayıt silinsin mi?',
+                                    message: 'Bu onaysız kaydı silmek istediğinize emin misiniz?',
+                                    confirmLabel: 'Sil',
+                                    danger: true
+                                  }).then((ok) => {
+                                    if (ok) deleteMu.mutate(h.id)
+                                  })
+                                }}
+                                onDuzeltme={() => setModal({ type: 'duzeltme', hareket: h })}
+                                onGuvenliSil={() => setModal({ type: 'masraf-sil', hareket: h })}
+                              />
                             )
                             })}
                       </TBody>
@@ -1572,45 +1531,120 @@ export function DosyaDetailPage(): ReactElement {
                               onClick: () => setModal({ type: 'masraf-sil', hareket: h })
                             })
                           }
+                          const impact = isDuz ? Number(h.bakiyeEtkisi ?? h.tutar) : signed
+                          const tone = isDuz ? balanceImpactTone(impact) : null
+                          const orphanUyari =
+                            h.bagliIslemUyari ?? (h.orphanWarning ? 'Bağlı işlem bulunamadı' : null)
                           return (
                             <MobileRecordCard
                               key={h.id}
-                              className={cn(isRowHighlighted(kasaRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS)}
+                              className={cn(
+                                isDuz &&
+                                  'border-l-4 border-l-rose-500 border-rose-200/90 bg-rose-50/80 shadow-none dark:border-rose-800/60 dark:bg-rose-950/40',
+                                h.duzeltildi && !isDuz && 'ring-1 ring-inset ring-rose-200/80',
+                                isRowHighlighted(kasaRowId) && DOSYA_FOCUS_HIGHLIGHT_CLASS
+                              )}
                               title={h.belgeNo}
-                              subtitle={aciklamaCell(h)}
+                              subtitle={isDuz ? undefined : aciklamaCell(h)}
                               badge={
-                                <Badge
-                                  variant={
-                                    onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'
-                                  }
-                                  className="!normal-case"
-                                >
-                                  {onayLabel(h.onayDurumu)}
-                                </Badge>
+                                <div className="flex flex-wrap items-center justify-end gap-1">
+                                  {isDuz ? (
+                                    <Badge variant="warning" className="!normal-case">
+                                      Düzeltme
+                                    </Badge>
+                                  ) : null}
+                                  {h.duzeltildi && !isDuz ? (
+                                    <Badge variant="warning" className="!normal-case text-[10px]">
+                                      Düzeltildi
+                                    </Badge>
+                                  ) : null}
+                                  <Badge
+                                    variant={
+                                      onayli ? 'success' : reddedildi ? 'danger' : onaysiz ? 'warning' : 'default'
+                                    }
+                                    className="!normal-case"
+                                  >
+                                    {onayLabel(h.onayDurumu)}
+                                  </Badge>
+                                </div>
                               }
                               fields={[
-                                { label: 'Tarih', value: formatDateTR(h.tarih) },
                                 {
-                                  label: 'Tutar',
+                                  label: 'Tarih',
                                   value: (
-                                    <span className={signed < 0 ? 'text-danger' : undefined}>
-                                      {formatCurrencyTR(signed)}
+                                    <span>
+                                      {formatDateTR(isDuz ? h.economicTarih ?? h.tarih : h.tarih)}
+                                      {isDuz ? (
+                                        <span className="mt-0.5 block text-[10px] text-ink-muted">
+                                          Düzeltme: {formatDateTR(h.tarih)}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                  )
+                                },
+                                {
+                                  label: isDuz ? 'Bakiye etkisi' : 'Tutar',
+                                  value: (
+                                    <span
+                                      className={
+                                        isDuz
+                                          ? tone === 'positive'
+                                            ? 'text-emerald-700'
+                                            : tone === 'negative'
+                                              ? 'text-danger'
+                                              : 'text-rose-800'
+                                          : signed < 0
+                                            ? 'text-danger'
+                                            : undefined
+                                      }
+                                      data-testid={isDuz ? 'dosya-kasa-bakiye-etkisi-card' : undefined}
+                                    >
+                                      {isDuz
+                                        ? (h.bakiyeEtkisiDisplay ?? formatBalanceImpact(impact, 'TRY'))
+                                        : formatCurrencyTR(signed)}
                                     </span>
                                   ),
                                   numeric: true
                                 },
-                                {
-                                  label: 'Tip',
-                                  value: isDuz ? `${tipLabel(h.tip)} (Düzeltme)` : tipLabel(h.tip)
-                                },
+                                { label: 'Tip', value: tipLabel(h.tip) },
+                                ...(isDuz && h.orijinalBelgeNo
+                                  ? [{ label: 'Orijinal', value: h.orijinalBelgeNo, full: true as const }]
+                                  : []),
+                                ...(isDuz && h.duzeltenUserAd
+                                  ? [{ label: 'Düzelten', value: h.duzeltenUserAd, full: true as const }]
+                                  : []),
+                                ...(isDuz
+                                  ? [
+                                      {
+                                        label: 'Neden',
+                                        value: h.aciklama?.trim() ? h.aciklama : aciklamaCell(h),
+                                        full: true as const
+                                      }
+                                    ]
+                                  : []),
+                                ...(isDuz && h.eskiTutar && h.yeniTutar
+                                  ? [
+                                      {
+                                        label: 'Eski → Yeni',
+                                        value: `${formatCurrencyTR(Number(h.eskiTutar))} → ${formatCurrencyTR(Number(h.yeniTutar))}`,
+                                        full: true as const,
+                                        numeric: true as const
+                                      }
+                                    ]
+                                  : []),
                                 { label: 'Ödeme', value: odemeLabel(h.odemeYontemi) }
                               ]}
                               footer={
-                                reddedildi && h.redSebebi?.trim() ? (
-                                  <span className="text-danger">{h.redSebebi}</span>
-                                ) : onayli || reddedildi ? (
-                                  'Düzenleme kapalı'
-                                ) : null
+                                <>
+                                  {orphanUyari ? (
+                                    <p className="font-medium text-amber-700">{orphanUyari}</p>
+                                  ) : null}
+                                  {reddedildi && h.redSebebi?.trim() ? (
+                                    <span className="text-danger">{h.redSebebi}</span>
+                                  ) : !orphanUyari && (onayli || reddedildi) ? (
+                                    'Düzenleme kapalı'
+                                  ) : null}
+                                </>
                               }
                               actions={actions.length > 0 ? <MobileActionBar items={actions} /> : null}
                             />

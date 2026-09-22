@@ -70,6 +70,30 @@ export function formatSignedMoney(amount: number, currency: ParaBirimi = 'TRY'):
   return formatMoney(amount, currency)
 }
 
+const MINUS_SIGN = '\u2212'
+
+/**
+ * Bakiye etkisi — daima `+` veya `−` (sıfırda işaretsiz).
+ * Örn. `+₺500,00`, `−$500,00`, `€0,00`
+ */
+export function formatBalanceImpact(amount: number, currency: ParaBirimi = 'TRY'): string {
+  if (!Number.isFinite(amount)) return '—'
+  if (amount === 0) return formatMoney(0, currency)
+  const digits = formatMoneyDigitsTr(Math.abs(amount))
+  if (currency === 'TRY') {
+    return amount > 0 ? `+${digits}${MONEY_NBSP}₺` : `${MINUS_SIGN}${digits}${MONEY_NBSP}₺`
+  }
+  if (currency === 'USD') {
+    return amount > 0 ? `+$${digits}` : `${MINUS_SIGN}$${digits}`
+  }
+  return amount > 0 ? `+€${digits}` : `${MINUS_SIGN}€${digits}`
+}
+
+export function balanceImpactTone(amount: number): 'positive' | 'negative' | 'neutral' {
+  if (!Number.isFinite(amount) || amount === 0) return 'neutral'
+  return amount > 0 ? 'positive' : 'negative'
+}
+
 /** `1 USD = 48,00000000 TRY` — kod ile; sembol için `formatKurOzetiWithSymbols`. */
 export function formatKurOzeti(baz: ParaBirimi, karsi: ParaBirimi, kur: number | string): string {
   const k = typeof kur === 'number' ? kur : Number(kur)

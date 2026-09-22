@@ -7,7 +7,12 @@ import {
   OFIS_DUZELTME_TUTAR_CLASS,
   ofisHareketRowVariant
 } from '../../lib/ofisKasaDuzeltmeStil'
-import { formatDateTR } from '../../utils/formatters'
+import {
+  balanceImpactTone,
+  formatBalanceImpact,
+  formatDateTR,
+  formatMoney
+} from '../../utils/formatters'
 import type { AuthUserDto } from '../../types/auth'
 import type { OfisKasaHareketiDto, OfisKasaOdemeYontemiApi, OfisKasaOnayDurumuApi } from '../../types/ofisKasasi'
 import type { ParaBirimi } from '../../utils/formatters'
@@ -59,16 +64,33 @@ export function OfisKasaHareketTableRow(props: Props): ReactElement {
   const kategoriText = h.ozelKategoriAdi?.trim()
     ? `${h.kategori} (${h.ozelKategoriAdi.trim()})`
     : h.kategori
+  const impact = isDuz ? Number(h.bakiyeEtkisi ?? h.tutar) : props.signed
+  const impactTone = isDuz ? balanceImpactTone(impact) : null
 
   return (
     <TR
       data-testid="ofis-hareket-row"
       data-ofis-row-variant={variant}
-      className={cn(isDuz && OFIS_DUZELTME_ROW_CLASS)}
+      data-orijinal-id={h.orijinalHareketId ?? undefined}
+      data-duzeltildi={h.duzeltildi ? '1' : undefined}
+      className={cn(
+        isDuz && OFIS_DUZELTME_ROW_CLASS,
+        h.duzeltildi && !isDuz && 'ring-1 ring-inset ring-rose-200/80'
+      )}
     >
-      <TD className="whitespace-nowrap text-ink-muted">{formatDateTR(h.tarih)}</TD>
+      <TD className="whitespace-nowrap text-ink-muted">
+        {formatDateTR(isDuz ? h.economicTarih ?? h.tarih : h.tarih)}
+        {isDuz ? <p className="mt-0.5 text-[10px] text-ink-muted">Düzeltme: {formatDateTR(h.tarih)}</p> : null}
+      </TD>
       <TD className="whitespace-nowrap">
-        <OfisKasaIslemTipiCell islemTipi={h.islemTipi} />
+        <div className="flex flex-wrap items-center gap-1">
+          <OfisKasaIslemTipiCell islemTipi={h.islemTipi} />
+          {h.duzeltildi && !isDuz ? (
+            <Badge variant="warning" className="!normal-case text-[10px]">
+              Düzeltildi
+            </Badge>
+          ) : null}
+        </div>
       </TD>
       <TD className="hidden max-w-0 text-ink-muted md:table-cell">
         <ClampTooltipText text={props.muvekkilAdi === '—' ? '' : props.muvekkilAdi} lines={1} empty="—" />
@@ -77,15 +99,45 @@ export function OfisKasaHareketTableRow(props: Props): ReactElement {
         <ClampTooltipText text={kategoriText} lines={2} />
       </TD>
       <TD className="max-w-0" data-testid="ofis-aciklama-cell">
-        <ClampTooltipText text={h.aciklama} lines={2} tooltipExtra={kurExtra} />
+        {isDuz ? (
+          <div className="space-y-0.5 text-[11px] leading-snug">
+            <p className="font-semibold text-rose-800 dark:text-rose-100">Düzeltme</p>
+            {h.duzeltenUserAd ? (
+              <p className="text-ink-muted">
+                Düzelten: <span className="font-medium text-ink">{h.duzeltenUserAd}</span>
+              </p>
+            ) : null}
+            <ClampTooltipText text={h.aciklama ? `Neden: ${h.aciklama}` : ''} lines={2} tooltipExtra={kurExtra} />
+            {h.eskiTutar && h.yeniTutar ? (
+              <p className="tabular-nums text-ink-muted">
+                {formatMoney(Number(h.eskiTutar), props.paraBirimi)} →{' '}
+                {formatMoney(Number(h.yeniTutar), props.paraBirimi)}
+              </p>
+            ) : null}
+            {h.bagliIslemUyari ? <p className="font-medium text-amber-700">{h.bagliIslemUyari}</p> : null}
+          </div>
+        ) : (
+          <ClampTooltipText text={h.aciklama} lines={2} tooltipExtra={kurExtra} />
+        )}
       </TD>
       <TD
         className={cn(
           'whitespace-nowrap text-right font-semibold tabular-nums',
-          isDuz ? OFIS_DUZELTME_TUTAR_CLASS : props.signed < 0 ? 'text-danger' : 'text-ink'
+          isDuz
+            ? impactTone === 'positive'
+              ? 'text-emerald-700'
+              : impactTone === 'negative'
+                ? 'text-danger'
+                : OFIS_DUZELTME_TUTAR_CLASS
+            : props.signed < 0
+              ? 'text-danger'
+              : 'text-ink'
         )}
+        data-testid={isDuz ? 'ofis-bakiye-etkisi' : undefined}
       >
-        {props.formatSignedMoney(props.signed, props.paraBirimi)}
+        {isDuz
+          ? (h.bakiyeEtkisiDisplay ?? formatBalanceImpact(impact, props.paraBirimi))
+          : props.formatSignedMoney(props.signed, props.paraBirimi)}
       </TD>
       <TD className="hidden whitespace-nowrap text-ink-muted xl:table-cell">{props.odemeLabel(h.odemeYontemi)}</TD>
       <TD className="hidden max-w-0 font-mono xl:table-cell">

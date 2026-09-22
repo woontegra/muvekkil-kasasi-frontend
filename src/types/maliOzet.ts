@@ -60,9 +60,18 @@ export type MuvekkilKarlilikPayload = {
   }
 }
 
+export type MuvekkilKarlilikPeriodMeta = {
+  preset: string
+  bas: string | null
+  bit: string | null
+  etiket: string
+}
+
 export type MuvekkilKarlilikResponse = {
   ok: true
   tumZamanlar: MuvekkilKarlilikPayload
   buDonem: MuvekkilKarlilikPayload | null
   donemEtiketi: string | null
+  /** Finans dönem sözleşmesi — Ofis Kasası `period` ile aynı. */
+  period?: MuvekkilKarlilikPeriodMeta
 }

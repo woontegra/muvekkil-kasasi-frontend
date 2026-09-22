@@ -32,8 +32,17 @@ export async function listOfisKasaHareketleri(
   return apiFetch<OfisKasaHareketleriListResponse>(`/api/v1/ofis-kasasi/hareketler${toQuery(params)}`)
 }
 
-export async function getOfisKasaOzet(): Promise<OfisKasaOzetResponse> {
-  return apiFetch<OfisKasaOzetResponse>('/api/v1/ofis-kasasi/ozet')
+export async function getOfisKasaOzet(params?: {
+  periodPreset?: string
+  bas?: string | null
+  bit?: string | null
+}): Promise<OfisKasaOzetResponse> {
+  const sp = new URLSearchParams()
+  if (params?.periodPreset) sp.set('periodPreset', params.periodPreset)
+  if (params?.bas) sp.set('bas', params.bas)
+  if (params?.bit) sp.set('bit', params.bit)
+  const q = sp.toString()
+  return apiFetch<OfisKasaOzetResponse>(`/api/v1/ofis-kasasi/ozet${q ? `?${q}` : ''}`)
 }
 
 export async function createOfisKasaHareketi(body: CreateOfisKasaHareketiPayload): Promise<OfisKasaHareketOneResponse> {

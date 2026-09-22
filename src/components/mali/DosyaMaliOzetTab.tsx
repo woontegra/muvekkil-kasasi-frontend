@@ -3,15 +3,18 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { getDosyaMaliOzet } from '../../api/maliOzet'
 import { getDosyaVekalet } from '../../api/vekalet'
-import { AlertBox, Button } from '../ui'
+import { AlertBox } from '../ui'
 import { AnimatedNumber } from '../../motion'
 import { formatCurrencyTR, formatMoney, resolveParaBirimi } from '../../utils/formatters'
 import { cn } from '../../lib/cn'
+import {
+  resolveFinancePeriodRange,
+  type FinancePeriodRange
+} from '../../lib/financePeriodRange'
+import { FinancePeriodSelector } from './FinancePeriodSelector'
 import type { DosyaMaliOzetPayload } from '../../types/maliOzet'
 
 type Props = { dosyaId: string }
-
-type ViewMode = 'tumZamanlar' | 'buDonem'
 
 function ProgressBar({ value, className }: { value: number; className?: string }): ReactElement {
   const clamped = Math.max(0, Math.min(100, value))
@@ -118,11 +121,18 @@ function OzetPanel({ data, vekaletPb }: { data: DosyaMaliOzetPayload; vekaletPb:
 }
 
 export function DosyaMaliOzetTab({ dosyaId }: Props): ReactElement {
-  const [view, setView] = useState<ViewMode>('tumZamanlar')
+  const [period, setPeriod] = useState<FinancePeriodRange>(() =>
+    resolveFinancePeriodRange('ALL_TIME')
+  )
 
   const query = useQuery({
-    queryKey: ['dosya-mali-ozet', dosyaId],
-    queryFn: () => getDosyaMaliOzet(dosyaId),
+    queryKey: ['dosya-mali-ozet', dosyaId, period.preset, period.bas, period.bit],
+    queryFn: () =>
+      getDosyaMaliOzet(dosyaId, {
+        periodPreset: period.preset,
+        bas: period.bas,
+        bit: period.bit
+      }),
     staleTime: 30_000
   })
 
@@ -148,36 +158,21 @@ export function DosyaMaliOzetTab({ dosyaId }: Props): ReactElement {
   const data = query.data
   if (!data) return <p className="py-6 text-center text-sm text-ink-muted">Veri yok.</p>
 
-  const activeData = view === 'buDonem' && data.buDonem ? data.buDonem : data.tumZamanlar
+  const isPeriodView = period.preset !== 'ALL_TIME'
+  const activeData = isPeriodView && data.buDonem ? data.buDonem : data.tumZamanlar
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button" size="sm"
-          variant={view === 'tumZamanlar' ? 'secondary' : 'ghost'}
-          className={cn(view === 'tumZamanlar' && 'ring-2 ring-primary/25')}
-          onClick={() => setView('tumZamanlar')}
-        >
-          Tüm zamanlar
-        </Button>
-        {data.buDonem ? (
-          <Button
-            type="button" size="sm"
-            variant={view === 'buDonem' ? 'secondary' : 'ghost'}
-            className={cn(view === 'buDonem' && 'ring-2 ring-primary/25')}
-            onClick={() => setView('buDonem')}
-          >
-            {data.donemEtiketi ?? 'Bu dönem'}
-          </Button>
-        ) : null}
+      <div className="rounded-lg border border-border/70 bg-panel px-3 py-2.5">
+        <FinancePeriodSelector value={period} onChange={setPeriod} />
       </div>
 
       <OzetPanel data={activeData} vekaletPb={vekaletPb} />
 
-      {view === 'buDonem' ? (
+      {isPeriodView ? (
         <p className="text-[10px] text-ink-subtle">
-          Dönem görünümünde kararlaştırılan vekalet tutarı gösterilmez; yalnızca dönem içi tahsilatlar ve hareketler hesaplanır.
+          Dönem görünümünde kararlaştırılan vekalet tutarı gösterilmez; yalnızca dönem içi tahsilatlar ve
+          hareketler hesaplanır ({data.donemEtiketi ?? period.etiket}).
         </p>
       ) : null}
     </div>

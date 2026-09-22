@@ -11,6 +11,9 @@ export type ListKasaHareketleriParams = {
   q?: string
   tip?: string
   onayDurumu?: string
+  /** YYYY-MM-DD — ekonomik dönem (grup economicAt) */
+  startDate?: string
+  endDate?: string
   page?: number
   limit?: number
 }
@@ -20,6 +23,8 @@ function buildListQuery(params: ListKasaHareketleriParams): string {
   if (params.q?.trim()) sp.set('q', params.q.trim())
   if (params.tip) sp.set('tip', params.tip)
   if (params.onayDurumu) sp.set('onayDurumu', params.onayDurumu)
+  if (params.startDate) sp.set('startDate', params.startDate)
+  if (params.endDate) sp.set('endDate', params.endDate)
   if (params.page != null) sp.set('page', String(params.page))
   if (params.limit != null) sp.set('limit', String(params.limit))
   const s = sp.toString()
