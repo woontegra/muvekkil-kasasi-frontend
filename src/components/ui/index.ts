@@ -19,6 +19,7 @@ export {
   tableActionsFlexRow,
   tableActionColClass,
   tableActionColWideClass,
+  tableActionColMultiClass,
   tableActionLinkAccentClass,
   tableActionButtonShrinkClass
 } from './tableActionClasses'

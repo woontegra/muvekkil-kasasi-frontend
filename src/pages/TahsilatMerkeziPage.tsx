@@ -15,7 +15,6 @@ import { createVekaletTaksitOdeme } from '../api/vekalet'
 import { resolveOdemeApiError } from '../api/client'
 import { TahsilatiYapanPersonelSelect } from '../components/prim/TahsilatiYapanPersonelSelect'
 import { WhatsAppHatirlatModal } from '../components/tahsilat/WhatsAppHatirlatModal'
-import { SmsHatirlatModal } from '../components/tahsilat/SmsHatirlatModal'
 import { VekaletTaksitOdemeModal } from '../components/vekalet/VekaletTaksitOdemeModal'
 import {
   MobileActionBar,
@@ -29,6 +28,7 @@ import {
   Button,
   Card,
   CardBody,
+  ClampTooltipText,
   EmptyState,
   Input,
   PageHeader,
@@ -40,6 +40,7 @@ import {
   THead,
   TR,
   tableActionButtonShrinkClass,
+  tableActionColMultiClass,
   tableActionsFlexRow
 } from '../components/ui'
 import { buildMaliKontrolNavigateUrl } from '../lib/maliKontrolNavigation'
@@ -50,6 +51,7 @@ import type { CreateVekaletTaksitOdemePayload, TaksitComputedDurumApi, VekaletTa
 import type { TahsilatMerkeziGorunumFilter, TahsilatMerkeziSatirDto } from '../types/tahsilatMerkezi'
 import { TAKSILAT_MERKEZI_GORUNUM_LABEL as GORUNUM_LABEL } from '../types/tahsilatMerkezi'
 import { formatDateTR, formatMoney, resolveParaBirimi } from '../utils/formatters'
+import { gunFarkiLabel } from './tahsilatMerkeziLabels'
 
 const GORUNUM_TABS: TahsilatMerkeziGorunumFilter[] = [
   'GECIKENLER',
@@ -60,10 +62,10 @@ const GORUNUM_TABS: TahsilatMerkeziGorunumFilter[] = [
 ]
 
 const DURUM_OPTIONS: { value: '' | TaksitComputedDurumApi; label: string }[] = [
-  { value: '', label: 'T�m durumlar' },
+  { value: '', label: 'Tüm durumlar' },
   { value: 'GECIKTI', label: 'Gecikti' },
-  { value: 'ODENMEDI', label: '�denmedi' },
-  { value: 'KISMI_ODENDI', label: 'K�smi �dendi' }
+  { value: 'ODENMEDI', label: 'Ödenmedi' },
+  { value: 'KISMI_ODENDI', label: 'Kısmi ödendi' }
 ]
 
 function durumBadge(d: TaksitComputedDurumApi): 'default' | 'success' | 'warning' | 'danger' {
@@ -78,20 +80,14 @@ function durumLabel(d: TaksitComputedDurumApi): string {
     case 'GECIKTI':
       return 'Gecikti'
     case 'KISMI_ODENDI':
-      return 'K�smi �dendi'
+      return 'Kısmi ödendi'
     case 'ODENMEDI':
-      return '�denmedi'
+      return 'Ödenmedi'
     case 'ODENDI':
-      return '�dendi'
+      return 'Ödendi'
     default:
       return d
   }
-}
-
-function gunFarkiLabel(gun: number): string {
-  if (gun < 0) return `${Math.abs(gun)} g�n gecikti`
-  if (gun === 0) return 'Bug�n'
-  return `${gun} g�n kald�`
 }
 
 export function TahsilatMerkeziPage(): ReactElement {
@@ -112,7 +108,6 @@ export function TahsilatMerkeziPage(): ReactElement {
 
   const [odemeRow, setOdemeRow] = useState<TahsilatMerkeziSatirDto | null>(null)
   const [whatsappRow, setWhatsappRow] = useState<TahsilatMerkeziSatirDto | null>(null)
-  const [smsRow, setSmsRow] = useState<TahsilatMerkeziSatirDto | null>(null)
 
   const listParams = useMemo(
     () => ({
@@ -178,7 +173,7 @@ export function TahsilatMerkeziPage(): ReactElement {
       setOdemeRow(null)
       toast.success('Tahsilat kaydedildi.')
       if (kalan <= 0.001) {
-        toast.success('Taksit tamamen kapand�.')
+        toast.success('Taksit tamamen kapandı.')
       }
     },
     onError: () => {
@@ -195,13 +190,13 @@ export function TahsilatMerkeziPage(): ReactElement {
     <div className="w-full space-y-5">
       <PageHeader
         title="Tahsilat Takibi"
-        description="Vadesi yakla?an, bug�n vadesi gelen, gecikmi? ve k?smi �denmi? vekalet taksitleri."
+        description="Vadesi yaklaşan, bugün vadesi gelen, gecikmiş ve kısmi ödenmiş vekalet taksitleri."
       />
 
       <Stagger className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <StaggerItem>
           <StatCard
-            label="Gecikmi� taksit"
+            label="Gecikmiş taksit"
             value={
               listQ.isLoading ? (
                 '-'
@@ -209,12 +204,12 @@ export function TahsilatMerkeziPage(): ReactElement {
                 <AnimatedNumber value={ozet?.gecikmisAdet ?? 0} format={(n) => String(Math.round(n))} />
               )
             }
-            sub="Tutarlar listede para birimine g�re"
+            sub="Tutarlar listede para birimine göre"
           />
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="Bug�n vadesi gelen"
+            label="Bugün vadesi gelen"
             value={
               listQ.isLoading ? (
                 '-'
@@ -227,7 +222,7 @@ export function TahsilatMerkeziPage(): ReactElement {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="�n�m�zdeki 7 g�n"
+            label="Önümüzdeki 7 gün"
             value={
               listQ.isLoading ? (
                 '-'
@@ -240,7 +235,7 @@ export function TahsilatMerkeziPage(): ReactElement {
         </StaggerItem>
         <StaggerItem>
           <StatCard
-            label="K�smi �denmi�"
+            label="Kısmi ödenmiş"
             value={
               listQ.isLoading ? (
                 '-'
@@ -248,7 +243,7 @@ export function TahsilatMerkeziPage(): ReactElement {
                 <AnimatedNumber value={ozet?.kismiAdet ?? 0} format={(n) => String(Math.round(n))} />
               )
             }
-            sub="taksit � kalan tutar listede"
+            sub="taksit · kalan tutar listede"
           />
         </StaggerItem>
       </Stagger>
@@ -282,16 +277,16 @@ export function TahsilatMerkeziPage(): ReactElement {
               setVadeBit('')
               setPage(1)
             }}
-            primary={<Input label="Ara" value={q} onChange={(e) => setQ(e.target.value)} placeholder="M�vekkil, dosya�" />}
+            primary={<Input label="Ara" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Müvekkil, dosya…" />}
           >
             <div>
-              <label className={uiType.label}>M�vekkil</label>
+              <label className={uiType.label}>Müvekkil</label>
               <select
                 className={formControlClass}
                 value={muvekkilId}
                 onChange={(e) => setMuvekkilId(e.target.value)}
               >
-                <option value="">T�m�</option>
+                <option value="">Tümü</option>
                 {(muvekkillerQ.data?.items ?? []).map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.gorunenAd}
@@ -306,7 +301,7 @@ export function TahsilatMerkeziPage(): ReactElement {
               disabled={!muvekkilId}
             />
             <div>
-              <label className={uiType.label}>�deme durumu</label>
+              <label className={uiType.label}>Ödeme durumu</label>
               <select
                 className={formControlClass}
                 value={durum}
@@ -320,18 +315,18 @@ export function TahsilatMerkeziPage(): ReactElement {
               </select>
             </div>
             <Input
-              label="Vade ba�lang��"
+              label="Vade başlangıç"
               type="date"
               value={vadeBas}
               onChange={(e) => setVadeBas(e.target.value)}
-              placeholder="Tarih se�in"
+              placeholder="Tarih seçin"
             />
             <Input
-              label="Vade biti�"
+              label="Vade bitiş"
               type="date"
               value={vadeBit}
               onChange={(e) => setVadeBit(e.target.value)}
-              placeholder="Tarih se�in"
+              placeholder="Tarih seçin"
             />
             <div className="md:col-span-2">
               <TahsilatiYapanPersonelSelect value={personelId} onChange={setPersonelId} />
@@ -339,36 +334,36 @@ export function TahsilatMerkeziPage(): ReactElement {
           </MobileFilterPanel>
 
           {listQ.isError ? (
-            <AlertBox variant="danger" title="Liste y�klenemedi">
+            <AlertBox variant="danger" title="Liste yüklenemedi">
               {listQ.error instanceof Error ? listQ.error.message : 'Bilinmeyen hata'}
             </AlertBox>
           ) : null}
 
           <ResponsiveDataView
             isLoading={listQ.isLoading}
-            loading={<p className="py-6 text-[11px] text-ink-muted">Tahsilat bekleyenler y�kleniyor�</p>}
+            loading={<p className="py-6 text-[11px] text-ink-muted">Tahsilat bekleyenler yükleniyor…</p>}
             isEmpty={!listQ.isLoading && items.length === 0}
             empty={
               <EmptyState
-                title="Kay�t yok"
-                description="Se�ili g�r�n�m ve filtrelere uygun a��k taksit bulunamad�."
+                title="Kayıt yok"
+                description="Seçili görünüm ve filtrelere uygun açık taksit bulunamadı."
               />
             }
             table={
               <div className="min-w-0 max-w-full">
-                <Table>
+                <Table data-testid="tahsilat-merkezi-table">
                   <THead>
                     <TR>
-                      <TH>M�vekkil</TH>
-                      <TH>Dosya</TH>
-                      <TH>Taksit</TH>
-                      <TH className="text-right">Tutar</TH>
-                      <TH className="text-right">�denen</TH>
-                      <TH className="text-right">Kalan</TH>
-                      <TH>Vade</TH>
-                      <TH>S�re</TH>
-                      <TH>Durum</TH>
-                      <TH>��lem</TH>
+                      <TH className="min-w-0">Müvekkil</TH>
+                      <TH className="min-w-0">Dosya</TH>
+                      <TH className="min-w-0">Taksit</TH>
+                      <TH className="whitespace-nowrap text-right">Tutar</TH>
+                      <TH className="whitespace-nowrap text-right">Ödenen</TH>
+                      <TH className="whitespace-nowrap text-right">Kalan</TH>
+                      <TH className="whitespace-nowrap">Vade</TH>
+                      <TH className="whitespace-nowrap">Süre</TH>
+                      <TH className="whitespace-nowrap">Durum</TH>
+                      <TH className={tableActionColMultiClass}>İşlem</TH>
                     </TR>
                   </THead>
                   <TBody>
@@ -382,7 +377,6 @@ export function TahsilatMerkeziPage(): ReactElement {
                             setOdemeRow(row)
                           }}
                           onWhatsapp={() => setWhatsappRow(row)}
-                          onSms={() => setSmsRow(row)}
                           onEkstreAc={() =>
                             navigate(
                               buildMaliKontrolNavigateUrl({
@@ -422,7 +416,7 @@ export function TahsilatMerkeziPage(): ReactElement {
                       subtitle={
                         <>
                           {row.dosyaBaslik}
-                          {row.dosyaNo ? ` � ${row.dosyaNo}` : ''}
+                          {row.dosyaNo ? ` · ${row.dosyaNo}` : ''}
                         </>
                       }
                       badge={<Badge variant={durumBadge(row.durum)}>{durumLabel(row.durum)}</Badge>}
@@ -434,7 +428,7 @@ export function TahsilatMerkeziPage(): ReactElement {
                           numeric: true
                         },
                         {
-                          label: '�denen',
+                          label: 'Ödenen',
                           value: formatMoney(Number(row.odenenToplam), resolveParaBirimi(row.taksit.paraBirimi)),
                           numeric: true
                         },
@@ -445,7 +439,7 @@ export function TahsilatMerkeziPage(): ReactElement {
                         },
                         { label: 'Vade', value: formatDateTR(`${row.vadeTarihi}T12:00:00.000Z`) },
                         {
-                          label: 'S�re',
+                          label: 'Süre',
                           value: (
                             <span className={row.gunFarki < 0 ? 'font-medium text-danger' : undefined}>
                               {gunFarkiLabel(row.gunFarki)}
@@ -458,7 +452,7 @@ export function TahsilatMerkeziPage(): ReactElement {
                           items={[
                             {
                               key: 'odeme',
-                              label: '�deme Al',
+                              label: 'Ödeme Al',
                               primary: true,
                               onClick: () => {
                                 odemeMu.reset()
@@ -467,20 +461,14 @@ export function TahsilatMerkeziPage(): ReactElement {
                             },
                             {
                               key: 'wa',
-                              label: 'WhatsApp�tan G�nder',
+                              label: 'WhatsApp’tan Gönder',
                               primary: true,
                               variant: 'outline',
                               onClick: () => setWhatsappRow(row)
                             },
                             {
-                              key: 'sms',
-                              label: 'SMS G�nder',
-                              variant: 'outline',
-                              onClick: () => setSmsRow(row)
-                            },
-                            {
                               key: 'ekstre',
-                              label: 'Ekstre A�',
+                              label: 'Ekstre Aç',
                               variant: 'outline',
                               onClick: () =>
                                 navigate(
@@ -518,7 +506,7 @@ export function TahsilatMerkeziPage(): ReactElement {
           {total > limit ? (
             <div className="flex items-center justify-between gap-2 text-sm">
               <span className="text-ink-muted">
-                Toplam {total} kay�t � Sayfa {page}/{totalPages}
+                Toplam {total} kayıt · Sayfa {page}/{totalPages}
               </span>
               <div className="flex gap-2">
                 <Button
@@ -528,7 +516,7 @@ export function TahsilatMerkeziPage(): ReactElement {
                   disabled={page <= 1}
                   onClick={() => setPage((p) => p - 1)}
                 >
-                  �nceki
+                  Önceki
                 </Button>
                 <Button
                   type="button"
@@ -562,7 +550,6 @@ export function TahsilatMerkeziPage(): ReactElement {
       ) : null}
 
       {whatsappRow ? <WhatsAppHatirlatModal row={whatsappRow} onClose={() => setWhatsappRow(null)} /> : null}
-      {smsRow ? <SmsHatirlatModal row={smsRow} onClose={() => setSmsRow(null)} /> : null}
     </div>
   )
 }
@@ -582,7 +569,7 @@ function DosyaSelect(props: {
         disabled={props.disabled}
         onChange={(e) => props.onChange(e.target.value)}
       >
-        <option value="">T�m�</option>
+        <option value="">Tümü</option>
         {props.dosyalar.map((d) => (
           <option key={d.id} value={d.id}>
             {d.konuBasligi}
@@ -598,11 +585,10 @@ function ListeSatir(props: {
   row: TahsilatMerkeziSatirDto
   onOdeme: () => void
   onWhatsapp: () => void
-  onSms: () => void
   onEkstreAc: () => void
   onDosya: () => void
 }): ReactElement {
-  const { row, onOdeme, onWhatsapp, onSms, onEkstreAc, onDosya } = props
+  const { row, onOdeme, onWhatsapp, onEkstreAc, onDosya } = props
   const taksitLabel = row.taksitAciklama?.trim()
     ? `#${row.taksitNo} - ${row.taksitAciklama}`
     : `Taksit #${row.taksitNo}`
@@ -615,38 +601,74 @@ function ListeSatir(props: {
       exit={{ opacity: 0, y: -2 }}
       transition={{ duration: 0.2 }}
       className="border-b border-border"
+      data-testid="tahsilat-merkezi-row"
     >
-      <TD className="font-medium">{row.muvekkilAd}</TD>
-      <TD>
-        <div>{row.dosyaBaslik}</div>
-        {row.dosyaNo ? <div className="text-xs text-ink-muted">{row.dosyaNo}</div> : null}
+      <TD className="min-w-0 font-medium">
+        <ClampTooltipText text={row.muvekkilAd} lines={1} />
       </TD>
-      <TD>{taksitLabel}</TD>
-      <TD className="text-right tabular-nums">{formatMoney(Number(row.taksitTutari), rowPb)}</TD>
-      <TD className="text-right tabular-nums">{formatMoney(Number(row.odenenToplam), rowPb)}</TD>
-      <TD className="text-right tabular-nums font-semibold">{formatMoney(Number(row.kalanTutar), rowPb)}</TD>
+      <TD className="min-w-0">
+        <ClampTooltipText text={row.dosyaBaslik} lines={1} />
+        {row.dosyaNo ? (
+          <div className="truncate text-xs text-ink-muted" title={row.dosyaNo}>
+            {row.dosyaNo}
+          </div>
+        ) : null}
+      </TD>
+      <TD className="min-w-0">
+        <ClampTooltipText text={taksitLabel} lines={1} />
+      </TD>
+      <TD className="whitespace-nowrap text-right tabular-nums">
+        {formatMoney(Number(row.taksitTutari), rowPb)}
+      </TD>
+      <TD className="whitespace-nowrap text-right tabular-nums">
+        {formatMoney(Number(row.odenenToplam), rowPb)}
+      </TD>
+      <TD className="whitespace-nowrap text-right tabular-nums font-semibold">
+        {formatMoney(Number(row.kalanTutar), rowPb)}
+      </TD>
       <TD className="whitespace-nowrap">{formatDateTR(`${row.vadeTarihi}T12:00:00.000Z`)}</TD>
-      <TD className={row.gunFarki < 0 ? 'font-medium text-danger' : 'text-ink-muted'}>
+      <TD
+        className={
+          row.gunFarki < 0
+            ? 'whitespace-nowrap font-medium text-danger'
+            : 'whitespace-nowrap text-ink-muted'
+        }
+      >
         {gunFarkiLabel(row.gunFarki)}
       </TD>
-      <TD>
+      <TD className="whitespace-nowrap">
         <Badge variant={durumBadge(row.durum)}>{durumLabel(row.durum)}</Badge>
       </TD>
-      <TD>
-        <div className={tableActionsFlexRow}>
-          <Button type="button" size="sm" className={tableActionButtonShrinkClass} onClick={onOdeme}>
-            �deme Al
+      <TD className={tableActionColMultiClass} data-testid="tahsilat-merkezi-islem-cell">
+        <div className={tableActionsFlexRow} data-testid="tahsilat-merkezi-islem-actions">
+          <Button type="button" size="table" className={tableActionButtonShrinkClass} onClick={onOdeme}>
+            Ödeme Al
           </Button>
-          <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onWhatsapp}>
-            WhatsApp�tan G�nder
+          <Button
+            type="button"
+            size="table"
+            variant="outline"
+            className={tableActionButtonShrinkClass}
+            onClick={onWhatsapp}
+          >
+            WhatsApp'tan Gönder
           </Button>
-          <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onSms}>
-            SMS G�nder
+          <Button
+            type="button"
+            size="table"
+            variant="outline"
+            className={tableActionButtonShrinkClass}
+            onClick={onEkstreAc}
+          >
+            Ekstre Aç
           </Button>
-          <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onEkstreAc}>
-            Ekstre A�
-          </Button>
-          <Button type="button" size="sm" variant="outline" className={tableActionButtonShrinkClass} onClick={onDosya}>
+          <Button
+            type="button"
+            size="table"
+            variant="outline"
+            className={tableActionButtonShrinkClass}
+            onClick={onDosya}
+          >
             Dosyaya Git
           </Button>
         </div>
