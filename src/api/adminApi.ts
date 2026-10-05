@@ -82,6 +82,45 @@ export async function adminBackupCatalogRequest(params: {
   return adminApiFetch<BackupCatalogResponse>(`/api/v1/admin/backups${q ? `?${q}` : ''}`)
 }
 
+export type BackupDayStatus = 'BASARILI' | 'EKSIK'
+
+export type BackupDaysResponse = {
+  ok: true
+  tenant: {
+    id: string
+    buroAdi: string
+    eposta: string | null
+    lisansDurumu: string
+  }
+  days: {
+    calendarDate: string
+    lastModified: string | null
+    status: BackupDayStatus
+  }[]
+}
+
+export type BackupRestoreResponse = {
+  ok: true
+  tenantId: string
+  calendarDate: string
+  restoredAt: string
+  safetyStamp: string
+}
+
+export async function adminBackupDaysRequest(tenantId: string): Promise<BackupDaysResponse> {
+  return adminApiFetch<BackupDaysResponse>(`/api/v1/admin/backups/${encodeURIComponent(tenantId)}`)
+}
+
+export async function adminBackupRestoreRequest(
+  tenantId: string,
+  body: { calendarDate: string; confirmBuroAdi: string }
+): Promise<BackupRestoreResponse> {
+  return adminApiFetch<BackupRestoreResponse>(`/api/v1/admin/backups/${encodeURIComponent(tenantId)}/restore`, {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+}
+
 export async function adminTenantsListRequest(params: {
   q?: string
   lisansDurumu?: string

@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FormEvent, ReactElement } from 'react'
 import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { adminBackupCatalogRequest, type BackupCatalogStatus } from '../../api/adminApi'
+import { adminBackupCatalogRequest, adminBackupDaysRequest, adminBackupRestoreRequest, type BackupCatalogItem, type BackupCatalogStatus } from '../../api/adminApi'
 import { AdminApiError } from '../../api/adminClient'
 import { AdminBreadcrumb } from '../../components/admin/AdminBreadcrumb'
 import { AdminEmptyState } from '../../components/admin/AdminEmptyState'
@@ -24,12 +24,27 @@ function statusVariant(status: BackupCatalogStatus): 'success' | 'warning' | 'de
   return 'default'
 }
 
+function restoreErrorText(code: string | undefined): string {
+  if (code === 'RESTORE_CONFIRMATION_MISMATCH') return 'Büro adı doğrulanamadı.'
+  if (code === 'DECRYPT_FAILED' || code === 'RESTORE_MANIFEST_MISMATCH') return 'Yedek doğrulanamadı.'
+  if (code === 'RESTORE_TENANT_MISMATCH' || code === 'RESTORE_FOREIGN_TENANT' || code === 'RESTORE_OBJECT_KEY') {
+    return 'Yedek bu büroya ait değil.'
+  }
+  if (code === 'RESTORE_SAFETY_BACKUP_FAILED') return 'Güvenlik yedeği yazılamadı. Veriler değiştirilmedi.'
+  if (code === 'RESTORE_TENANT_INELIGIBLE') return 'Bu büro geri yüklenemez.'
+  if (code === 'BACKUP_ENV_MISSING') return 'Sunucuda yedek ayarları eksik.'
+  if (code === 'RESTORE_FAILED') return 'Geri yükleme tamamlanamadı. Değişiklikler geri alındı.'
+  return 'Geri yükleme tamamlanamadı.'
+}
+
 export function AdminBackupPage(): ReactElement {
   const [searchParams, setSearchParams] = useSearchParams()
   const [qInput, setQInput] = useState(searchParams.get('q') ?? '')
   const q = searchParams.get('q') ?? ''
   const page = useMemo(() => Math.max(1, Number(searchParams.get('page')) || 1), [searchParams])
   const limit = Math.min(50, Math.max(1, Number(searchParams.get('limit')) || 20))
+
+  const [openTenant, setOpenTenant] = useState<BackupCatalogItem | null>(null)
 
   const listQ = useQuery({
     queryKey: ['admin-backups', q, page, limit],
@@ -154,6 +169,7 @@ export function AdminBackupPage(): ReactElement {
                     <TH className="text-right">Yedek sayısı</TH>
                     <TH>En eski yedek</TH>
                     <TH>Son durum</TH>
+                    <TH>İşlem</TH>
                   </TR>
                 </THead>
                 <TBody>
@@ -176,6 +192,11 @@ export function AdminBackupPage(): ReactElement {
                         <Badge variant={statusVariant(row.lastBackupStatus)} className="!normal-case">
                           {statusLabel(row.lastBackupStatus)}
                         </Badge>
+                      </TD>
+                      <TD>
+                        <Button type="button" variant="outline" size="sm" onClick={() => setOpenTenant(row)}>
+                          Yedekleri Gör
+                        </Button>
                       </TD>
                     </TR>
                   ))}
@@ -221,6 +242,140 @@ export function AdminBackupPage(): ReactElement {
           </div>
         </div>
       ) : null}
+      {openTenant ? <BackupDaysDialog tenant={openTenant} onClose={() => setOpenTenant(null)} /> : null}
+    </div>
+  )
+}
+
+function BackupDaysDialog(props: { tenant: BackupCatalogItem; onClose: () => void }): ReactElement {
+  const [pendingDate, setPendingDate] = useState<string | null>(null)
+  const [confirmName, setConfirmName] = useState('')
+  const daysQ = useQuery({
+    queryKey: ['admin-backup-days', props.tenant.tenantId],
+    queryFn: () => adminBackupDaysRequest(props.tenant.tenantId)
+  })
+  const restoreM = useMutation({
+    mutationFn: (calendarDate: string) =>
+      adminBackupRestoreRequest(props.tenant.tenantId, {
+        calendarDate,
+        confirmBuroAdi: confirmName.trim()
+      })
+  })
+  const nameMatches = confirmName.trim() === props.tenant.buroAdi.trim()
+  const errorCode = restoreM.error instanceof AdminApiError ? restoreM.error.code : undefined
+  const daysError = daysQ.error instanceof AdminApiError ? daysQ.error.code : undefined
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-start justify-center overflow-y-auto bg-slate-900/40 px-4 py-10">
+      <div className="w-full max-w-3xl rounded-lg bg-white p-5 shadow-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">{props.tenant.buroAdi}</h2>
+            <p className="mt-1 font-mono text-xs text-slate-500">{props.tenant.tenantId}</p>
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={props.onClose} disabled={restoreM.isPending}>
+            Kapat
+          </Button>
+        </div>
+
+        {daysQ.isLoading ? <p className="mt-4 text-sm text-slate-500">Yedekler yükleniyor…</p> : null}
+        {daysError ? <p className="mt-4 text-sm text-red-700">{restoreErrorText(daysError)}</p> : null}
+
+        {daysQ.data && daysQ.data.days.length === 0 ? (
+          <p className="mt-4 text-sm text-slate-600">Bu büro için R2'de günlük yedek yok.</p>
+        ) : null}
+
+        {daysQ.data && daysQ.data.days.length > 0 ? (
+          <div className="mt-4 overflow-x-auto">
+            <Table>
+              <THead>
+                <TR>
+                  <TH>Yedek günü</TH>
+                  <TH>Son dosya zamanı</TH>
+                  <TH>Durum</TH>
+                  <TH>İşlem</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {daysQ.data.days.map((day) => (
+                  <TR key={day.calendarDate}>
+                    <TD className="whitespace-nowrap text-sm">{formatDateTR(day.calendarDate)}</TD>
+                    <TD className="whitespace-nowrap text-sm">{formatDateTimeTR(day.lastModified)}</TD>
+                    <TD>
+                      <Badge variant={day.status === 'BASARILI' ? 'success' : 'warning'} className="!normal-case">
+                        {day.status === 'BASARILI' ? 'Tamam' : 'Eksik dosya'}
+                      </Badge>
+                    </TD>
+                    <TD>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={day.status !== 'BASARILI' || restoreM.isPending}
+                        onClick={() => {
+                          setPendingDate(day.calendarDate)
+                          setConfirmName('')
+                          restoreM.reset()
+                        }}
+                      >
+                        Geri Yükle
+                      </Button>
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
+          </div>
+        ) : null}
+
+        {pendingDate ? (
+          <form
+            className="mt-4 space-y-3 rounded-md border border-amber-200 bg-amber-50 p-4"
+            onSubmit={(event) => {
+              event.preventDefault()
+              if (!nameMatches || restoreM.isPending) return
+              restoreM.mutate(pendingDate)
+            }}
+          >
+            <p className="text-sm font-semibold text-amber-950">Mevcut veriler seçilen tarihteki verilerle değiştirilecek.</p>
+            <p className="text-sm text-amber-950">
+              Büro: {props.tenant.buroAdi}
+              <br />
+              Tenant UUID: <span className="font-mono text-xs">{props.tenant.tenantId}</span>
+              <br />
+              Seçilen yedek: {formatDateTR(pendingDate)}
+            </p>
+            <label className="block text-xs text-slate-700">
+              Onay için büro adını yazın
+              <Input className="mt-1" value={confirmName} onChange={(event) => setConfirmName(event.target.value)} autoComplete="off" />
+            </label>
+            {restoreM.isError ? <p className="text-sm text-red-700">{restoreErrorText(errorCode)}</p> : null}
+            {restoreM.data ? (
+              <p className="text-sm text-emerald-800">
+                Geri yükleme tamamlandı. Yedek günü {formatDateTR(restoreM.data.calendarDate)}. Zaman{' '}
+                {formatDateTimeTR(restoreM.data.restoredAt)}.
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={!nameMatches || restoreM.isPending || Boolean(restoreM.data)}>
+                {restoreM.isPending ? 'Geri yükleniyor…' : 'Geri yüklemeyi başlat'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={restoreM.isPending}
+                onClick={() => {
+                  setPendingDate(null)
+                  setConfirmName('')
+                  restoreM.reset()
+                }}
+              >
+                Vazgeç
+              </Button>
+            </div>
+          </form>
+        ) : null}
+      </div>
     </div>
   )
 }
