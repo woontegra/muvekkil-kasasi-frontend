@@ -39,6 +39,49 @@ export async function adminCreateTenantRequest(payload: AdminCreateTenantPayload
   })
 }
 
+export type BackupCatalogStatus = 'YOK' | 'BASARILI' | 'EKSIK'
+
+export type BackupCatalogItem = {
+  tenantId: string
+  buroAdi: string
+  kullaniciAdi: string | null
+  sahipAdSoyad: string | null
+  eposta: string | null
+  lisansDurumu: string
+  backupCount: number
+  oldestBackupDate: string | null
+  lastSuccessfulBackupDate: string | null
+  lastBackupStatus: BackupCatalogStatus
+}
+
+export type BackupCatalogResponse = {
+  ok: true
+  summary: {
+    eligibleCount: number
+    lastRunAt: string | null
+    lastRunDate: string | null
+    successCount: number
+    failedCount: number
+  }
+  items: BackupCatalogItem[]
+  total: number
+  page: number
+  limit: number
+}
+
+export async function adminBackupCatalogRequest(params: {
+  q?: string
+  page?: number
+  limit?: number
+}): Promise<BackupCatalogResponse> {
+  const sp = new URLSearchParams()
+  if (params.q?.trim()) sp.set('q', params.q.trim())
+  if (params.page) sp.set('page', String(params.page))
+  if (params.limit) sp.set('limit', String(params.limit))
+  const q = sp.toString()
+  return adminApiFetch<BackupCatalogResponse>(`/api/v1/admin/backups${q ? `?${q}` : ''}`)
+}
+
 export async function adminTenantsListRequest(params: {
   q?: string
   lisansDurumu?: string

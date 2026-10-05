@@ -24,6 +24,7 @@ import { ReportsPage } from './pages/ReportsPage'
 import { RandevularPage } from './pages/RandevularPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { YeniMuvekkilPage } from './pages/YeniMuvekkilPage'
+import { AdminBackupPage } from './pages/admin/AdminBackupPage'
 import { AdminDashboardPage } from './pages/admin/AdminDashboardPage'
 import { AdminLicenseAlertsPage } from './pages/admin/AdminLicenseAlertsPage'
 import { AdminLoginPage } from './pages/admin/AdminLoginPage'
@@ -62,6 +63,14 @@ export default function App(): ReactElement {
           element={
             <AdminSuperRoute>
               <AdminCreateTenantPage />
+            </AdminSuperRoute>
+          }
+        />
+        <Route
+          path="yedekler"
+          element={
+            <AdminSuperRoute>
+              <AdminBackupPage />
             </AdminSuperRoute>
           }
         />

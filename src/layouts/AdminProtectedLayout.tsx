@@ -23,6 +23,7 @@ const NAV_ITEMS: { to: string; label: string; end?: boolean; superOnly?: boolean
   { to: '/admin/whatsapp-paket-talepleri', label: 'WhatsApp Paket Talepleri' },
   { to: '/admin/lisans-uyarilar', label: 'Lisansı Bitecekler' },
   { to: '/admin/pasif-burolar', label: 'Pasif Bürolar' },
+  { to: '/admin/yedekler', label: 'Yedek Yönetimi', superOnly: true },
   { to: '/admin/sistem', label: 'Sistem / Adminler', superOnly: true },
   { to: '/admin/ayarlar', label: 'Ayarlar' }
 ]
