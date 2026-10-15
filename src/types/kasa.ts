@@ -16,8 +16,8 @@ export type KasaHareketTipiApi = 'AVANS_GIRISI' | 'MASRAF' | 'DUZELTME' | 'VEKAL
 
 export type KasaOnayDurumuApi = 'ONAYSIZ' | 'ONAYLI' | 'REDDEDILDI'
 
-/** Eski kayıtlar için; yeni dosya kasası girişlerinde genelde null. */
-export type OdemeYontemiApi = 'NAKIT' | 'BANKA' | 'KREDI_KARTI' | 'DIGER'
+/** Eski kayıtlar için; yeni dosya kasası girişlerinde genelde null. BAROKART yalnız masraf girişinde kullanılır. */
+export type OdemeYontemiApi = 'NAKIT' | 'BANKA' | 'KREDI_KARTI' | 'DIGER' | 'BAROKART'
 
 export type KasaHareketiDto = {
   id: string

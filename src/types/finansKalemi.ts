@@ -75,6 +75,26 @@ export function isDigerGelirKalemAd(ad: string): boolean {
   return normalizeFinansKalemAd(ad) === normalizeFinansKalemAd('Diğer gelir')
 }
 
+/** Dosya kasası Masraf Girişi formunda seçilebilen gider kalemleri (bu sırayla). */
+export const MASRAF_GIRISI_KALEM_ADLARI = [
+  'Harç',
+  'Gider Avansı',
+  'Bilirkişi Ücreti',
+  'Keşif-İcra, Haciz vs.',
+  'Yol-Yemek vs.',
+  'Diğer'
+] as const
+
+export function filterMasrafGirisiKalemleri<T extends Pick<FinansKalemiDto, 'ad'>>(items: T[]): T[] {
+  const out: T[] = []
+  for (const ad of MASRAF_GIRISI_KALEM_ADLARI) {
+    const n = normalizeFinansKalemAd(ad)
+    const k = items.find((i) => normalizeFinansKalemAd(i.ad) === n)
+    if (k) out.push(k)
+  }
+  return out
+}
+
 export function isDigerGiderKalemAd(ad: string): boolean {
   const n = normalizeFinansKalemAd(ad)
   return (

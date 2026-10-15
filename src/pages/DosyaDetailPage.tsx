@@ -105,7 +105,8 @@ import {
   type ParaBirimi
 } from '../utils/formatters'
 import { finansKalemleriQueryKey, listFinansKalemleri } from '../api/finansKalemleri'
-import { isDigerGiderKalemAd } from '../types/finansKalemi'
+import { filterMasrafGirisiKalemleri, isDigerGiderKalemAd } from '../types/finansKalemi'
+import { dosyaKasaOdemeLabel, MASRAF_ODEME_OPTIONS } from '../lib/dosyaKasaOdemeYontemi'
 import {
   type KasaHareketiDto,
   type OdemeYontemiApi
@@ -314,10 +315,7 @@ function tipLabel(tip: KasaHareketiDto['tip']): string {
   }
 }
 
-function odemeLabel(v: OdemeYontemiApi | null): string {
-  if (!v) return '—'
-  return ODEME_OPTIONS.find((o) => o.value === v)?.label ?? v
-}
+const odemeLabel = dosyaKasaOdemeLabel
 
 function onayLabel(s: KasaHareketiDto['onayDurumu']): string {
   switch (s) {
@@ -3074,7 +3072,7 @@ function MasrafModal(props: {
     staleTime: 60_000
   })
 
-  const kalemList = giderKalemleriQuery.data?.items ?? []
+  const kalemList = filterMasrafGirisiKalemleri(giderKalemleriQuery.data?.items ?? [])
   const effectiveKalemId = kalemId || kalemList[0]?.id || ''
   const selectedKalem = kalemList.find((k) => k.id === effectiveKalemId) ?? null
   const diger = selectedKalem ? isDigerGiderKalemAd(selectedKalem.ad) : false
@@ -3132,7 +3130,8 @@ function MasrafModal(props: {
             <p className="text-xs text-ink-muted">Kalemler yükleniyor…</p>
           ) : kalemList.length === 0 ? (
             <p className="text-xs text-ink-muted">
-              Aktif gider kalemi yok. Büro sahibi Ayarlar → Gelir ve Gider Kalemleri’nden ekleyebilir.
+              Masraf kalemleri (Harç, Gider Avansı, Bilirkişi Ücreti, Keşif-İcra, Haciz vs., Yol-Yemek vs., Diğer)
+              aktif değil. Büro sahibi Ayarlar → Gelir ve Gider Kalemleri’nden etkinleştirebilir.
             </p>
           ) : (
             <select
@@ -3168,7 +3167,7 @@ function MasrafModal(props: {
         <div>
           <label className="mb-1 block text-xs font-semibold text-ink-muted">Ödeme yöntemi</label>
           <select className={selectClassName()} value={odeme} onChange={(e) => setOdeme(e.target.value as OdemeYontemiApi)}>
-            {ODEME_OPTIONS.map((o) => (
+            {MASRAF_ODEME_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}
               </option>
