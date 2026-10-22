@@ -1,4 +1,33 @@
-import type { CreateOzelSablonPayload, OzelSablonDegisken } from '../../../api/whatsappBaglanti'
+import {
+  paraBirimiKisaEtiket,
+  type CreateOzelSablonPayload,
+  type OzelSablonDegisken,
+  type SablonParaBirimiUyumu
+} from '../../../api/whatsappBaglanti'
+
+/** Özel şablonun hangi taksit para birimlerinde doğru tutar yazacağı (null: bilgi yok). */
+export function ozelSablonParaBirimiAciklamasi(uyum: SablonParaBirimiUyumu | null | undefined): {
+  etiket: string
+  uyari: string | null
+} | null {
+  if (!uyum) return null
+  const { sabitParaBirimleri, uyumluParaBirimleri } = uyum
+  if (sabitParaBirimleri.length === 0) {
+    return { etiket: 'Tüm para birimleri', uyari: null }
+  }
+  if (uyumluParaBirimleri.length === 0) {
+    return {
+      etiket: 'Para birimi karışık',
+      uyari: `Tutarların yanında farklı para birimleri (${sabitParaBirimleri.map(paraBirimiKisaEtiket).join(', ')}) sabit yazılmış; bu şablon hiçbir taksitte doğru tutar göstermez.`
+    }
+  }
+  const pb = uyumluParaBirimleri[0]
+  const digerleri = (['TRY', 'USD', 'EUR'] as const).filter((x) => x !== pb).map(paraBirimiKisaEtiket)
+  return {
+    etiket: `Yalnızca ${paraBirimiKisaEtiket(pb)} taksitler`,
+    uyari: `Tutar ${paraBirimiKisaEtiket(pb)} olarak sabit yazılmış; ${digerleri.join(' ve ')} taksitlerde bu şablonla mesaj gönderilmez.`
+  }
+}
 
 export const SYSTEM_FIELDS: Array<{ key: OzelSablonDegisken['systemField']; label: string; sample: string }> = [
   { key: 'muvekkilAdi', label: 'Müvekkil adı', sample: 'Ahmet Yılmaz' },

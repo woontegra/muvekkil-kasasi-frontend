@@ -1,3 +1,7 @@
+import { formatMoneyFixed2KnownCurrency, type ParaBirimi } from '../utils/paraBirimi'
+
+
+
 export type BildirimKanali = 'SMS' | 'WHATSAPP'
 
 
@@ -259,6 +263,9 @@ export type TahsilatBildirimIsiDto = {
 
   kalanTutarSnapshot: string
 
+  /** kalanTutarSnapshot'ın para birimi (taksit); eski API'de gelmez. */
+  paraBirimi?: ParaBirimi | string | null
+
   durum: BildirimIsDurumu
 
   iptalNedeni: string | null
@@ -266,6 +273,9 @@ export type TahsilatBildirimIsiDto = {
   atlamaNedeni: string | null
 
   hataOzeti: string | null
+
+  /** Son atlama/hata kodu (ör. PARA_BIRIMI_SABLON_YOK); eski API'de gelmez. */
+  sonProviderHataKodu?: string | null
 
   uygunlukAciklama?: string | null
 
@@ -480,6 +490,15 @@ export function bildirimIsDurumLabel(d: string): string {
 
   return BILDIRIM_IS_DURUM_LABEL[d as BildirimIsDurumu] ?? d
 
+}
+
+
+
+export function bildirimKalanTutarLabel(row: {
+  kalanTutarSnapshot: string
+  paraBirimi?: string | null
+}): string {
+  return formatMoneyFixed2KnownCurrency(row.kalanTutarSnapshot, row.paraBirimi)
 }
 
 

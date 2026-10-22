@@ -12,7 +12,11 @@ import {
   updateTahsilatBildirimKural
 } from '../../../api/tahsilatBildirim'
 import { listMuvekkiller } from '../../../api/muvekkiller'
-import { getOnayliWhatsAppSablonlariByKural } from '../../../api/whatsappBaglanti'
+import {
+  getOnayliWhatsAppSablonlariByKural,
+  paraBirimiKisaEtiket,
+  type SablonParaBirimiUyumu
+} from '../../../api/whatsappBaglanti'
 import { friendlyClientErrorMessage } from '../../../api/client'
 import { APP_BASE } from '../../../config/appPaths'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -64,6 +68,14 @@ type OnayliSablon = {
   language: string
   statusLabel: string
   usageArea?: string | null
+  paraBirimiUyumu?: SablonParaBirimiUyumu | null
+}
+
+function paraBirimiSecenekEki(t: OnayliSablon): string {
+  const uyumlu = t.paraBirimiUyumu?.uyumluParaBirimleri
+  if (!uyumlu || uyumlu.length === 3) return ''
+  if (uyumlu.length === 0) return ' — para birimi karışık'
+  return ` — ${uyumlu.map(paraBirimiKisaEtiket).join('/')}`
 }
 
 function kuralGunAlani(kuralTuru: BildirimKuralTuru): {
@@ -571,11 +583,15 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
                       <option value="">Şablon seçilmedi</option>
                       {kuralSablonlari.map((t) => (
                         <option key={t.id} value={t.id}>
-                          {t.metaName} ({t.language})
+                          {t.metaName} ({t.language}){paraBirimiSecenekEki(t)}
                         </option>
                       ))}
                     </select>
                   )}
+                  <p className="text-xs text-ink-subtle" data-testid="kural-doviz-sablon-notu">
+                    USD veya EUR taksitlerde aynı mesajın Meta onaylı USD/EUR sürümü otomatik kullanılır. Onaylı
+                    sürüm yoksa mesaj gönderilmez, kredi düşülmez; nedeni Bildirim Merkezi’nde görünür.
+                  </p>
                 </div>
               </RuleCard>
             )

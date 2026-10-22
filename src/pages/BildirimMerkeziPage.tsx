@@ -34,10 +34,11 @@ import type { BildirimIsDurumu, TahsilatBildirimIsGorunum, TahsilatBildirimIsiDt
 import {
   BILDIRIM_GORUNUM_LABEL,
   bildirimIsDurumLabel,
+  bildirimKalanTutarLabel,
   bildirimKuralTuruLabel,
   readBildirimOzetCounts
 } from '../types/tahsilatBildirim'
-import { formatCurrencyTR, formatDateTimeTR, formatDateTR } from '../utils/formatters'
+import { formatDateTimeTR, formatDateTR } from '../utils/formatters'
 
 const JOB_TABS: TahsilatBildirimIsGorunum[] = ['GECMIS', 'PLANLANANLAR', 'BUGUN', 'ATLANANLAR']
 
@@ -64,6 +65,11 @@ function durumBadgeVariant(d: BildirimIsDurumu): 'default' | 'success' | 'warnin
 
 function aciklamaText(row: TahsilatBildirimIsiDto): string {
   return row.uygunlukAciklama || row.hataOzeti || row.atlamaNedeni || row.iptalNedeni || '—'
+}
+
+/** Para birimi kaynaklı atlamalar (uygun onaylı şablon yok vb.) kısaltılmadan gösterilir. */
+function paraBirimiGerekcesi(row: TahsilatBildirimIsiDto): boolean {
+  return row.durum === 'ATLANDI' && Boolean(row.sonProviderHataKodu?.startsWith('PARA_BIRIMI_'))
 }
 
 function CompactStat(props: { label: string; value: number; loading?: boolean }): ReactElement {
@@ -210,7 +216,7 @@ export function BildirimMerkeziPage(): ReactElement {
                           ) : null}
                         </TD>
                         <TD className="whitespace-nowrap tabular-nums">
-                          {formatCurrencyTR(Number(row.kalanTutarSnapshot))}
+                          {bildirimKalanTutarLabel(row)}
                         </TD>
                         <TD className="whitespace-nowrap">{bildirimKuralTuruLabel(row.kuralTuru)}</TD>
                         <TD className="whitespace-nowrap text-xs tabular-nums">
@@ -220,7 +226,15 @@ export function BildirimMerkeziPage(): ReactElement {
                         <TD>
                           <Badge variant={durumBadgeVariant(row.durum)}>{bildirimIsDurumLabel(row.durum)}</Badge>
                         </TD>
-                        <TD className="max-w-[180px] truncate text-xs text-ink-muted" title={aciklamaText(row)}>
+                        <TD
+                          className={
+                            paraBirimiGerekcesi(row)
+                              ? 'min-w-[260px] max-w-[360px] whitespace-normal text-xs text-amber-800'
+                              : 'max-w-[180px] truncate text-xs text-ink-muted'
+                          }
+                          title={aciklamaText(row)}
+                          data-testid={paraBirimiGerekcesi(row) ? 'bildirim-para-birimi-gerekcesi' : undefined}
+                        >
                           {aciklamaText(row)}
                         </TD>
                         <TD className="text-right">
@@ -275,7 +289,7 @@ export function BildirimMerkeziPage(): ReactElement {
                       },
                       {
                         label: 'Kalan',
-                        value: formatCurrencyTR(Number(row.kalanTutarSnapshot)),
+                        value: bildirimKalanTutarLabel(row),
                         numeric: true
                       },
                       { label: 'Hatırlatma', value: bildirimKuralTuruLabel(row.kuralTuru) },

@@ -76,8 +76,24 @@ export async function kaldirWhatsAppBaglanti(): Promise<{ ok: true; baglanti: Re
   return apiFetch('/api/v1/whatsapp-baglanti/baglantiyi-kaldir', { method: 'POST', body: '{}' })
 }
 
+export type SablonParaBirimi = 'TRY' | 'USD' | 'EUR'
+
+/** Tutar değişkenlerinin yanına sabit yazılmış para birimleri ve şablonun kullanılabileceği taksit para birimleri. */
+export type SablonParaBirimiUyumu = {
+  sabitParaBirimleri: SablonParaBirimi[]
+  uyumluParaBirimleri: SablonParaBirimi[]
+}
+
+export function paraBirimiKisaEtiket(pb: SablonParaBirimi): string {
+  return pb === 'TRY' ? 'TL' : pb
+}
+
 export type HazirSablonKatalogItem = {
   libraryKey: string
+  /** Aynı mesajın TL/USD/EUR sürümlerini gruplayan anahtar. */
+  familyKey?: string
+  /** null: tutar içermeyen şablon (randevu). */
+  paraBirimi?: SablonParaBirimi | null
   displayName: string
   shortDescription: string
   suggestedUse: string
@@ -126,6 +142,7 @@ export async function getOnayliWhatsAppSablonlari(): Promise<{
     statusNormalized: string
     statusLabel: string
     usageArea?: string | null
+    paraBirimiUyumu?: SablonParaBirimiUyumu | null
   }>
 }> {
   return apiFetch('/api/v1/whatsapp-baglanti/onayli-sablonlar')
@@ -143,6 +160,7 @@ export async function getOnayliWhatsAppSablonlariByKural(
     statusNormalized: string
     statusLabel: string
     usageArea?: string | null
+    paraBirimiUyumu?: SablonParaBirimiUyumu | null
   }>
 }> {
   return apiFetch(`/api/v1/whatsapp-baglanti/onayli-sablonlar?kuralTuru=${encodeURIComponent(kuralTuru)}`)
@@ -184,6 +202,7 @@ export type OzelSablonDto = {
   isEditable: boolean
   isDeletable: boolean
   canSubmitToMeta: boolean
+  paraBirimiUyumu?: SablonParaBirimiUyumu | null
 }
 
 export type CreateOzelSablonPayload = {

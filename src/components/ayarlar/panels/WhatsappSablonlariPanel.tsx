@@ -12,9 +12,11 @@ import {
   submitOzelWhatsAppSablonu,
   updateOzelWhatsAppSablonu,
   WHATSAPP_BAGLANTI_QUERY_KEY,
+  paraBirimiKisaEtiket,
   type CreateOzelSablonPayload,
   type HazirSablonKatalogItem,
-  type OzelSablonDto
+  type OzelSablonDto,
+  type SablonParaBirimi
 } from '../../../api/whatsappBaglanti'
 import { friendlyClientErrorMessage } from '../../../api/client'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -27,6 +29,7 @@ import { SablonOlusturmaRehberi } from './SablonOlusturmaRehberi'
 import {
   USAGE_AREA_LABELS,
   emptySablonFormValues,
+  ozelSablonParaBirimiAciklamasi,
   slugifyMetaName,
   systemFieldLabel,
   validateBodyVariableEdges,
@@ -101,6 +104,14 @@ function computeStats(catalog: HazirSablonKatalogItem[]): {
   return { total: catalog.length, approved, pending, rejected }
 }
 
+function ParaBirimiRozeti({ pb }: { pb: SablonParaBirimi }): ReactElement {
+  return (
+    <Badge variant={pb === 'TRY' ? 'default' : 'primary'} className="normal-case tracking-normal">
+      {paraBirimiKisaEtiket(pb)}
+    </Badge>
+  )
+}
+
 function actionLabel(item: HazirSablonKatalogItem): string | null {
   if (item.statusCode === 'APPROVED') return null
   if (item.statusCode === 'REJECTED') return 'Tekrar Gönder'
@@ -126,6 +137,12 @@ function TemplateDetailModal(props: {
           value={item.variables.map((v) => `{${v}}`).join(', ')}
         />
         <SettingRow label="Meta şablon adı" value={item.metaTemplateName} mono />
+        {item.paraBirimi ? (
+          <SettingRow
+            label="Para birimi"
+            value={`${paraBirimiKisaEtiket(item.paraBirimi)} taksitler için`}
+          />
+        ) : null}
         <SettingRow label="Dil" value={item.language === 'tr' ? 'Türkçe' : item.language} />
         <SettingRow label="Kategori" value={item.category} />
         <SettingRow label="Meta durumu" value={displayStatusLabel(item)} />
@@ -148,6 +165,7 @@ function CustomTemplateDetailModal(props: {
     (text, v) => text.split(`{{${v.index}}}`).join(v.exampleValue || `{{${v.index}}}`),
     item.bodyText
   )
+  const pbAciklama = ozelSablonParaBirimiAciklamasi(item.paraBirimiUyumu)
 
   return (
     <ModalShell title={item.displayName} onClose={props.onClose}>
@@ -156,6 +174,8 @@ function CustomTemplateDetailModal(props: {
         <SettingRow label="Meta şablon adı" value={item.metaName} mono />
         <SettingRow label="Durum" value={customStatusLabel(item.statusNormalized)} />
         <SettingRow label="Kullanım alanı" value={USAGE_AREA_LABELS[item.usageArea] ?? item.usageArea} />
+        {pbAciklama ? <SettingRow label="Para birimi uyumu" value={pbAciklama.etiket} /> : null}
+        {pbAciklama?.uyari ? <AlertBox variant="warning">{pbAciklama.uyari}</AlertBox> : null}
         <SettingRow label="Kategori" value={item.category} />
         <SettingRow label="Dil" value="Türkçe (tr)" />
 
@@ -224,6 +244,7 @@ function TemplateCard({
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-sm font-semibold text-ink">{item.displayName}</h3>
+            {item.paraBirimi ? <ParaBirimiRozeti pb={item.paraBirimi} /> : null}
             <Badge variant={statusVariant(item.statusCode)} className="normal-case tracking-normal">
               {displayStatusLabel(item)}
             </Badge>
@@ -370,7 +391,9 @@ export function WhatsappSablonlariPanel(): ReactElement {
 
   const catalog = q.data?.catalog ?? []
   const customTemplates = customQ.data?.templates ?? []
-  const tahsilatCatalog = catalog.filter((c) => (c.templateGroup ?? 'TAHSILAT') === 'TAHSILAT')
+  const tahsilatTumu = catalog.filter((c) => (c.templateGroup ?? 'TAHSILAT') === 'TAHSILAT')
+  const tahsilatCatalog = tahsilatTumu.filter((c) => !c.paraBirimi || c.paraBirimi === 'TRY')
+  const dovizCatalog = tahsilatTumu.filter((c) => c.paraBirimi === 'USD' || c.paraBirimi === 'EUR')
   const randevuCatalog = catalog.filter((c) => c.templateGroup === 'RANDEVU')
   const stats = computeStats(catalog)
 
@@ -567,6 +590,16 @@ export function WhatsappSablonlariPanel(): ReactElement {
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-ink">Hazır Şablonlar</h3>
             {renderSection('Tahsilat şablonları', tahsilatCatalog)}
+            {dovizCatalog.length ? (
+              <div className="space-y-2" data-testid="doviz-sablonlari">
+                <AlertBox variant="info">
+                  USD ve EUR taksitlerin otomatik hatırlatmaları, aynı mesajın ilgili para birimli sürümü Meta
+                  tarafından onaylandığında gönderilir. Onaylı sürüm yoksa TL şablonuyla yanlış para birimli mesaj
+                  gönderilmez, kredi düşülmez ve nedeni Bildirim Merkezi’nde görünür.
+                </AlertBox>
+                {renderSection('Döviz tahsilat şablonları (USD / EUR)', dovizCatalog)}
+              </div>
+            ) : null}
             {randevuCatalog.length ? renderSection('Randevu şablonları', randevuCatalog) : null}
           </div>
           <div className="space-y-3">
@@ -598,6 +631,18 @@ export function WhatsappSablonlariPanel(): ReactElement {
                       <div>
                         <p className="text-sm font-semibold text-ink">{item.displayName}</p>
                         <p className="text-xs text-ink-muted">{item.metaName}</p>
+                        {(() => {
+                          const pb = ozelSablonParaBirimiAciklamasi(item.paraBirimiUyumu)
+                          return pb ? (
+                            <p
+                              className={pb.uyari ? 'text-xs text-amber-700' : 'text-xs text-ink-subtle'}
+                              data-testid="ozel-sablon-para-birimi"
+                              title={pb.uyari ?? undefined}
+                            >
+                              Para birimi: {pb.etiket}
+                            </p>
+                          ) : null
+                        })()}
                       </div>
                       <Badge variant={customStatusVariant(item.statusNormalized)} className="normal-case tracking-normal">
                         {customStatusLabel(item.statusNormalized)}

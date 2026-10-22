@@ -140,6 +140,15 @@ export function formatMoneyFixed2(fixed2: string, currency: ParaBirimi = 'TRY'):
   return `${sign}€${digits}`
 }
 
+/** `resolveParaBirimi`'nin aksine bilinmeyen para birimini TL varsaymaz; tutarı sembolsüz gösterir. */
+export function formatMoneyFixed2KnownCurrency(fixed2: string, raw: unknown): string {
+  const pb = PARA_BIRIMLERI.find((p) => p === raw)
+  if (pb) return formatMoneyFixed2(fixed2, pb)
+  const tryText = formatMoneyFixed2(fixed2, 'TRY')
+  if (tryText === '—') return tryText
+  return `${tryText.slice(0, -2)} (para birimi bilinmiyor)`
+}
+
 export function moneyFixed2NonZero(fixed2: string | null | undefined): boolean {
   if (fixed2 == null || fixed2 === '') return false
   const s = String(fixed2).trim()
