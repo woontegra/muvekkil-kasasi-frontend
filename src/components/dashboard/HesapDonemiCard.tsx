@@ -4,6 +4,7 @@ import { AnimatedNumber } from '../../motion'
 import { MultiCurrencyTotals } from '../paraBirimi/MultiCurrencyTotals'
 import { formatCurrencyTR } from '../../utils/formatters'
 import type { HesapDonemiOzetResponse } from '../../types/hesapDonemi'
+import { HomeIconBubble, HomeIcons } from '../home/HomeIcons'
 import { DashboardSummaryCard } from './DashboardSummaryCard'
 
 type Props = {
@@ -27,6 +28,8 @@ export function HesapDonemiCard({ data, loading, onPrev, onNext, onClick }: Prop
       interactive
       as="div"
       onClick={onClick}
+      className="hp-tone-teal"
+      leading={<HomeIconBubble tone="teal">{HomeIcons.register()}</HomeIconBubble>}
       meta={
         <div className="space-y-0.5">
           <div className="flex items-baseline justify-between gap-2">
@@ -41,7 +44,7 @@ export function HesapDonemiCard({ data, loading, onPrev, onNext, onClick }: Prop
               className={cn(
                 'truncate text-[10px] font-semibold tabular-nums',
                 netNum != null && netNum > 0
-                  ? 'text-emerald-600'
+                  ? 'text-emerald-700'
                   : netNum != null && netNum < 0
                     ? 'text-danger'
                     : 'text-ink'

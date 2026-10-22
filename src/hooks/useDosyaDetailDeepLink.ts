@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   type DosyaDetailTabKey,
@@ -23,6 +23,7 @@ type Options = {
 export function useDosyaDetailDeepLink(options: Options): {
   highlightRowId: string | null
   isRowHighlighted: (elementId: string) => boolean
+  selectTab: (tab: DosyaDetailTabKey) => void
 } {
   const { setTab, setKasaFilter, kasaFilter, tabReady, onFocusNotFound, reducedMotion } = options
   const [searchParams, setSearchParams] = useSearchParams()
@@ -35,9 +36,7 @@ export function useDosyaDetailDeepLink(options: Options): {
   const kasaFilterParam = searchParams.get('kasaFilter') as KasaListeFiltre | null
 
   useEffect(() => {
-    if (tabParam && VALID_TABS.includes(tabParam)) {
-      setTab(tabParam)
-    }
+    setTab(tabParam && VALID_TABS.includes(tabParam) ? tabParam : 'kasa')
     if (kasaFilterParam && VALID_KASA_FILTERS.includes(kasaFilterParam)) {
       setKasaFilter(kasaFilterParam)
     }
@@ -111,10 +110,27 @@ export function useDosyaDetailDeepLink(options: Options): {
     }
   }, [])
 
+  /** Kullanıcı sekme seçimi: URL `tab` güncellenir; replace ile geçmişe yeni kayıt eklenmez (geri/ileri değişmez). */
+  const selectTab = useCallback(
+    (tab: DosyaDetailTabKey) => {
+      setTab(tab)
+      setSearchParams((prev) => withDosyaTabParam(prev, tab), { replace: true })
+    },
+    [setTab, setSearchParams]
+  )
+
   return {
     highlightRowId,
-    isRowHighlighted: (elementId: string) => highlightRowId === elementId
+    isRowHighlighted: (elementId: string) => highlightRowId === elementId,
+    selectTab
   }
+}
+
+export function withDosyaTabParam(prev: URLSearchParams, tab: DosyaDetailTabKey): URLSearchParams {
+  const next = new URLSearchParams(prev)
+  if (tab === 'kasa') next.delete('tab')
+  else next.set('tab', tab)
+  return next
 }
 
 function clearDeepLinkParams(setSearchParams: ReturnType<typeof useSearchParams>[1]): void {

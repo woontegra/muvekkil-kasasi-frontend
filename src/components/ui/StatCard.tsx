@@ -17,6 +17,8 @@ export type StatCardProps = {
   footerHint?: string
   tone?: DashboardSummaryTone
   trailing?: ReactNode
+  /** Sol dekoratif ikon (DashboardSummaryCard `leading`). */
+  leading?: ReactNode
   titleBadge?: ReactNode
 }
 
@@ -33,6 +35,7 @@ export function StatCard({
   footerHint,
   tone = 'default',
   trailing,
+  leading,
   titleBadge
 }: StatCardProps): ReactElement {
   const meta =
@@ -54,6 +57,7 @@ export function StatCard({
       value={value}
       meta={meta}
       trailing={trailingNode}
+      leading={leading}
       titleBadge={titleBadge}
       interactive={interactive}
       selected={selected}

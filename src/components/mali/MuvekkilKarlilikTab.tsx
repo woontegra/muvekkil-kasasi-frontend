@@ -39,11 +39,11 @@ const TONE_BOX: Record<StatTone, string> = {
 
 const TONE_LABEL: Record<StatTone, string> = {
   neutral: 'text-ink-muted',
-  info: 'text-primary/80',
+  info: 'text-primary',
   gelir: 'text-success-ink',
-  gider: 'text-danger',
+  gider: 'text-red-700 dark:text-red-300',
   'net-pos': 'text-success-ink',
-  'net-neg': 'text-danger',
+  'net-neg': 'text-red-700 dark:text-red-300',
   'net-zero': 'text-ink-muted'
 }
 
@@ -51,9 +51,9 @@ const TONE_VALUE: Record<StatTone, string> = {
   neutral: 'text-ink',
   info: 'text-ink',
   gelir: 'text-success-ink',
-  gider: 'text-danger',
+  gider: 'text-red-700 dark:text-red-300',
   'net-pos': 'text-success-ink',
-  'net-neg': 'text-danger',
+  'net-neg': 'text-red-700 dark:text-red-300',
   'net-zero': 'text-ink'
 }
 

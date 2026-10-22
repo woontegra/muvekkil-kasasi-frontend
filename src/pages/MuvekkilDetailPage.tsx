@@ -246,7 +246,7 @@ export function MuvekkilDetailPage(): ReactElement {
             label="Bu müvekkile otomatik WhatsApp ödeme hatırlatmaları gönderilsin"
             description="Kapalıysa bu müvekkil için otomatik tahsilat hatırlatması planlanmaz."
             checked={Boolean(m.otomatikBildirimIzni)}
-            disabled={izinMu.isPending}
+            busy={izinMu.isPending}
             onChange={(next) => {
               if (next === Boolean(m.otomatikBildirimIzni) || izinMu.isPending) return
               izinMu.mutate(next)

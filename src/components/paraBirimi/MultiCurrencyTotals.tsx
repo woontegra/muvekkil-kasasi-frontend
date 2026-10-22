@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { cn } from '../../lib/cn'
-import { uiType } from '../../lib/uiDensity'
+import { mutedOnTintClass, uiType } from '../../lib/uiDensity'
 import {
   formatBalanceImpact,
   formatMoney,
@@ -85,12 +85,12 @@ export function CurrencyBalanceCards(props: BalanceCardsProps): ReactElement {
         const duz = br ? readCurrencyAmount({ [pb]: br.duzeltme }, pb) : null
         return (
           <div key={pb} className={cn('rounded-lg border px-3 py-2.5 shadow-sm', cardStyles[pb])}>
-            <p className={uiType.cardLabel}>
+            <p className={cn('text-[10px] font-semibold uppercase tracking-wide', mutedOnTintClass)}>
               {titlePrefix} ({pb})
             </p>
             <p className={cn('mt-1', uiType.cardValue)}>{formatMoney(val, pb)}</p>
             {br ? (
-              <div className="mt-2 space-y-0.5 border-t border-border/50 pt-1.5 text-[10px] tabular-nums text-ink-muted">
+              <div className={cn('mt-2 space-y-0.5 border-t border-border/50 pt-1.5 text-[10px] tabular-nums', mutedOnTintClass)}>
                 <div className="flex justify-between gap-2">
                   <span>Toplam gelir</span>
                   <span className="font-medium text-ink">{formatMoney(gelir ?? 0, pb)}</span>

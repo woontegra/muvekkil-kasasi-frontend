@@ -11,6 +11,7 @@ import { markOdemeSmmKesildi } from '../api/vekalet'
 import { SmmBekleyenHomePanel } from '../components/dashboard/SmmBekleyenHomePanel'
 import { HomeAlertsStrip } from '../components/home/HomeAlertsStrip'
 import { MuvekkilListToolbar } from '../components/home/MuvekkilListToolbar'
+import { HomeIconBubble, HomeIcons } from '../components/home/HomeIcons'
 import { TaksitUyarilariSection } from '../components/dashboard/TaksitUyarilariSection'
 import { HesapDonemiCard } from '../components/dashboard/HesapDonemiCard'
 import { HesapDonemiModal } from '../components/dashboard/HesapDonemiModal'
@@ -182,14 +183,11 @@ export function HomePage(): ReactElement {
 
   const dash = dashboardQuery.data
 
-  const vadesiGecmis = dash?.vadesiGecmisTaksit
   const smmCountFallback = dash?.smmBekleyen
   const smmBekleyenForUyari = smmQuery.data?.total ?? smmCountFallback
   const onayBekleyen = dash?.onayBekleyenToplam
+  /** Vadesi geçmiş taksit sayısı üstteki kırmızı kartta gösterilir; banda eklenmez. */
   const uyariParcalari: { key: string; text: string; smmLink?: boolean }[] = []
-  if (vadesiGecmis != null && vadesiGecmis > 0) {
-    uyariParcalari.push({ key: 'vade', text: `${vadesiGecmis} vadesi geçmiş taksit` })
-  }
   if (smmBekleyenForUyari != null && smmBekleyenForUyari > 0) {
     uyariParcalari.push({
       key: 'smm',
@@ -250,6 +248,8 @@ export function HomePage(): ReactElement {
             label="Vadesi geçmiş taksit"
             value={statVal(dash?.vadesiGecmisTaksit, dashboardQuery.isLoading)}
             sub="Ödenmemiş, vadesi geçmiş taksitler"
+            className={(dash?.vadesiGecmisTaksit ?? 0) > 0 ? 'hp-tone-red hp-value-tone' : 'hp-tone-red'}
+            leading={<HomeIconBubble tone="red">{HomeIcons.clock()}</HomeIconBubble>}
           />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
@@ -266,6 +266,8 @@ export function HomePage(): ReactElement {
             interactive
             selected={smmPanelOpen}
             onClick={openSmmPanel}
+            className="hp-tone-violet"
+            leading={<HomeIconBubble tone="violet">{HomeIcons.document()}</HomeIconBubble>}
           />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
@@ -273,20 +275,36 @@ export function HomePage(): ReactElement {
             label="Onay bekleyen"
             value={statVal(dash?.onayBekleyenToplam, dashboardQuery.isLoading)}
             sub="Onay bekleyen kasa hareketleri"
+            className={(dash?.onayBekleyenToplam ?? 0) > 0 ? 'hp-tone-green hp-value-tone' : 'hp-tone-green'}
+            leading={<HomeIconBubble tone="green">{HomeIcons.checkCircle()}</HomeIconBubble>}
           />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
-          <StatCard label="Ofis kasa bakiyesi" value={ofisBakiyeVal} sub="TRY / USD / EUR ayrı bakiyeler" />
+          <StatCard
+            label="Ofis kasa bakiyesi"
+            value={ofisBakiyeVal}
+            sub="TRY / USD / EUR ayrı bakiyeler"
+            className="hp-tone-blue"
+            leading={<HomeIconBubble tone="blue">{HomeIcons.bank()}</HomeIconBubble>}
+          />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
           <StatCard
             label="Aktif müvekkil"
             value={statVal(dash?.toplamMuvekkil, dashboardQuery.isLoading)}
             sub="Kayıtlı aktif müvekkiller"
+            className="hp-tone-blue"
+            leading={<HomeIconBubble tone="blue">{HomeIcons.users()}</HomeIconBubble>}
           />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
-          <StatCard label="Aktif dosya" value={statVal(dash?.aktifDosya, dashboardQuery.isLoading)} sub="Takibi devam eden dosyalar" />
+          <StatCard
+            label="Aktif dosya"
+            value={statVal(dash?.aktifDosya, dashboardQuery.isLoading)}
+            sub="Takibi devam eden dosyalar"
+            className="hp-tone-blue"
+            leading={<HomeIconBubble tone="blue">{HomeIcons.folder()}</HomeIconBubble>}
+          />
         </StaggerItem>
         <StaggerItem className="h-full min-h-0">
           <HesapDonemiCard
@@ -509,9 +527,12 @@ export function HomePage(): ReactElement {
 
       {sonBakilan.length > 0 ? (
         <Card>
-          <CardHeader>
-            <CardTitle>Son listeden</CardTitle>
-            <p className="mt-1 text-xs text-ink-muted">Listenin ilk kayıtları (hızlı erişim).</p>
+          <CardHeader className="flex items-center gap-2.5">
+            <HomeIconBubble tone="amber">{HomeIcons.clock()}</HomeIconBubble>
+            <div className="min-w-0">
+              <CardTitle>Son listeden</CardTitle>
+              <p className="mt-0.5 text-xs text-ink-muted">Listenin ilk kayıtları (hızlı erişim).</p>
+            </div>
           </CardHeader>
           <CardBody className="flex flex-wrap gap-2">
             {sonBakilan.map((m) => (

@@ -1,0 +1,512 @@
+/*
+ * Uygulama teması (/app altındaki tüm sayfalar) — onaylı ana sayfa referansı.
+ * `.mk-app-premium`: DashboardShell kökünde her /app sayfasında bulunur.
+ * `.mk-home-premium`: yalnız ana sayfada eklenir; yalnız ana sayfaya ait bölümleri hedefler.
+ * Body'ye portal edilen modal katmanları (`div.fixed.inset-0`) yalnız /app açıkken buton, form, tablo ve rozet kurallarını alır.
+ */
+
+.mk-app-premium,
+body:has(.mk-app-premium) > div.fixed.inset-0 {
+  --hp-ink: #0f1b3d;
+  --hp-text: #334155;
+  --hp-muted: #64748b;
+  --hp-subtle: #8a94a6;
+  --hp-line: #e9edf3;
+  --hp-line-soft: #eef1f5;
+  --hp-blue: #3a6df0;
+  --hp-blue-hover: #2f5fe0;
+  --hp-blue-ink: #2f62e0;
+  /* Beyaz buton yazısı: #08804c 5.0:1, hover #066c40 6.5:1 */
+  --hp-green: #08804c;
+  --hp-green-hover: #066c40;
+  --hp-card-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 14px -6px rgba(16, 24, 40, 0.08);
+  --hp-card-shadow-hover: 0 2px 4px rgba(16, 24, 40, 0.05), 0 10px 22px -10px rgba(16, 24, 40, 0.16);
+}
+
+/* ---------- Zemin ---------- */
+.mk-app-premium main {
+  background: linear-gradient(180deg, #f7f9fc 0%, #f3f5f9 100%);
+}
+
+/* ---------- Sidebar (gece mavisi / füme lacivert) ----------
+ * Masaüstü sidebar ve mobil drawer aynı `.mk-sidebar` yüzeyini kullanır.
+ * Zemin #16243f → #0c1529: menü yazısı ≥10:1, bölüm başlığı ≥5.6:1, odak çizgisi ≥5.8:1.
+ */
+.mk-app-premium .mk-sidebar {
+  --sb-text: #c9d3e6;
+  --sb-icon: #a7b5d0;
+  --sb-label: #8d9cbd;
+  --sb-line: rgba(148, 170, 214, 0.12);
+  --sb-focus: #8fb4ff;
+  background:
+    radial-gradient(140% 50% at 0% 0%, rgba(74, 124, 255, 0.1) 0%, rgba(74, 124, 255, 0) 60%),
+    linear-gradient(180deg, #16243f 0%, #111c36 46%, #0c1529 100%);
+  box-shadow: inset -1px 0 0 rgba(148, 170, 214, 0.1), 6px 0 24px -12px rgba(15, 23, 42, 0.35);
+  scrollbar-color: rgba(148, 170, 214, 0.28) transparent;
+}
+.mk-app-premium [role='dialog'] > aside.mk-sidebar {
+  box-shadow: 0 24px 48px -12px rgba(2, 6, 23, 0.55);
+}
+.mk-app-premium .mk-sidebar > .pointer-events-none:first-child {
+  opacity: 0.6;
+}
+.mk-app-premium .mk-sidebar > div.border-b {
+  background-color: rgba(255, 255, 255, 0.025);
+}
+.mk-app-premium .mk-sidebar > footer {
+  background-color: rgba(4, 9, 22, 0.22);
+}
+.mk-app-premium .mk-sidebar .border-white\/\[0\.08\] {
+  border-color: var(--sb-line);
+}
+/* Logo kabı: saydam PNG doğrudan zemin üzerinde */
+.mk-app-premium .mk-sidebar .bg-white\/\[0\.08\] {
+  background-color: transparent;
+  box-shadow: none;
+}
+.mk-app-premium .mk-sidebar .text-slate-500,
+.mk-app-premium .mk-sidebar .text-slate-600,
+.mk-app-premium .mk-sidebar nav p {
+  color: var(--sb-label);
+}
+.mk-app-premium .mk-sidebar .text-slate-400,
+.mk-app-premium .mk-sidebar .text-slate-300 {
+  color: var(--sb-text);
+}
+.mk-app-premium .mk-sidebar button.text-slate-300:hover {
+  color: #ffffff;
+}
+.mk-app-premium .mk-sidebar nav a[href] {
+  color: var(--sb-text);
+}
+.mk-app-premium .mk-sidebar nav a[href]:hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+.mk-app-premium .mk-sidebar nav a[href] > span.rounded-lg {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: var(--sb-icon);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+.mk-app-premium .mk-sidebar nav a[href]:hover > span.rounded-lg {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #e6ecf7;
+}
+.mk-app-premium .mk-sidebar nav a[aria-current='page'],
+.mk-app-premium .mk-sidebar nav a[aria-current='page']:hover {
+  background-color: rgba(74, 124, 255, 0.14);
+  background-image: linear-gradient(90deg, rgba(96, 140, 255, 0.2) 0%, rgba(74, 124, 255, 0.04) 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(130, 165, 255, 0.16), 0 6px 18px -12px rgba(37, 99, 235, 0.7);
+}
+.mk-app-premium .mk-sidebar nav a[aria-current='page'] > span.rounded-lg,
+.mk-app-premium .mk-sidebar nav a[aria-current='page']:hover > span.rounded-lg {
+  background-color: #3a6df0;
+  background-image: linear-gradient(135deg, #4f86ff 0%, #2f5fe0 100%);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 4px 12px -4px rgba(59, 110, 255, 0.65);
+}
+.mk-app-premium .mk-sidebar nav a[aria-current='page'] > span.absolute {
+  background-color: #7aa6ff;
+  box-shadow: 0 0 10px rgba(122, 166, 255, 0.55);
+}
+.mk-app-premium .mk-sidebar a:focus-visible,
+.mk-app-premium .mk-sidebar button:focus-visible {
+  outline: 2px solid var(--sb-focus);
+  outline-offset: 2px;
+}
+.mk-app-premium .mk-sidebar nav a[href]:not([aria-current='page']):focus-visible {
+  background-color: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+.mk-app-premium .mk-sidebar footer img {
+  opacity: 1;
+}
+
+/* ---------- Header ---------- */
+.mk-app-premium header.app-shell-header {
+  background-color: #ffffff;
+  border-bottom-color: var(--hp-line);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+}
+.mk-app-premium header.app-shell-header button.border-border,
+.mk-app-premium header.app-shell-header .border-border.bg-white {
+  border-color: #e6eaf1;
+  border-radius: 8px;
+}
+.mk-app-premium header.app-shell-header button.border-border:hover {
+  background-color: #f5f7fb;
+}
+.mk-app-premium header.app-shell-header .bg-primary\/10 {
+  background-color: #4f63ee;
+  color: #ffffff;
+}
+.mk-app-premium header.app-shell-header .border-l.border-border {
+  border-color: var(--hp-line);
+}
+
+/* ---------- Metin ---------- */
+.mk-app-premium main .text-ink-muted {
+  color: var(--hp-muted);
+}
+
+/* ---------- Kartlar ---------- */
+.mk-app-premium main .shadow-card,
+.mk-app-premium main .bg-panel.shadow-sm.ring-1 {
+  border-color: var(--hp-line);
+  border-radius: 12px;
+  box-shadow: var(--hp-card-shadow);
+  --tw-ring-color: transparent;
+}
+.mk-app-premium main .border-b.border-border {
+  border-bottom-color: var(--hp-line-soft);
+}
+.mk-app-premium main .border-t.border-border {
+  border-top-color: var(--hp-line-soft);
+}
+
+/* ---------- Özet kartları ---------- */
+.mk-app-premium main .min-h-\[5\.75rem\] {
+  --t-ink: var(--hp-blue-ink);
+  --t-value: var(--hp-ink);
+  --t-bg: #f7f9fd;
+  --t-line: var(--hp-line);
+  border-color: var(--t-line);
+  border-radius: 12px;
+  background-image: linear-gradient(135deg, var(--t-bg) 0%, #ffffff 78%);
+  box-shadow: var(--hp-card-shadow);
+}
+.mk-app-premium main .min-h-\[5\.75rem\].hp-tone-red {
+  --t-ink: #d42a2f;
+  --t-value: #d42a2f;
+  --t-bg: #fff2f1;
+  --t-line: #f6e1e0;
+}
+.mk-app-premium main .min-h-\[5\.75rem\].hp-tone-amber {
+  --t-ink: #6b4a1f;
+  --t-value: #b45f0a;
+  --t-bg: #fff8ec;
+  --t-line: #f4e8cf;
+}
+.mk-app-premium main .min-h-\[5\.75rem\].hp-tone-orange {
+  --t-ink: #c2410c;
+  --t-value: #c2410c;
+  --t-bg: #fff4ec;
+  --t-line: #f8e2d3;
+}
+.mk-app-premium main .min-h-\[5\.75rem\].hp-tone-violet {
+  --t-ink: #6b46e0;
+  --t-bg: #f8f5ff;
+  --t-line: #ebe5fb;
+}
+.mk-app-premium main .min-h-\[5\.75rem\].hp-tone-green {
+  --t-ink: #12935a;
+  --t-label: #0b7a4b;
+  --t-value: #12935a;
+  --t-bg: #f1fbf6;
+  --t-line: #dcf1e5;
+}
+.mk-app-premium main .min-h-\[5\.75rem\].hp-tone-blue {
+  --t-ink: var(--hp-blue-ink);
+  --t-bg: #f3f7ff;
+  --t-line: #e1e9f8;
+}
+.mk-app-premium main .min-h-\[5\.75rem\].hp-tone-teal {
+  --t-ink: #0f9468;
+  --t-label: #0a7655;
+  --t-bg: #effaf5;
+  --t-line: #d9f0e6;
+}
+/* --t-label: küçük başlık için ≥4.5:1 koyu ton; --t-ink kenarlık/vurgu tonu olarak kalır. */
+.mk-app-premium main .min-h-\[5\.75rem\] .uppercase.tracking-wide {
+  color: var(--t-label, var(--t-ink));
+  font-weight: 700;
+}
+/* Kart altı ikincil metinler tonlu gradyan zemininde ≥4.5:1 (--hp-muted / text-danger sınırda kalıyordu). */
+.mk-app-premium main .min-h-\[5\.75rem\] :is(.text-ink-muted, .text-ink-subtle) {
+  color: #566378;
+}
+.mk-app-premium main .min-h-\[5\.75rem\] .text-danger {
+  color: #c0262b;
+}
+.mk-app-premium main .min-h-\[5\.75rem\] p.text-\[17px\] {
+  font-size: 22px;
+  color: var(--hp-ink);
+}
+.mk-app-premium main .min-h-\[5\.75rem\] .text-lg.font-extrabold {
+  font-size: 22px;
+}
+.mk-app-premium main .min-h-\[5\.75rem\].hp-value-tone :is(p.text-\[17px\], .text-lg.font-extrabold) {
+  color: var(--t-value);
+}
+.mk-app-premium main .min-h-\[5\.75rem\]:is(button, [role='button']):hover {
+  border-color: color-mix(in srgb, var(--t-ink) 28%, #ffffff);
+  box-shadow: var(--hp-card-shadow-hover);
+}
+.mk-app-premium main .min-h-\[5\.75rem\][aria-pressed='true'] {
+  border-color: color-mix(in srgb, var(--t-ink) 45%, #ffffff);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--t-ink) 14%, transparent), var(--hp-card-shadow);
+}
+
+/* ---------- Butonlar ---------- */
+.mk-app-premium main :where(.bg-primary),
+body:has(.mk-app-premium) > div.fixed.inset-0 :where(.bg-primary) {
+  background-color: var(--hp-blue);
+}
+.mk-app-premium main .bg-primary.border-primary,
+body:has(.mk-app-premium) > div.fixed.inset-0 .bg-primary.border-primary {
+  background-color: var(--hp-blue);
+  border-color: var(--hp-blue);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 3px 8px -3px rgba(58, 109, 240, 0.5);
+}
+.mk-app-premium main .bg-primary.border-primary:hover:not(:disabled),
+body:has(.mk-app-premium) > div.fixed.inset-0 .bg-primary.border-primary:hover:not(:disabled) {
+  background-color: var(--hp-blue-hover);
+}
+.mk-app-premium main .bg-accent.border-accent,
+body:has(.mk-app-premium) > div.fixed.inset-0 .bg-accent.border-accent {
+  background-color: var(--hp-green);
+  border-color: var(--hp-green);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 3px 8px -3px rgba(8, 128, 76, 0.45);
+}
+.mk-app-premium main .bg-accent.border-accent:hover,
+body:has(.mk-app-premium) > div.fixed.inset-0 .bg-accent.border-accent:hover {
+  background-color: var(--hp-green-hover);
+  filter: none;
+}
+.mk-app-premium main a.bg-accent.border-accent,
+body:has(.mk-app-premium) > div.fixed.inset-0 a.bg-accent.border-accent {
+  border-radius: 6px;
+}
+.mk-app-premium main .bg-white.border-border-strong,
+body:has(.mk-app-premium) > div.fixed.inset-0 .bg-white.border-border-strong {
+  border-color: #e3e8f0;
+  color: #475569;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.mk-app-premium main .bg-white.border-border-strong:hover:not(:disabled),
+body:has(.mk-app-premium) > div.fixed.inset-0 .bg-white.border-border-strong:hover:not(:disabled) {
+  background-color: #f6f8fb;
+}
+
+/* ---------- Form alanları ----------
+ * `.mk-form-control`: formControlClass'ı taşıyan buton tetikleyiciler (aramalı seçim kutuları) native alanlarla aynı kenarlığı alır.
+ * Kenarlık #828ea2 en koyu zeminde (#f3f5f9) bile ≥3:1; odak kenarlık + 1px halka ile 2px mavi (≥4:1).
+ */
+.mk-app-premium main :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):not(.border-danger):not(.border-amber-400),
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):not(.border-danger):not(.border-amber-400) {
+  border-color: #828ea2;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.mk-app-premium main :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):not(.border-danger):not(:disabled):not([readonly]),
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):not(.border-danger):not(:disabled):not([readonly]) {
+  background-color: #ffffff;
+}
+.mk-app-premium main :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):not(.border-danger):not(.border-amber-400):not(:disabled):not([readonly]):not(:focus-within):hover,
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):not(.border-danger):not(.border-amber-400):not(:disabled):not([readonly]):not(:focus-within):hover {
+  border-color: #56637a;
+}
+.mk-app-premium main :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control)[readonly]:not(.border-danger),
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control)[readonly]:not(.border-danger) {
+  background-color: #f5f7fa;
+}
+.mk-app-premium main :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):disabled,
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):disabled {
+  border-color: #b4bcc9;
+  background-color: #eef1f5;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.mk-app-premium main :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):not(.border-danger):focus,
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):not(.border-danger):focus {
+  border-color: var(--hp-blue);
+  box-shadow: 0 0 0 1px var(--hp-blue), 0 0 0 4px rgba(58, 109, 240, 0.16);
+}
+/* Takvim/saat düğmesi gölge DOM'da odaklanınca alan :focus değil yalnız :focus-within eşleşir. */
+.mk-app-premium main :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):is([type='date'], [type='datetime-local'], [type='time'], [type='month']):not(.border-danger):focus-within,
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='range']):not([type='color']), select, textarea, .mk-form-control):is([type='date'], [type='datetime-local'], [type='time'], [type='month']):not(.border-danger):focus-within {
+  border-color: var(--hp-blue);
+  box-shadow: 0 0 0 1px var(--hp-blue), 0 0 0 4px rgba(58, 109, 240, 0.16);
+}
+.mk-app-premium main :is(input, select, textarea, .mk-form-control).border-danger:focus,
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(input, select, textarea, .mk-form-control).border-danger:focus {
+  box-shadow: 0 0 0 1px #dc2626, 0 0 0 4px rgba(220, 38, 38, 0.15);
+}
+.mk-app-premium main .mk-form-control.border-amber-400:not(:focus),
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-form-control.border-amber-400:not(:focus) {
+  border-color: #d97706;
+}
+
+/* ---------- Klavye odağı ----------
+ * Tema gölgeleri (özet kartı, yeşil/mavi buton) Tailwind ring'ini ezdiği için odak göstergesi outline ile verilir;
+ * yalnız :focus-visible (klavye) durumunda görünür, yerleşimi etkilemez. Form alanları yukarıdaki kenarlık+halka kuralını kullanır.
+ */
+.mk-app-premium main :is(a[href], button, summary, [role='button'], [role='switch'], [role='tab'], [role='option'], [tabindex]:not([tabindex='-1'])):not(input, select, textarea, .mk-form-control):focus-visible,
+body:has(.mk-app-premium) > div.fixed.inset-0 :is(a[href], button, summary, [role='button'], [role='switch'], [role='tab'], [role='option'], [tabindex]:not([tabindex='-1'])):not(input, select, textarea, .mk-form-control):focus-visible {
+  outline: 2px solid var(--hp-blue);
+  outline-offset: 2px;
+}
+.mk-app-premium main .mk-data-table :is(a[href], button):focus-visible,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table :is(a[href], button):focus-visible {
+  outline-offset: 1px;
+}
+
+/* ---------- Tablolar ---------- */
+.mk-app-premium main .mk-data-table-wrap,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table-wrap {
+  border-color: var(--hp-line);
+  border-radius: 10px;
+  background-color: #ffffff;
+}
+.mk-app-premium main .mk-data-table thead,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table thead {
+  background-image: none;
+  background-color: #f7f9fc;
+  color: var(--hp-muted);
+}
+.mk-app-premium main .mk-data-table thead th:first-child,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table thead th:first-child {
+  border-top-left-radius: 9px;
+}
+.mk-app-premium main .mk-data-table thead th:last-child,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table thead th:last-child {
+  border-top-right-radius: 9px;
+}
+.mk-app-premium main .mk-data-table tbody > tr + tr,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table tbody > tr + tr {
+  border-color: var(--hp-line-soft);
+}
+.mk-app-premium main .mk-data-table tbody > tr:hover,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table tbody > tr:hover {
+  background-color: #f8faff;
+}
+.mk-app-premium main .mk-data-table tbody > tr.group\/row:hover,
+.mk-app-premium main .mk-data-table tbody > tr.group\/row:focus-within,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table tbody > tr.group\/row:focus-within {
+  background-image: none;
+  background-color: #f5f8ff;
+  border-left-color: var(--hp-blue);
+  box-shadow: none;
+}
+.mk-app-premium main .mk-data-table .text-primary,
+body:has(.mk-app-premium) > div.fixed.inset-0 .mk-data-table .text-primary {
+  color: var(--hp-blue-ink);
+}
+
+/* ---------- Rozetler ---------- */
+.mk-app-premium main .h-\[21px\].border,
+body:has(.mk-app-premium) > div.fixed.inset-0 .h-\[21px\].border {
+  border-radius: 999px;
+}
+.mk-app-premium main .h-\[21px\].bg-primary-soft,
+body:has(.mk-app-premium) > div.fixed.inset-0 .h-\[21px\].bg-primary-soft {
+  background-color: #e8efff;
+  border-color: #d6e2fc;
+  color: var(--hp-blue-ink);
+}
+.mk-app-premium main .h-\[21px\].bg-accent-soft,
+body:has(.mk-app-premium) > div.fixed.inset-0 .h-\[21px\].bg-accent-soft {
+  background-color: #e1f6ec;
+  border-color: #c9eedb;
+  color: #0c7a4b;
+}
+.mk-app-premium main .h-\[21px\].bg-danger-soft,
+body:has(.mk-app-premium) > div.fixed.inset-0 .h-\[21px\].bg-danger-soft {
+  background-color: #fde8e8;
+  border-color: #f8d3d3;
+  color: #c0262b;
+}
+.mk-app-premium main .h-\[21px\].bg-surface-muted.text-ink-muted,
+body:has(.mk-app-premium) > div.fixed.inset-0 .h-\[21px\].bg-surface-muted.text-ink-muted {
+  color: #566378;
+}
+
+/* ---------- Boş durum ve mobil kayıt kartları ---------- */
+.mk-app-premium main .border-dashed.border-border {
+  border-color: #dde3ec;
+  background-color: #fafbfd;
+}
+.mk-app-premium main .rounded-xl.border.border-border.bg-panel.shadow-sm {
+  border-color: var(--hp-line);
+  box-shadow: var(--hp-card-shadow);
+}
+
+/* ================= Yalnız ana sayfa ================= */
+
+.mk-home-premium main h1,
+.mk-home-premium main h2,
+.mk-home-premium main h3 {
+  color: var(--hp-ink);
+}
+
+/* ---------- Uyarı şeridi ---------- */
+.mk-home-premium main [role='alert'].border-amber-300\/60 {
+  border-color: #f6e2a9;
+  border-radius: 10px;
+  background-image: none;
+  background-color: #fffaeb;
+  box-shadow: none;
+}
+.mk-home-premium main [role='alert'].border-amber-300\/60 :is(span, button).rounded-md.border {
+  border-color: #f0e1b6;
+  background-color: #ffffff;
+  color: #3f3113;
+}
+.mk-home-premium main [role='alert'].border-amber-300\/60 button.rounded-md.border:hover {
+  border-color: #e3c56d;
+}
+.mk-home-premium main [role='alert'].border-amber-300\/60 > .rounded-full {
+  background-color: #fde9b2;
+  color: #8a5a00;
+}
+
+/* ---------- Son listeden ---------- */
+.mk-home-premium main a.rounded-lg.border.border-border.bg-panel {
+  border-color: #e3e8f0;
+  color: var(--hp-blue-ink);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+}
+.mk-home-premium main a.rounded-lg.border.border-border.bg-panel:hover {
+  border-color: #c9d8fb;
+  background-color: #f5f8ff;
+}
+
+/* ---------- Taksit uyarıları ---------- */
+.mk-home-premium main .rounded-lg.border.border-red-200 {
+  border-color: #f7dddd;
+  background-color: #fdf0f0;
+}
+.mk-home-premium main .rounded-lg.border.border-amber-200 {
+  border-color: #f6e6c2;
+  background-color: #fff7e8;
+}
+.mk-home-premium main .rounded-lg.border.border-sky-200 {
+  border-color: #dce7fb;
+  background-color: #eff4ff;
+}
+.mk-home-premium main .border-red-200 .bg-red-100 {
+  background-color: #fbd6d6;
+  color: #b0222a;
+}
+.mk-home-premium main .border-amber-200 .bg-amber-100 {
+  background-color: #fbe5b0;
+  color: #8f5a0a;
+}
+.mk-home-premium main .border-sky-200 .bg-sky-100 {
+  background-color: #d8e5fd;
+  color: #2556cc;
+}
+.mk-home-premium main .border-red-200 p.text-2xl {
+  color: #d42a2f;
+}
+.mk-home-premium main .border-amber-200 p.text-2xl {
+  color: #a35a0a;
+}
+.mk-home-premium main .border-sky-200 p.text-2xl {
+  color: #2556cc;
+}
+.mk-home-premium main .rounded-lg.border.border-border.bg-surface-muted\/40 {
+  border-color: transparent;
+  background-color: transparent;
+}

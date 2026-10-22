@@ -12,6 +12,8 @@ export type DashboardSummaryCardProps = {
   meta?: ReactNode
   /** Sağ üst sabit aksiyon/ikon alanı (yüksekliği bozmaz). */
   trailing?: ReactNode
+  /** Sol dekoratif ikon; dar ekranda (sm altı) gizlenir. */
+  leading?: ReactNode
   /** Başlık yanına sığacak küçük rozet (tek satır, taşmaz). */
   titleBadge?: ReactNode
   /** value yerine özel gövde (Hesap Dönemi gibi). */
@@ -51,6 +53,7 @@ export function DashboardSummaryCard({
   value,
   meta,
   trailing,
+  leading,
   titleBadge,
   children,
   interactive,
@@ -74,6 +77,7 @@ export function DashboardSummaryCard({
   const body = (
     <>
       <div className="flex min-h-0 flex-1 gap-2.5">
+        {leading != null ? <div className="hidden shrink-0 self-start sm:flex">{leading}</div> : null}
         <div className="flex min-w-0 flex-1 flex-col">
           <div className="flex h-4 items-center gap-1.5">
             <p className={cn('min-w-0 truncate', uiType.cardLabel)}>{title}</p>

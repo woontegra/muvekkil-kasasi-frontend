@@ -2,7 +2,8 @@ import type { ReactElement } from 'react'
 import { AnimatedNumber } from '../../motion'
 import { cn } from '../../lib/cn'
 import type { MaliKontrolResponse } from '../../types/maliKontrol'
-import { DashboardSummaryCard, dashboardSummaryIconBubble } from './DashboardSummaryCard'
+import { HomeIconBubble, HomeIcons } from '../home/HomeIcons'
+import { DashboardSummaryCard } from './DashboardSummaryCard'
 
 type Props = {
   data: MaliKontrolResponse | undefined
@@ -21,7 +22,12 @@ export function MaliKontrolKart({ data, loading, onClick }: Props): ReactElement
       interactive
       tone={hasKritik ? 'danger' : 'default'}
       onClick={onClick}
-      trailing={dashboardSummaryIconBubble(hasKritik ? '⚠' : '✓', hasKritik ? 'danger' : 'default')}
+      className={cn('hp-value-tone', hasKritik ? 'hp-tone-red' : toplam === 0 ? 'hp-tone-green' : 'hp-tone-amber')}
+      leading={
+        <HomeIconBubble tone={hasKritik ? 'red' : toplam === 0 ? 'green' : 'amber'}>
+          {hasKritik || toplam > 0 ? HomeIcons.warning() : HomeIcons.checkCircle()}
+        </HomeIconBubble>
+      }
       value={
         loading ? (
           <span className="text-sm text-ink-subtle">Yükleniyor…</span>
@@ -37,7 +43,7 @@ export function MaliKontrolKart({ data, loading, onClick }: Props): ReactElement
             <AnimatedNumber value={kritik} format={(n) => String(Math.round(n))} /> kritik uyarı
           </p>
         ) : toplam === 0 ? (
-          <p className="line-clamp-1 text-[10px] font-semibold text-emerald-600">Temiz · Açık kontrol yok</p>
+          <p className="line-clamp-1 text-[10px] font-semibold text-emerald-700">Temiz · Açık kontrol yok</p>
         ) : (
           <p className="line-clamp-1 text-[10px] text-ink-muted">Açık kontrol</p>
         )

@@ -87,9 +87,13 @@ export function DashboardShell(): ReactElement {
   const licenseSoftYaklasiyor = lic && lic.uyariSeviyesi === 'YAKLASIYOR' && !licenseHard
   const showDemoBanner = shouldShowDemoTrialBanner(lic)
   const showRenewalHeaderBanner = shouldShowLicenseRenewalBanner(lic) && !showDemoBanner
+  /** Uygulama teması tüm /app sayfalarında; ana sayfaya özel bölümler ek sınıfla (styles/app-premium.css). */
+  const themeClass = normalizePath(loc.pathname) === APP_BASE ? ' mk-app-premium mk-home-premium' : ' mk-app-premium'
 
   return (
-    <div className="flex h-[100dvh] max-h-[100dvh] w-full min-w-0 flex-col overflow-hidden bg-canvas md:flex-row">
+    <div
+      className={`flex h-[100dvh] max-h-[100dvh] w-full min-w-0 flex-col overflow-hidden bg-canvas md:flex-row${themeClass}`}
+    >
       <AppSidebar role={session?.user.role} />
       <MobileNavDrawer
         open={navOpen}

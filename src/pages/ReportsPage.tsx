@@ -1,16 +1,18 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { fetchIcraTahsilatReport, fetchOfisKasaReport } from '../api/reports'
-import { APP_BASE } from '../config/appPaths'
 import { listPrimPersoneller } from '../api/primPersonel'
+import { DosyaSearchSelect, type DosyaSearchSelectValue } from '../components/dosya/DosyaSearchSelect'
 import { FinancePeriodSelector } from '../components/mali/FinancePeriodSelector'
+import { MuvekkilOptionalSelect } from '../components/muvekkil/MuvekkilOptionalSelect'
 import { IcraTahsilatReportSheet } from '../components/reports/IcraTahsilatReportSheet'
 import { OfisKasaReportSheet } from '../components/reports/OfisKasaReportSheet'
 import { ReportPrintShell } from '../components/reports/ReportPrintShell'
 import { AlertBox, Button, Card, CardBody, CardHeader, CardTitle, Input, PageHeader } from '../components/ui'
 import { cn } from '../lib/cn'
+import { buildDosyaReportUrl, type DosyaReportKind } from '../lib/dosyaReportNavigation'
 import {
   resolveFinancePeriodRange,
   type FinancePeriodRange
@@ -23,7 +25,7 @@ import {
   OFIS_KASA_GIDER_KATEGORILERI
 } from '../types/ofisKasasi'
 
-type ReportKind = 'ofis-kasa' | 'icra-tahsilat' | null
+type ReportKind = 'ofis-kasa' | 'icra-tahsilat' | DosyaReportKind | null
 
 function dateInputToIso(dateStr: string): string {
   return `${dateStr}T12:00:00.000Z`
@@ -35,23 +37,14 @@ function ReportCard(props: {
   active: boolean
   disabled?: boolean
   onClick: () => void
-  to?: string
 }): ReactElement {
-  const { title, description, active, disabled, onClick, to } = props
+  const { title, description, active, disabled, onClick } = props
   const className = cn(
     'rounded-lg border px-3 py-2.5 text-left transition',
     disabled && 'cursor-not-allowed opacity-55',
     !disabled && 'hover:border-primary/40 hover:bg-primary-soft/15',
     active ? 'border-primary/50 bg-primary-soft/20 ring-1 ring-primary/25' : 'border-border bg-panel'
   )
-  if (to && !disabled) {
-    return (
-      <Link to={to} className={className}>
-        <p className="text-sm font-bold text-ink">{title}</p>
-        <p className="mt-0.5 text-xs text-ink-muted">{description}</p>
-      </Link>
-    )
-  }
   return (
     <button type="button" disabled={disabled} onClick={onClick} className={className}>
       <p className="text-sm font-bold text-ink">{title}</p>
@@ -80,6 +73,10 @@ export function ReportsPage(): ReactElement {
   const [icraDurum, setIcraDurum] = useState('')
   const [icraPersonel, setIcraPersonel] = useState('')
   const [icraQ, setIcraQ] = useState('')
+
+  const navigate = useNavigate()
+  const [dosyaMuvekkil, setDosyaMuvekkil] = useState<{ id: string; gorunenAd: string } | null>(null)
+  const [dosyaSecim, setDosyaSecim] = useState<DosyaSearchSelectValue>(null)
 
   const gelirKalemleriQuery = useQuery({
     queryKey: finansKalemleriQueryKey({ tur: 'GELIR', aktif: 'true' }),
@@ -181,19 +178,57 @@ export function ReportsPage(): ReactElement {
         />
         <ReportCard
           title="Dosya Hesap Özeti"
-          description="Müvekkil listesinden dosyayı açıp Kasa sekmesine gidin."
-          active={false}
-          to={APP_BASE}
-          onClick={() => undefined}
+          description="Dosya seçin; dosyanın Hesap Özeti sekmesi açılır."
+          active={active === 'dosya-hesap'}
+          onClick={() => setActive('dosya-hesap')}
         />
         <ReportCard
           title="Makbuzlar"
-          description="Dosya detayındaki Makbuzlar sekmesinden yazdırın."
-          active={false}
-          to={APP_BASE}
-          onClick={() => undefined}
+          description="Dosya seçin; dosyanın Makbuzlar sekmesi açılır."
+          active={active === 'dosya-makbuz'}
+          onClick={() => setActive('dosya-makbuz')}
         />
       </div>
+
+      {active === 'dosya-hesap' || active === 'dosya-makbuz' ? (
+        <Card>
+          <CardHeader className="border-b border-border py-3">
+            <CardTitle className="text-base">
+              {active === 'dosya-hesap' ? 'Dosya Hesap Özeti' : 'Makbuzlar'} — dosya seçin
+            </CardTitle>
+          </CardHeader>
+          <CardBody className="space-y-3 px-3 py-3 sm:px-4">
+            <div className="grid gap-2 sm:grid-cols-2">
+              <MuvekkilOptionalSelect
+                label="Müvekkil"
+                valueId={dosyaMuvekkil?.id ?? ''}
+                valueLabel={dosyaMuvekkil?.gorunenAd ?? ''}
+                clearOptionLabel="Seçimi temizle"
+                onChange={(next) => {
+                  setDosyaMuvekkil(next ? { id: next.id, gorunenAd: next.gorunenAd } : null)
+                  setDosyaSecim(null)
+                }}
+              />
+              <DosyaSearchSelect
+                key={dosyaMuvekkil?.id ?? ''}
+                muvekkilId={dosyaMuvekkil?.id ?? ''}
+                value={dosyaSecim}
+                onChange={setDosyaSecim}
+              />
+            </div>
+            <Button
+              type="button"
+              disabled={!dosyaMuvekkil || !dosyaSecim}
+              onClick={() => {
+                if (!dosyaMuvekkil || !dosyaSecim) return
+                navigate(buildDosyaReportUrl(active, dosyaMuvekkil.id, dosyaSecim.id))
+              }}
+            >
+              {active === 'dosya-hesap' ? 'Hesap Özetini aç' : 'Makbuzları aç'}
+            </Button>
+          </CardBody>
+        </Card>
+      ) : null}
 
       {active === 'ofis-kasa' ? (
         <Card>

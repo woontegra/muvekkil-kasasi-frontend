@@ -4,7 +4,8 @@ import { AnimatedNumber } from '../../motion'
 import { cn } from '../../lib/cn'
 import { APP_BASE } from '../../config/appPaths'
 import type { TahsilatMerkeziOzetDto } from '../../types/tahsilatMerkezi'
-import { DashboardSummaryCard, dashboardSummaryIconBubble } from './DashboardSummaryCard'
+import { HomeIconBubble, HomeIcons } from '../home/HomeIcons'
+import { DashboardSummaryCard } from './DashboardSummaryCard'
 
 type Props = {
   ozet: TahsilatMerkeziOzetDto | undefined
@@ -21,7 +22,8 @@ export function TahsilatBekleyenlerCard({ ozet, loading }: Props): ReactElement 
       interactive
       tone={hasGecikme ? 'danger' : 'default'}
       onClick={() => navigate(`${APP_BASE}/tahsilat-merkezi`)}
-      trailing={dashboardSummaryIconBubble('₺', hasGecikme ? 'danger' : 'default')}
+      className={hasGecikme ? 'hp-tone-amber hp-value-tone' : 'hp-tone-amber'}
+      leading={<HomeIconBubble tone="amber">{HomeIcons.calendar()}</HomeIconBubble>}
       value={
         loading ? (
           <span className="text-sm text-ink-subtle">Yükleniyor…</span>

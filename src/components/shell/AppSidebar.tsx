@@ -100,9 +100,13 @@ export function AppSidebar({ role }: AppSidebarProps): ReactElement {
       <AppNavLinks role={role} />
 
       <footer className="relative shrink-0 border-t border-white/[0.08] px-4 py-3">
-        <div className="flex items-center gap-2">
-          <img src={WOONTEGRA_MARK_SRC} alt="Woontegra" className="h-5 w-5 shrink-0 opacity-70" />
-          <div className="min-w-0">
+        <div className="flex items-center gap-2.5">
+          <img
+            src={WOONTEGRA_MARK_SRC}
+            alt="Woontegra"
+            className="h-6 w-32 shrink-0 object-cover object-[center_56%]"
+          />
+          <div className="min-w-0 border-l border-white/[0.08] pl-2.5">
             <p className="truncate text-[10px] font-semibold text-slate-400">Woontegra</p>
             <p className="text-[10px] tabular-nums text-slate-600">Sürüm 1.0</p>
           </div>
@@ -159,9 +163,13 @@ export function MobileNavDrawer({ open, onClose, role, buroAdi }: MobileNavDrawe
         </div>
         <AppNavLinks role={role} onNavigate={onClose} />
         <footer className="shrink-0 border-t border-white/[0.08] px-4 py-3">
-          <div className="flex items-center gap-2">
-            <img src={WOONTEGRA_MARK_SRC} alt="Woontegra" className="h-5 w-5 shrink-0 opacity-70" />
-            <p className="text-[10px] font-semibold text-slate-400">Woontegra</p>
+          <div className="flex items-center gap-2.5">
+            <img
+              src={WOONTEGRA_MARK_SRC}
+              alt="Woontegra"
+              className="h-5 w-[111px] shrink-0 object-cover object-[center_56%]"
+            />
+            <p className="border-l border-white/[0.08] pl-2.5 text-[10px] font-semibold text-slate-400">Woontegra</p>
           </div>
         </footer>
       </aside>

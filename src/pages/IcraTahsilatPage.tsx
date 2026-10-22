@@ -202,6 +202,7 @@ export function IcraTahsilatPage(): ReactElement {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           label="Toplam alacak"
+          className="hp-tone-blue"
           value={
             ozet?.byCurrency ? (
               <MultiCurrencyTotals
@@ -219,6 +220,7 @@ export function IcraTahsilatPage(): ReactElement {
         />
         <StatCard
           label="Tahsil edilen"
+          className="hp-tone-green"
           value={
             ozet?.byCurrency ? (
               <MultiCurrencyTotals
@@ -236,6 +238,7 @@ export function IcraTahsilatPage(): ReactElement {
         />
         <StatCard
           label="Kalan alacak"
+          className="hp-tone-amber"
           value={
             ozet?.byCurrency ? (
               <MultiCurrencyTotals
@@ -251,9 +254,14 @@ export function IcraTahsilatPage(): ReactElement {
             )
           }
         />
-        <StatCard label="Vadesi geçmiş taksit" value={ozet ? String(ozet.vadesiGecmisTaksit) : '—'} />
+        <StatCard
+          label="Vadesi geçmiş taksit"
+          value={ozet ? String(ozet.vadesiGecmisTaksit) : '—'}
+          className={(ozet?.vadesiGecmisTaksit ?? 0) > 0 ? 'hp-tone-red hp-value-tone' : 'hp-tone-red'}
+        />
         <StatCard
           label="Bu ay tahsilat"
+          className="hp-tone-teal"
           value={
             ozet?.buAyTahsilatByCurrency ? (
               <MultiCurrencyTotals amounts={ozet.buAyTahsilatByCurrency} compact />
@@ -262,7 +270,11 @@ export function IcraTahsilatPage(): ReactElement {
             )
           }
         />
-        <StatCard label="SMM bekleyen" value={ozet ? String(ozet.smmBekleyen) : '—'} />
+        <StatCard
+          label="SMM bekleyen"
+          value={ozet ? String(ozet.smmBekleyen) : '—'}
+          className="hp-tone-violet"
+        />
       </div>
 
       <Card>

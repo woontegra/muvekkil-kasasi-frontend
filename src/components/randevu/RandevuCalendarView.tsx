@@ -1,5 +1,6 @@
 import { Fragment, type ReactElement } from 'react'
 import { cn } from '../../lib/cn'
+import { mutedOnTintClass } from '../../lib/uiDensity'
 import {
   appointmentLayoutPx,
   CALENDAR_SLOT_HEIGHT_PX,
@@ -50,13 +51,23 @@ function appointmentAccentBar(past: boolean): string {
   )
 }
 
+/** Zaman ızgarası kartında satır yüksekliklerine (başlık 14px, diğerleri ~16px, dikey boşluk 4px) göre sığan satır sayısı. */
+export function appointmentCardLineCount(heightPx: number): 1 | 2 | 3 | 4 {
+  if (heightPx >= 68) return 4
+  if (heightPx >= 52) return 3
+  if (heightPx >= 35) return 2
+  return 1
+}
+
 function AppointmentCard({
   randevu,
   compact,
+  heightPx,
   onClick
 }: {
   randevu: RandevuDto
   compact?: boolean
+  heightPx?: number
   onClick: () => void
 }): ReactElement {
   const past = isPastAppointment(randevu.bitisAt)
@@ -81,23 +92,30 @@ function AppointmentCard({
     )
   }
 
+  const saatAraligi = `${formatTimeTR(randevu.baslangicAt)} – ${formatTimeTR(randevu.bitisAt)}`
+  const fullLabel = [randevu.baslik, saatAraligi, muvekkil, randevu.hatirlatmaOzet?.trim()].filter(Boolean).join(' · ')
+  const lines = heightPx == null ? 4 : appointmentCardLineCount(heightPx)
+
   return (
-    <button type="button" className={appointmentCardShell(past)} onClick={onClick}>
+    <button type="button" className={appointmentCardShell(past)} onClick={onClick} aria-label={fullLabel} title={fullLabel}>
       <span className={appointmentCardWash(past)} aria-hidden />
-      <div className="relative flex h-full min-h-0 w-full">
-        <span className={cn(appointmentAccentBar(past), 'w-[3px] shrink-0 self-stretch')} aria-hidden />
+      <div className="relative flex h-full min-h-0 w-full" aria-hidden>
+        <span className={cn(appointmentAccentBar(past), 'w-[3px] shrink-0 self-stretch')} />
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-hidden px-1.5 py-0.5">
-          <p className={cn('truncate text-[11px] font-semibold leading-tight tracking-tight', past ? 'text-ink-muted' : 'text-ink')}>
+          <p className={cn('shrink-0 truncate text-[11px] font-semibold leading-tight tracking-tight', past ? 'text-ink-muted' : 'text-ink')}>
+            {lines === 1 ? (
+              <span className="mr-1 font-medium tabular-nums text-ink-subtle">{formatTimeTR(randevu.baslangicAt)}</span>
+            ) : null}
             {randevu.baslik}
           </p>
-          <p className="mt-0.5 truncate text-[10px] tabular-nums text-ink-subtle">
-            {formatTimeTR(randevu.baslangicAt)} – {formatTimeTR(randevu.bitisAt)}
-          </p>
-          {muvekkil ? (
-            <p className="mt-0.5 truncate text-[10px] font-medium text-primary">{muvekkil}</p>
+          {lines >= 2 ? (
+            <p className="mt-0.5 shrink-0 truncate text-[10px] tabular-nums text-ink-subtle">{saatAraligi}</p>
           ) : null}
-          {randevu.hatirlatmaOzet ? (
-            <p className="mt-0.5 truncate text-[9px] text-ink-muted">{randevu.hatirlatmaOzet}</p>
+          {muvekkil && lines >= 3 ? (
+            <p className="mt-0.5 shrink-0 truncate text-[10px] font-medium text-primary">{muvekkil}</p>
+          ) : null}
+          {randevu.hatirlatmaOzet && lines >= 4 ? (
+            <p className="mt-0.5 shrink-0 truncate text-[9px] text-ink-muted">{randevu.hatirlatmaOzet}</p>
           ) : null}
         </div>
       </div>
@@ -112,7 +130,7 @@ function MonthView({ anchor, items, onDayClick, onAppointmentClick }: Omit<Calen
 
   return (
     <div className="overflow-hidden rounded-xl border border-border/80 bg-panel shadow-sm ring-1 ring-ink/[0.03]">
-      <div className="grid grid-cols-7 border-b border-border/60 bg-surface-muted/35 text-center text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
+      <div className={cn('grid grid-cols-7 border-b border-border/60 bg-surface-muted/35 text-center text-[10px] font-semibold uppercase tracking-wider', mutedOnTintClass)}>
         {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((d) => (
           <div key={d} className="px-1 py-2.5">
             {d}
@@ -199,7 +217,7 @@ function TimeGridView({
                 )}
                 style={{ gridColumn: colIdx + 2, gridRow: 1 }}
               >
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-subtle">
+                <p className={cn('text-[10px] font-semibold uppercase tracking-wider', mutedOnTintClass)}>
                   {d.toLocaleDateString('tr-TR', { weekday: 'short' })}
                 </p>
                 <p
@@ -276,7 +294,7 @@ function TimeGridView({
                         width: `calc(${widthPct}% - ${insetX * 2}px)`
                       }}
                     >
-                      <AppointmentCard randevu={r} onClick={() => onAppointmentClick(r)} />
+                      <AppointmentCard randevu={r} heightPx={heightPx} onClick={() => onAppointmentClick(r)} />
                     </div>
                   )
                 })}

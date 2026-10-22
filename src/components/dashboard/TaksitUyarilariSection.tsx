@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { Link } from 'react-router-dom'
 import { APP_BASE } from '../../config/appPaths'
 import { cn } from '../../lib/cn'
+import { mutedOnTintClass } from '../../lib/uiDensity'
 import { MobileRecordCard, ResponsiveDataView } from '../responsive'
 import {
   Badge,
@@ -21,6 +22,7 @@ import {
 } from '../ui'
 import type { TaksitUyariListeSatir, TaksitUyarilariResponse } from '../../types/taksitUyari'
 import { formatDateTR, formatMoney, resolveParaBirimi } from '../../utils/formatters'
+import { HomeIconBubble, HomeIcons } from '../home/HomeIcons'
 
 function rowHref(row: TaksitUyariListeSatir): string {
   if (row.muvekkilId && row.dosyaId) {
@@ -55,14 +57,25 @@ function MetricCard(props: {
       : tone === 'warning'
         ? 'bg-amber-100 text-amber-900 dark:bg-amber-900/50 dark:text-amber-100'
         : 'bg-sky-100 text-sky-900 dark:bg-sky-900/50 dark:text-sky-100'
+  const icon =
+    tone === 'danger' ? (
+      <HomeIconBubble tone="red" className="!h-10 !w-10 !bg-[#fbd9d8]">{HomeIcons.clock('h-5 w-5')}</HomeIconBubble>
+    ) : tone === 'warning' ? (
+      <HomeIconBubble tone="amber" className="!h-10 !w-10 !bg-[#fce7bd]">{HomeIcons.calendar('h-5 w-5')}</HomeIconBubble>
+    ) : (
+      <HomeIconBubble tone="blue" className="!h-10 !w-10 !bg-[#d8e5fd]">{HomeIcons.document('h-5 w-5')}</HomeIconBubble>
+    )
 
   return (
-    <div className={`rounded-lg border px-3 py-2.5 ${toneClass}`}>
-      <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${pillClass}`}>
-        {label}
-      </span>
-      <p className="mt-1.5 text-2xl font-bold tabular-nums text-ink">{value}</p>
-      <p className="text-[11px] text-ink-muted">{sub}</p>
+    <div className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 ${toneClass}`}>
+      {icon}
+      <div className="min-w-0">
+        <span className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${pillClass}`}>
+          {label}
+        </span>
+        <p className="mt-1 text-2xl font-bold tabular-nums leading-none text-ink">{value}</p>
+        <p className={cn('mt-1 text-[11px]', mutedOnTintClass)}>{sub}</p>
+      </div>
     </div>
   )
 }
@@ -78,7 +91,8 @@ export function TaksitUyarilariSection(props: TaksitUyarilariSectionProps): Reac
 
   return (
     <Card>
-      <CardHeader className="border-b border-border py-3">
+      <CardHeader className="flex items-center gap-2.5 border-b border-border py-3">
+        <HomeIconBubble tone="amber">{HomeIcons.checklist()}</HomeIconBubble>
         <CardTitle className="text-base">Taksit uyarıları</CardTitle>
       </CardHeader>
       <CardBody className="space-y-3 px-3 py-3 sm:px-4">
@@ -93,7 +107,10 @@ export function TaksitUyarilariSection(props: TaksitUyarilariSectionProps): Reac
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-surface-muted/40 px-3 py-2">
-          <span className="text-xs font-semibold text-ink">SMM bekleyen tahsilatlar</span>
+          <span className="flex min-w-0 items-center gap-2.5 text-xs font-semibold text-ink">
+            <HomeIconBubble tone="blue" size="sm">{HomeIcons.document('h-4 w-4')}</HomeIconBubble>
+            SMM bekleyen tahsilatlar
+          </span>
           {onOpenSmm && Number(data?.smmBekleyenCount ?? 0) > 0 ? (
             <button
               type="button"

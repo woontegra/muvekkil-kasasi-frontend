@@ -2,6 +2,7 @@ import type { FormEvent, ReactElement } from 'react'
 import { Button } from '../ui'
 import { cn } from '../../lib/cn'
 import { formControlClass } from '../../lib/uiDensity'
+import { HomeIconBubble, HomeIcons } from './HomeIcons'
 
 export type MuvekkilListToolbarProps = {
   q: string
@@ -23,21 +24,24 @@ export function MuvekkilListToolbar({
   onNew
 }: MuvekkilListToolbarProps): ReactElement {
   return (
-    <div className="border-b border-border bg-gradient-to-b from-slate-50/90 to-white px-4 py-3">
+    <div className="border-b border-border bg-white px-4 py-3">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 shrink-0">
-          <h2 className="text-base font-bold tracking-tight text-ink">Müvekkiller</h2>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            {listReady ? (
-              <>
-                <span className="font-semibold tabular-nums text-ink">{total}</span> kayıt
-                <span className="mx-1.5 text-border-strong">·</span>
-                sayfa başı {pageSize}
-              </>
-            ) : (
-              'Liste yükleniyor…'
-            )}
-          </p>
+        <div className="flex min-w-0 shrink-0 items-center gap-2.5">
+          <HomeIconBubble tone="blue">{HomeIcons.user()}</HomeIconBubble>
+          <div className="min-w-0">
+            <h2 className="text-base font-bold tracking-tight text-ink">Müvekkiller</h2>
+            <p className="mt-0.5 text-xs text-ink-muted">
+              {listReady ? (
+                <>
+                  <span className="font-semibold tabular-nums text-ink">{total}</span> kayıt
+                  <span className="mx-1.5 text-border-strong">·</span>
+                  sayfa başı {pageSize}
+                </>
+              ) : (
+                'Liste yükleniyor…'
+              )}
+            </p>
+          </div>
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:max-w-2xl lg:flex-1 lg:justify-end">
@@ -62,17 +66,17 @@ export function MuvekkilListToolbar({
                 aria-label="Müvekkil ara"
                 className={cn(
                   formControlClass,
-                  'rounded-lg pl-9 shadow-sm'
+                  '!h-9 rounded-lg pl-9 shadow-sm'
                 )}
               />
             </div>
-            <Button type="submit" variant="secondary" size="sm" className="shrink-0 px-4">
+            <Button type="submit" variant="secondary" size="sm" className="!h-9 shrink-0 !rounded-lg !px-5">
               Ara
             </Button>
           </form>
 
           <div className="flex shrink-0 items-center gap-2">
-            <Button type="button" size="sm" className="shrink-0 gap-1 px-3" onClick={onNew}>
+            <Button type="button" size="sm" className="!h-9 shrink-0 !gap-1.5 !rounded-lg !px-4" onClick={onNew}>
               <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
                 <path d="M12 5v14M5 12h14" />
               </svg>

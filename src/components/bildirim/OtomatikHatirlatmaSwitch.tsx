@@ -7,6 +7,8 @@ type Props = {
   description?: string
   checked: boolean
   disabled?: boolean
+  /** Kayıt sürerken: tıklama yok sayılır ama düğme odakta kalır (native disabled odağı body'ye düşürür). */
+  busy?: boolean
   onChange: (next: boolean) => void
   warning?: string | null
   stateText?: { on: string; off: string }
@@ -14,17 +16,21 @@ type Props = {
 
 /** Anlaşılır bildirim anahtarı — teknik alan adı göstermez. */
 export function OtomatikHatirlatmaSwitch(props: Props): ReactElement {
-  const { id, label, description, checked, disabled, onChange, warning, stateText } = props
+  const { id, label, description, checked, disabled, busy, onChange, warning, stateText } = props
   const statusText = checked ? (stateText?.on ?? 'Açık') : (stateText?.off ?? 'Kapalı')
+  const inactive = Boolean(disabled || busy)
   return (
     <div className="space-y-1.5">
       <div
         className={cn(
-          'flex items-start justify-between gap-3 rounded-lg border border-border px-3 py-2.5',
-          disabled && 'opacity-60'
+          'flex items-start justify-between gap-3 rounded-lg border px-3 py-2.5 transition-colors',
+          checked
+            ? 'border-[#a9c0f5] bg-[#f5f8ff] dark:border-primary/50 dark:bg-primary/10'
+            : 'border-[#b9c2d0] bg-white dark:border-slate-500 dark:bg-transparent',
+          inactive && 'opacity-60'
         )}
       >
-        <label htmlFor={id} className={cn('min-w-0 space-y-0.5', !disabled && 'cursor-pointer')}>
+        <label htmlFor={id} className={cn('min-w-0 space-y-0.5', !inactive && 'cursor-pointer')}>
           <span className="block text-sm font-medium text-ink">
             {label}
             <span className={cn('ml-2 text-xs font-semibold', checked ? 'text-emerald-700' : 'text-ink-muted')}>
@@ -41,14 +47,20 @@ export function OtomatikHatirlatmaSwitch(props: Props): ReactElement {
           role="switch"
           aria-checked={checked}
           aria-label={label}
+          aria-disabled={busy && !disabled ? true : undefined}
+          aria-busy={busy || undefined}
           disabled={disabled}
-          onClick={() => onChange(!checked)}
+          onClick={() => {
+            if (inactive) return
+            onChange(!checked)
+          }}
           className={cn(
             'relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
             checked
               ? 'border-primary bg-primary'
-              : 'border-border bg-surface-muted',
-            disabled ? 'cursor-not-allowed' : 'cursor-pointer'
+              : cn('border-[#7d8a9f] bg-[#7d8a9f] dark:border-slate-400 dark:bg-slate-500', !inactive && 'hover:border-[#5f6c82] hover:bg-[#5f6c82]'),
+            inactive ? 'cursor-not-allowed' : 'cursor-pointer'
           )}
         >
           <span

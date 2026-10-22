@@ -20,9 +20,12 @@ export const uiType = {
   cardMeta: 'text-[10px] leading-snug text-ink-muted'
 } as const
 
-/** Form kontrolü (input/select) — masaüstü ~32px. */
+/** Pastel (tonlu) kart zemininde ikincil metin; text-ink-muted bu zeminlerde 4.5:1 altında kalır (#566378 ≥5.4:1). */
+export const mutedOnTintClass = 'text-[#566378] dark:text-slate-400'
+
+/** Form kontrolü (input/select) — masaüstü ~32px. `mk-form-control`: app-premium kenarlık/odak kuralları buton tetikleyicilere de uygulanır. */
 export const formControlClass =
-  'h-8 w-full min-w-0 max-w-full rounded-md border border-border bg-white px-2.5 text-[11px] text-ink shadow-inner outline-none transition ' +
+  'mk-form-control h-8 w-full min-w-0 max-w-full rounded-md border border-border bg-white px-2.5 text-[11px] text-ink shadow-inner outline-none transition ' +
   'placeholder:text-ink-subtle focus:border-primary focus:ring-2 focus:ring-primary/15 ' +
   'disabled:opacity-50 dark:bg-surface-elevated'
 

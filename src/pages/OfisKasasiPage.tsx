@@ -413,7 +413,7 @@ export function OfisKasasiPage(): ReactElement {
             )
           }
           sub={period.etiket}
-          className="border border-emerald-300/60 bg-emerald-50/80 dark:border-emerald-900/50 dark:bg-emerald-950/25"
+          className="hp-tone-green"
         />
         <StatCard
           label="Dönem Gideri"
@@ -434,7 +434,7 @@ export function OfisKasasiPage(): ReactElement {
             )
           }
           sub={period.etiket}
-          className="border border-orange-400/50 bg-orange-50/85 dark:border-orange-900/45 dark:bg-orange-950/25"
+          className="hp-tone-orange"
         />
         <StatCard
           label="Dönem Neti"
@@ -455,13 +455,13 @@ export function OfisKasasiPage(): ReactElement {
             )
           }
           sub={period.etiket}
-          className="border border-sky-300/60 bg-sky-50/80 dark:border-sky-900/50 dark:bg-sky-950/25"
+          className="hp-tone-blue"
         />
         <StatCard
           label="Onaysız İşlem"
           value={String(ozet?.onaysizIslemSayisiDonem ?? ozet?.onaysizIslemSayisi ?? '—')}
           sub="Seçilen dönemde / onay bekliyor"
-          className="border border-amber-400/55 bg-amber-50/90 dark:border-amber-900/45 dark:bg-amber-950/25"
+          className="hp-tone-amber"
         />
       </div>
 

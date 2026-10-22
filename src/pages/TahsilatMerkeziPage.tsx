@@ -22,6 +22,7 @@ import {
   MobileRecordCard,
   ResponsiveDataView
 } from '../components/responsive'
+import { HomeIconBubble, HomeIcons } from '../components/home/HomeIcons'
 import {
   AlertBox,
   Badge,
@@ -197,6 +198,8 @@ export function TahsilatMerkeziPage(): ReactElement {
         <StaggerItem>
           <StatCard
             label="Gecikmiş taksit"
+            className={(ozet?.gecikmisAdet ?? 0) > 0 ? 'hp-tone-red hp-value-tone' : 'hp-tone-red'}
+            leading={<HomeIconBubble tone="red">{HomeIcons.clock()}</HomeIconBubble>}
             value={
               listQ.isLoading ? (
                 '-'
@@ -210,6 +213,8 @@ export function TahsilatMerkeziPage(): ReactElement {
         <StaggerItem>
           <StatCard
             label="Bugün vadesi gelen"
+            className="hp-tone-amber"
+            leading={<HomeIconBubble tone="amber">{HomeIcons.calendar()}</HomeIconBubble>}
             value={
               listQ.isLoading ? (
                 '-'
@@ -223,6 +228,8 @@ export function TahsilatMerkeziPage(): ReactElement {
         <StaggerItem>
           <StatCard
             label="Önümüzdeki 7 gün"
+            className="hp-tone-blue"
+            leading={<HomeIconBubble tone="blue">{HomeIcons.calendar()}</HomeIconBubble>}
             value={
               listQ.isLoading ? (
                 '-'
@@ -236,6 +243,8 @@ export function TahsilatMerkeziPage(): ReactElement {
         <StaggerItem>
           <StatCard
             label="Kısmi ödenmiş"
+            className="hp-tone-violet"
+            leading={<HomeIconBubble tone="violet">{HomeIcons.checklist()}</HomeIconBubble>}
             value={
               listQ.isLoading ? (
                 '-'
@@ -350,19 +359,23 @@ export function TahsilatMerkeziPage(): ReactElement {
               />
             }
             table={
-              <div className="min-w-0 max-w-full">
+              /* table-fixed: tutar/tarih/durum sütunları sabit genişlikte; dar ekranda tablo kendi alanında kayar. */
+              <div
+                className="min-w-0 max-w-full overflow-x-auto [&>.mk-data-table-wrap]:min-w-[69.5rem]"
+                data-testid="tahsilat-merkezi-table-scroll"
+              >
                 <Table data-testid="tahsilat-merkezi-table">
                   <THead>
                     <TR>
                       <TH className="min-w-0">Müvekkil</TH>
                       <TH className="min-w-0">Dosya</TH>
                       <TH className="min-w-0">Taksit</TH>
-                      <TH className="whitespace-nowrap text-right">Tutar</TH>
-                      <TH className="whitespace-nowrap text-right">Ödenen</TH>
-                      <TH className="whitespace-nowrap text-right">Kalan</TH>
-                      <TH className="whitespace-nowrap">Vade</TH>
-                      <TH className="whitespace-nowrap">Süre</TH>
-                      <TH className="whitespace-nowrap">Durum</TH>
+                      <TH className="w-[5.5rem] whitespace-nowrap text-right">Tutar</TH>
+                      <TH className="w-[5.5rem] whitespace-nowrap text-right">Ödenen</TH>
+                      <TH className="w-[5.5rem] whitespace-nowrap text-right">Kalan</TH>
+                      <TH className="w-[4.5rem] whitespace-nowrap">Vade</TH>
+                      <TH className="w-[5.5rem] whitespace-nowrap">Süre</TH>
+                      <TH className="w-[7rem] whitespace-nowrap">Durum</TH>
                       <TH className={tableActionColMultiClass}>İşlem</TH>
                     </TR>
                   </THead>

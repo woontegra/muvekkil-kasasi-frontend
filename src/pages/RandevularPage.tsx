@@ -8,6 +8,7 @@ import { defaultEndTimeFromStart, formatTimeTR, getRangeForView, getTodayRangeIs
 import type { CalendarView, RandevuDto } from '../types/randevu'
 import { cn } from '../lib/cn'
 import { AlertBox, Button, PageHeader, PageLoading } from '../components/ui'
+import { HomeIconBubble, HomeIcons } from '../components/home/HomeIcons'
 import { RandevuCalendarView } from '../components/randevu/RandevuCalendarView'
 import { RandevuDetailModal } from '../components/randevu/RandevuDetailModal'
 import { RandevuFormModal, type RandevuFormPrefill } from '../components/randevu/RandevuFormModal'
@@ -181,17 +182,26 @@ export function BugunkuRandevularCard(): ReactElement {
   return (
     <div className="rounded-lg border border-border bg-panel p-4 shadow-sm ring-1 ring-ink/[0.04]">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-sm font-bold text-ink">Bugünkü Randevular</h2>
-        <Link to={`${APP_BASE}/randevular`} className="text-xs font-semibold text-primary hover:underline">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <HomeIconBubble tone="blue">{HomeIcons.calendar()}</HomeIconBubble>
+          <div className="min-w-0">
+            <h2 className="text-sm font-bold text-ink">Bugünkü Randevular</h2>
+            {q.isLoading ? (
+              <p className="mt-0.5 text-xs text-ink-muted">Yükleniyor…</p>
+            ) : items.length === 0 ? (
+              <p className="mt-0.5 text-xs text-ink-muted">Bugün planlanmış randevu yok.</p>
+            ) : null}
+          </div>
+        </div>
+        <Link
+          to={`${APP_BASE}/randevular`}
+          className="inline-flex h-8 shrink-0 items-center rounded-lg border border-[#dbe3f0] bg-white px-3 text-xs font-semibold text-primary shadow-sm transition-colors hover:border-primary/40 hover:bg-primary-soft/40"
+        >
           Tümünü Gör
         </Link>
       </div>
-      {q.isLoading ? (
-        <p className="mt-3 text-sm text-ink-muted">Yükleniyor…</p>
-      ) : items.length === 0 ? (
-        <p className="mt-3 text-sm text-ink-muted">Bugün planlanmış randevu yok.</p>
-      ) : (
-        <ul className="mt-3 space-y-2">
+      {q.isLoading || items.length === 0 ? null : (
+        <ul className="mt-3 space-y-2 pl-[46px]">
           {items.map((r: RandevuDto) => (
             <li key={r.id} className="flex items-start gap-3 text-sm">
               <span className="shrink-0 tabular-nums font-semibold text-primary">{formatTimeTR(r.baslangicAt)}</span>

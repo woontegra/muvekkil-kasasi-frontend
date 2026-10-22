@@ -10,6 +10,7 @@ import { MotionProvider } from './motion'
 import { ToastProvider } from './toast'
 import './index.css'
 import './styles/auth-premium.css'
+import './styles/app-premium.css'
 
 const queryClient = new QueryClient({
   defaultOptions: {

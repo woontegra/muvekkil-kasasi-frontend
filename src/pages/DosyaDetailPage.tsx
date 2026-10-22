@@ -359,7 +359,7 @@ function DosyaSmmBekleyenBanner(props: { count: number; onGoVekalet?: () => void
   return (
     <div
       role="alert"
-      className="rounded-lg border-2 border-rose-400/90 bg-rose-50 px-4 py-3 text-sm text-rose-950 shadow-sm dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-50"
+      className="rounded-[10px] border border-[#f5d0d0] bg-[#fff5f5] px-4 py-3 text-sm text-rose-950 dark:border-rose-700 dark:bg-rose-950/40 dark:text-rose-50"
     >
       <p className="font-bold">{title}</p>
       <p className="mt-1 text-xs leading-relaxed">Vekalet ücreti tahsilatı için SMM durumunu kontrol edin.</p>
@@ -483,26 +483,26 @@ function KasaOzetCard(props: {
 
   const shell: Record<KasaOzetCardVariant, string> = {
     avans: cn(
-      'rounded-xl border-2 border-blue-400/90 bg-gradient-to-br from-blue-50 via-sky-50 to-indigo-50/80 shadow-md',
+      'rounded-xl border border-[#dbe6fb] bg-[linear-gradient(135deg,#eef4ff_0%,#ffffff_78%)] shadow-sm',
       'dark:border-blue-600 dark:from-blue-950/50 dark:via-sky-950/35 dark:to-indigo-950/30'
     ),
     masraf: cn(
-      'rounded-xl border-2 border-orange-400/95 bg-gradient-to-br from-orange-50 via-amber-50 to-red-50/40 shadow-md',
+      'rounded-xl border border-[#f8e0cf] bg-[linear-gradient(135deg,#fff2e8_0%,#ffffff_78%)] shadow-sm',
       'dark:border-orange-600 dark:from-orange-950/45 dark:via-amber-950/35 dark:to-red-950/25'
     ),
     duzeltme: cn(
-      'rounded-xl border-2 border-violet-300/90 bg-gradient-to-br from-violet-50 via-slate-50 to-zinc-50/90 shadow-md',
+      'rounded-xl border border-[#e8e1fb] bg-[linear-gradient(135deg,#f6f2ff_0%,#ffffff_78%)] shadow-sm',
       'dark:border-violet-600 dark:from-violet-950/40 dark:via-slate-900/40 dark:to-zinc-950/30'
     ),
     bakiye: cn(
-      'rounded-xl border-2 border-cyan-400/90 bg-gradient-to-br from-cyan-50 via-teal-50/80 to-sky-50/70 shadow-md',
+      'rounded-xl border border-[#d3eef0] bg-[linear-gradient(135deg,#ecfafa_0%,#ffffff_78%)] shadow-sm',
       'dark:border-cyan-600 dark:from-cyan-950/45 dark:via-teal-950/35 dark:to-sky-950/30'
     ),
     onaysiz: cn(
-      'rounded-xl border-2 shadow-md',
+      'rounded-xl border shadow-sm',
       onaysizAktif
-        ? 'border-amber-400 bg-gradient-to-br from-amber-100 via-yellow-50 to-amber-50 dark:border-amber-500 dark:from-amber-950/50 dark:via-yellow-950/30 dark:to-amber-950/25'
-        : 'border-amber-200/90 bg-gradient-to-br from-amber-50/90 to-yellow-50/50 dark:border-amber-800 dark:from-amber-950/25 dark:to-yellow-950/15'
+        ? 'border-[#f1dfb5] bg-[linear-gradient(135deg,#fff3dc_0%,#ffffff_78%)] dark:border-amber-500 dark:from-amber-950/50 dark:via-yellow-950/30 dark:to-amber-950/25'
+        : 'border-[#f4e8cf] bg-[linear-gradient(135deg,#fffaf0_0%,#ffffff_78%)] dark:border-amber-800 dark:from-amber-950/25 dark:to-yellow-950/15'
     )
   }
 
@@ -515,10 +515,10 @@ function KasaOzetCard(props: {
   }
 
   const labelClass: Record<KasaOzetCardVariant, string> = {
-    avans: 'text-blue-900/70 dark:text-blue-100/80',
-    masraf: 'text-orange-900/75 dark:text-orange-100/80',
-    duzeltme: 'text-violet-900/70 dark:text-violet-100/75',
-    bakiye: 'text-cyan-900/70 dark:text-cyan-100/80',
+    avans: 'text-blue-900/80 dark:text-blue-100/80',
+    masraf: 'text-orange-900/80 dark:text-orange-100/80',
+    duzeltme: 'text-violet-900/80 dark:text-violet-100/75',
+    bakiye: 'text-cyan-900/80 dark:text-cyan-100/80',
     onaysiz: onaysizAktif ? 'text-amber-950/80 dark:text-amber-100/85' : 'text-ink-muted'
   }
 
@@ -624,7 +624,7 @@ export function DosyaDetailPage(): ReactElement {
     toast.warning('İlgili kayıt bulunamadı veya artık erişilebilir değil.')
   }, [toast])
 
-  const { isRowHighlighted } = useDosyaDetailDeepLink({
+  const { isRowHighlighted, selectTab } = useDosyaDetailDeepLink({
     setTab,
     setKasaFilter,
     kasaFilter,
@@ -1269,7 +1269,7 @@ export function DosyaDetailPage(): ReactElement {
           {vekaletData && vekaletData.ozet.smmBekleyenSayisi > 0 ? (
             <DosyaSmmBekleyenBanner
               count={vekaletData.ozet.smmBekleyenSayisi}
-              onGoVekalet={() => setTab('vekalet')}
+              onGoVekalet={() => selectTab('vekalet')}
             />
           ) : null}
           {smmNotice ? (
@@ -1289,7 +1289,7 @@ export function DosyaDetailPage(): ReactElement {
                 size="sm"
                 variant={tab === t.key ? 'secondary' : 'ghost'}
                 className={cn(tab === t.key && 'ring-2 ring-primary/25')}
-                onClick={() => setTab(t.key)}
+                onClick={() => selectTab(t.key)}
               >
                 {t.label}
               </Button>
