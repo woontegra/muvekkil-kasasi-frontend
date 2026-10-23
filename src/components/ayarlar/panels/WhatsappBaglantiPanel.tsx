@@ -31,6 +31,7 @@ import {
   WhatsappOnboardingModal,
   type WhatsappOnboardingOpenMode
 } from '../whatsappOnboarding'
+import { buildEmbeddedSignupLoginOptions, coexistenceReconnectGuidance } from './whatsappEmbeddedSignup'
 
 declare global {
   interface Window {
@@ -258,6 +259,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
       toast.error('Müvekkil Kasa Meta uygulaması yapılandırması eksik (App ID / Config ID / App Secret).')
       return
     }
+    const configId = cfg.configId
     if (target === 'COEXISTENCE_YENIDEN' && !cfg.coexistenceEnabled) {
       toast.error('Coexistence bağlantısı sunucuda etkin değil.')
       return
@@ -316,17 +318,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
               }
             )
           },
-          {
-            config_id: cfg.configId,
-            response_type: 'code',
-            override_default_response_type: true,
-            extras: {
-              setup: {},
-              // Meta: mevcut WhatsApp Business App numarası + Cloud API coexistence
-              featureType: 'whatsapp_business_app_onboarding',
-              sessionInfoVersion: '3'
-            }
-          }
+          buildEmbeddedSignupLoginOptions(configId)
         )
       })
     } catch (e) {
@@ -384,8 +376,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
   async function onCoexistenceYenidenBaglan(): Promise<void> {
     const ok = await confirm({
       title: 'Coexistence ile yeniden bağla',
-      message:
-        'Meta penceresinde kayıtlı WhatsApp Business hesabını ve aynı numarayı seçin. Telefondaki WhatsApp Business uygulaması çalışmaya devam eder; bağlı ek cihazların (WhatsApp Web vb.) oturumu kapanabilir. Farklı hesap veya numara seçilirse işlem hiçbir değişiklik yapmadan durur.',
+      message: coexistenceReconnectGuidance(durumQuery.data?.displayPhoneNumber),
       confirmLabel: 'Meta ile devam et'
     })
     if (!ok) return
