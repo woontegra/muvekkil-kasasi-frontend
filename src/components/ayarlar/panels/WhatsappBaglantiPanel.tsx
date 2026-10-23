@@ -2,13 +2,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ReactElement } from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  baglanCoexistence,
   completeEmbeddedSignup,
   dogrulaWhatsAppBaglanti,
+  esitleCoexistence,
+  getCoexistenceDurum,
   getEmbeddedSignupConfig,
+  getMesajDurumu,
   getWhatsAppBaglantiDurum,
   kaldirWhatsAppBaglanti,
+  kaydetTelefon,
   senkronWhatsAppSablonlari,
-  WHATSAPP_BAGLANTI_QUERY_KEY
+  yenileCoexistenceMetaDurum,
+  WHATSAPP_BAGLANTI_QUERY_KEY,
+  type CoexistenceSyncDurum,
+  type CoexistenceSyncTur
 } from '../../../api/whatsappBaglanti'
 import { friendlyClientErrorMessage } from '../../../api/client'
 import { useAuth } from '../../../contexts/AuthContext'
@@ -66,6 +74,30 @@ function durumEtiket(durum: string, connected: boolean): { label: string; varian
   return { label: 'Bağlı değil', variant: 'default' }
 }
 
+const BUSINESS_APP_FINISH_EVENT = 'FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING'
+
+type SignupTarget = 'OTOMATIK' | 'COEXISTENCE_YENIDEN'
+
+function syncDurumEtiket(s: CoexistenceSyncDurum | null): string {
+  if (!s) return 'İstenmedi'
+  switch (s.durum) {
+    case 'ISTENIYOR':
+      return 'İsteniyor…'
+    case 'ISTENDI':
+      return s.progress != null ? `İstendi (%${s.progress})` : `İstendi (${s.itemsReceived} kayıt)`
+    case 'TAMAMLANDI':
+      return 'Tamamlandı'
+    case 'REDDEDILDI':
+      return 'İşletme paylaşımı reddetti'
+    case 'BELIRSIZ':
+      return 'Sonuç belirsiz'
+    case 'BASARISIZ':
+      return 'Başarısız — tekrar denenebilir'
+    default:
+      return s.durum
+  }
+}
+
 function loadFacebookSdk(appId: string, graphVersion: string): Promise<void> {
   return new Promise((resolve, reject) => {
     if (window.FB) {
@@ -114,7 +146,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
   const [busy, setBusy] = useState(false)
   const [onboardingOpen, setOnboardingOpen] = useState(false)
   const [onboardingMode, setOnboardingMode] = useState<WhatsappOnboardingOpenMode>('connect')
-  const pendingIdsRef = useRef<{ wabaId: string; phoneNumberId: string } | null>(null)
+  const pendingIdsRef = useRef<{ wabaId: string; phoneNumberId: string; event: string } | null>(null)
   const signupErrorHintRef = useRef(false)
 
   const durumQuery = useQuery({
@@ -127,6 +159,18 @@ export function WhatsappBaglantiPanel(): ReactElement {
     queryFn: getEmbeddedSignupConfig,
     enabled: isYonetici
   })
+
+  const coexQuery = useQuery({
+    queryKey: [...WHATSAPP_BAGLANTI_QUERY_KEY, 'coexistence'],
+    queryFn: getCoexistenceDurum
+  })
+
+  const mesajQuery = useQuery({
+    queryKey: [...WHATSAPP_BAGLANTI_QUERY_KEY, 'mesaj-durumu'],
+    queryFn: getMesajDurumu
+  })
+
+  const [pin, setPin] = useState('')
 
   const invalidate = useCallback(() => {
     void qc.invalidateQueries({ queryKey: WHATSAPP_BAGLANTI_QUERY_KEY })
@@ -156,11 +200,9 @@ export function WhatsappBaglantiPanel(): ReactElement {
               data.data?.phone_number_ids?.[0] ??
               ''
           )
-          if (wabaId && phoneNumberId) {
-            pendingIdsRef.current = { wabaId, phoneNumberId }
-          } else if (wabaId) {
-            // Meta Business App finish örneği yalnızca waba_id döndürebilir; phone id varsa ayrıca gelir.
-            pendingIdsRef.current = { wabaId, phoneNumberId: phoneNumberId || '' }
+          if (wabaId) {
+            // Business App finish yalnızca waba_id döndürebilir; telefon sunucuda WABA'dan doğrulanır.
+            pendingIdsRef.current = { wabaId, phoneNumberId, event: String(data.event) }
           }
         }
         if (data.event === 'ERROR') {
@@ -194,11 +236,30 @@ export function WhatsappBaglantiPanel(): ReactElement {
     }
   })
 
-  async function launchEmbeddedSignup(): Promise<void> {
+  const coexMu = useMutation({
+    mutationFn: baglanCoexistence,
+    onSuccess: (r) => {
+      toast.success(
+        r.uyarilar && r.uyarilar.length > 0
+          ? `Coexistence bağlantısı kaydedildi. Uyarı: ${r.uyarilar.join('; ')}`
+          : 'Coexistence bağlantısı tamamlandı. 24 saat içinde eşitlemeyi başlatın.'
+      )
+      invalidate()
+    },
+    onError: (e) => {
+      toast.error(friendlyClientErrorMessage(e))
+    }
+  })
+
+  async function launchEmbeddedSignup(target: SignupTarget = 'OTOMATIK'): Promise<void> {
     if (!isYonetici || busy) return
     const cfg = configQuery.data
     if (!cfg?.configured || !cfg.appId || !cfg.configId) {
-      toast.error('Embedded Signup yapılandırması eksik (App ID / Config ID).')
+      toast.error('Müvekkil Kasa Meta uygulaması yapılandırması eksik (App ID / Config ID / App Secret).')
+      return
+    }
+    if (target === 'COEXISTENCE_YENIDEN' && !cfg.coexistenceEnabled) {
+      toast.error('Coexistence bağlantısı sunucuda etkin değil.')
       return
     }
     setBusy(true)
@@ -219,12 +280,33 @@ export function WhatsappBaglantiPanel(): ReactElement {
               return
             }
             const ids = pendingIdsRef.current
-            if (!ids?.wabaId || !ids.phoneNumberId) {
+            if (!ids?.wabaId) {
               reject(
                 new Error(
-                  'WABA / telefon bilgisi alınamadı. WhatsApp Business App onboarding’i tamamlayıp tekrar deneyin.'
+                  'WhatsApp Business hesabı bilgisi alınamadı. WhatsApp Business App onboarding’i tamamlayıp tekrar deneyin.'
                 )
               )
+              return
+            }
+            const businessAppOnboarding = ids.event === BUSINESS_APP_FINISH_EVENT
+            if (target === 'COEXISTENCE_YENIDEN' || businessAppOnboarding) {
+              if (!cfg.coexistenceEnabled) {
+                reject(new Error('Coexistence bağlantısı sunucuda etkin değil.'))
+                return
+              }
+              coexMu.mutate(
+                {
+                  mod: target === 'COEXISTENCE_YENIDEN' ? 'YENIDEN_BAGLANTI' : 'ILK_BAGLANTI',
+                  code,
+                  wabaId: ids.wabaId,
+                  phoneNumberId: ids.phoneNumberId || null
+                },
+                { onSettled: () => resolve() }
+              )
+              return
+            }
+            if (!ids.phoneNumberId) {
+              reject(new Error('Telefon numarası bilgisi alınamadı. Bağlantıyı tekrar deneyin.'))
               return
             }
             completeMu.mutate(
@@ -299,7 +381,67 @@ export function WhatsappBaglantiPanel(): ReactElement {
     }
   }
 
+  async function onCoexistenceYenidenBaglan(): Promise<void> {
+    const ok = await confirm({
+      title: 'Coexistence ile yeniden bağla',
+      message:
+        'Meta penceresinde kayıtlı WhatsApp Business hesabını ve aynı numarayı seçin. Telefondaki WhatsApp Business uygulaması çalışmaya devam eder; bağlı ek cihazların (WhatsApp Web vb.) oturumu kapanabilir. Farklı hesap veya numara seçilirse işlem hiçbir değişiklik yapmadan durur.',
+      confirmLabel: 'Meta ile devam et'
+    })
+    if (!ok) return
+    await launchEmbeddedSignup('COEXISTENCE_YENIDEN')
+  }
+
+  async function onCoexistenceEsitle(tur: CoexistenceSyncTur): Promise<void> {
+    const ok = await confirm({
+      title: tur === 'KISILER' ? 'Kişileri eşitle' : 'Mesaj geçmişini eşitle',
+      message:
+        'Meta bu isteği her bağlantı için yalnızca bir kez kabul eder. Müvekkil Kasa yalnızca ilerleme ve kayıt sayısını tutar; mesaj veya kişi içeriği saklanmaz.',
+      confirmLabel: 'Eşitlemeyi başlat'
+    })
+    if (!ok) return
+    try {
+      await esitleCoexistence(tur)
+      toast.success('Eşitleme isteği gönderildi.')
+    } catch (e) {
+      toast.error(friendlyClientErrorMessage(e))
+    } finally {
+      invalidate()
+    }
+  }
+
+  async function onTelefonKaydi(): Promise<void> {
+    if (!/^\d{6}$/.test(pin)) {
+      toast.error('PIN 6 haneli olmalıdır.')
+      return
+    }
+    try {
+      await kaydetTelefon(pin)
+      setPin('')
+      toast.success('Telefon kaydı tamamlandı.')
+    } catch (e) {
+      toast.error(friendlyClientErrorMessage(e))
+    } finally {
+      invalidate()
+    }
+  }
+
+  async function onCoexistenceMetaDurum(): Promise<void> {
+    try {
+      await yenileCoexistenceMetaDurum()
+      toast.success('Meta numara durumu güncellendi.')
+      invalidate()
+    } catch (e) {
+      toast.error(friendlyClientErrorMessage(e))
+    }
+  }
+
   const d = durumQuery.data
+  const coex = coexQuery.data
+  const coexEnabled = Boolean(configQuery.data?.coexistenceEnabled)
+  const canCoexReconnect = isYonetici && coexEnabled && Boolean(d?.yenidenBaglanabilir)
+  const showCoexPanel =
+    Boolean(coex) && (coex?.connectionMode === 'COEXISTENCE' || Boolean(coex?.disconnectedAt) || canCoexReconnect)
   const statusPending = durumQuery.isLoading || durumQuery.isFetching
   const statusFailed = durumQuery.isError
   const connected = !statusFailed && Boolean(d?.connected)
@@ -372,10 +514,21 @@ export function WhatsappBaglantiPanel(): ReactElement {
 
           {statusFailed ? null : !connected && isYonetici ? (
             <div className="flex shrink-0 flex-wrap gap-2">
+              {canCoexReconnect ? (
+                <Button
+                  type="button"
+                  onClick={() => void onCoexistenceYenidenBaglan()}
+                  disabled={busy || coexMu.isPending}
+                  data-testid="wa-coex-reconnect-cta"
+                >
+                  {busy || coexMu.isPending ? 'Bağlanıyor…' : 'Yeniden bağla (Coexistence)'}
+                </Button>
+              ) : null}
               <Button
                 type="button"
+                variant={canCoexReconnect ? 'outline' : undefined}
                 onClick={() => openOnboarding('connect')}
-                disabled={busy || completeMu.isPending || configQuery.isLoading}
+                disabled={busy || completeMu.isPending || coexMu.isPending || configQuery.isLoading}
                 data-testid="wa-connect-cta"
               >
                 {busy || completeMu.isPending ? 'Bağlanıyor…' : 'WhatsApp Business’ı Bağla'}
@@ -432,6 +585,154 @@ export function WhatsappBaglantiPanel(): ReactElement {
         ) : null}
       </div>
 
+      {!statusFailed && isYonetici && d?.durum === 'ONAY_BEKLIYOR' && d.connectionMode === 'CLOUD_API' ? (
+        <div className="rounded-xl border border-warning/40 bg-warning-soft/60 p-4" data-testid="wa-phone-register">
+          <p className="text-sm font-semibold text-ink">Telefon kaydını tamamlayın</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            Bu numara Cloud API’ye henüz kayıtlı değil. Numaranın iki adımlı doğrulama PIN’ini (6 hane) girin.
+            WhatsApp Business uygulamasında kullanılan numaralar için bu işlem sunucu tarafından engellenir.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <input
+              type="password"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+              className="w-32 rounded-md border border-border bg-white px-3 py-2 text-sm"
+              aria-label="Telefon kayıt PIN"
+            />
+            <Button type="button" onClick={() => void onTelefonKaydi()} disabled={pin.length !== 6}>
+              Kaydı tamamla
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {!statusFailed && mesajQuery.data?.baglantiVar && mesajQuery.data.basariKriterleri ? (
+        <div className="rounded-xl border border-border bg-white p-4 shadow-sm" data-testid="wa-success-criteria">
+          <p className="text-sm font-semibold text-ink">Canlı başarı ölçütleri</p>
+          <ul className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            {(
+              [
+                ['metaConnectedCloudApi', 'Meta: CONNECTED + Cloud API', coex?.metaStatusCheckedAt ?? null],
+                ['bagli', 'Müvekkil Kasa bağlantısı aktif', d?.connectedAt ?? null],
+                ['gelenMesajAlindi', 'Gelen mesaj alındı', mesajQuery.data.sonGelenMesajAt ?? null],
+                ['gidenMesajTeslimEdildi', 'Giden mesaj teslim edildi', mesajQuery.data.sonTeslimAt ?? mesajQuery.data.sonOkunduAt ?? null]
+              ] as const
+            ).map(([key, label, at]) => {
+              const ok = mesajQuery.data!.basariKriterleri![key]
+              return (
+                <li key={key} className="flex items-center justify-between gap-2 rounded-md bg-surface-muted/30 px-3 py-2">
+                  <span className="text-ink">{label}</span>
+                  <Badge variant={ok ? 'success' : 'default'} className="normal-case tracking-normal">
+                    {ok ? `Evet${at ? ` · ${formatTrDate(at)}` : ''}` : 'Bekleniyor'}
+                  </Badge>
+                </li>
+              )
+            })}
+          </ul>
+          {mesajQuery.data.sonTelefondanGonderimAt ? (
+            <p className="mt-2 text-xs text-ink-muted">
+              Telefondaki WhatsApp Business’tan son gönderim: {formatTrDate(mesajQuery.data.sonTelefondanGonderimAt)}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!statusFailed && showCoexPanel && coex ? (
+        <div className="rounded-xl border border-border bg-white p-4 shadow-sm" data-testid="wa-coex-panel">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-ink">WhatsApp Business uygulaması (Coexistence)</p>
+            {coex.connectionMode === 'COEXISTENCE' ? (
+              <Badge variant={coex.disconnectedAt ? 'warning' : 'success'} className="normal-case tracking-normal">
+                {coex.disconnectedAt ? 'Bağlantı kesildi' : 'Coexistence aktif'}
+              </Badge>
+            ) : null}
+            {!coex.metaUygulamaHazir ? (
+              <Badge variant="warning" className="normal-case tracking-normal">
+                Meta yapılandırması eksik
+              </Badge>
+            ) : null}
+            {coex.connectionMode && !coex.webhookMuvekkileYonlu ? (
+              <Badge variant="warning" className="normal-case tracking-normal">
+                Webhook Müvekkil Kasa’ya yönlü değil
+              </Badge>
+            ) : null}
+          </div>
+          <dl className="mt-3 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
+            <div>
+              <dt className="text-ink-muted">Platform</dt>
+              <dd className="font-semibold text-ink">{coex.platformType ?? '—'}</dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Business uygulamasında</dt>
+              <dd className="font-semibold text-ink">
+                {coex.isOnBizApp == null ? '—' : coex.isOnBizApp ? 'Evet' : 'Hayır'}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-ink-muted">Meta numara durumu</dt>
+              <dd className="font-semibold text-ink">
+                {coex.phoneStatus ?? '—'}
+                {coex.metaStatusCheckedAt ? (
+                  <span className="ml-1 font-normal text-ink-muted">({formatTrDate(coex.metaStatusCheckedAt)})</span>
+                ) : null}
+              </dd>
+            </div>
+          </dl>
+
+          {coex.disconnectedAt ? (
+            <AlertBox variant="warning" title="Meta bağlantıyı kesti" className="mt-3">
+              {formatTrDate(coex.disconnectedAt)} — {coex.disconnectReason ?? 'Neden bildirilmedi'}. Numara ve hesap
+              bilgileri korunuyor; aynı numarayla Coexistence yeniden bağlantısı yapabilirsiniz.
+            </AlertBox>
+          ) : null}
+
+          {coex.connectionMode === 'COEXISTENCE' && coex.onboardedAt ? (
+            <div className="mt-3 rounded-lg border border-border/70 bg-surface-muted/30 p-3">
+              <p className="text-sm font-semibold text-ink">Kişi ve geçmiş eşitleme</p>
+              <p className="mt-0.5 text-sm text-ink-muted">
+                {coex.syncWindowOpen
+                  ? `Son tarih: ${formatTrDate(coex.syncDeadline)}. Meta her tür için tek istek kabul eder.`
+                  : `Eşitleme süresi doldu (${formatTrDate(coex.syncDeadline)}).`}
+              </p>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {(['KISILER', 'GECMIS'] as const).map((tur) => {
+                  const s = coex.eslestirme[tur]
+                  const canRequest =
+                    isYonetici && coex.syncWindowOpen && coex.tokenUygulamasiUyumlu && (!s || s.durum === 'BASARISIZ')
+                  return (
+                    <div key={tur} className="flex items-center justify-between gap-2 rounded-md bg-white px-3 py-2">
+                      <div>
+                        <p className="text-sm font-medium text-ink">{tur === 'KISILER' ? 'Kişiler' : 'Mesaj geçmişi'}</p>
+                        <p className="text-xs text-ink-muted">{syncDurumEtiket(s)}</p>
+                      </div>
+                      {canRequest ? (
+                        <Button type="button" size="sm" variant="outline" onClick={() => void onCoexistenceEsitle(tur)}>
+                          Eşitle
+                        </Button>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
+
+          {isYonetici ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {d?.yenidenBaglanabilir ? (
+                <Button type="button" size="sm" variant="ghost" onClick={() => void onCoexistenceMetaDurum()}>
+                  Meta durumunu yenile
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
       {statusFailed ? null : !connected ? (
         <div className="space-y-3">
           {!isYonetici ? (
@@ -439,7 +740,8 @@ export function WhatsappBaglantiPanel(): ReactElement {
           ) : null}
           {isYonetici && configQuery.data && !configQuery.data.configured ? (
             <AlertBox variant="warning" title="Yapılandırma eksik">
-              Sunucu tarafında App ID, Embedded Signup Config ID veya App Secret tanımlı değil.
+              Meta App ID, Embedded Signup Config ID, App Secret veya webhook adresi / doğrulama anahtarı tanımlı
+              değil.
             </AlertBox>
           ) : null}
         </div>
@@ -464,6 +766,17 @@ export function WhatsappBaglantiPanel(): ReactElement {
                 <Button type="button" variant="outline" onClick={() => void onSenkron()}>
                   Şablonları senkronize et
                 </Button>
+                {canCoexReconnect ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={busy || coexMu.isPending}
+                    onClick={() => void onCoexistenceYenidenBaglan()}
+                    data-testid="wa-coex-reconnect"
+                  >
+                    Yeniden bağla (Coexistence)
+                  </Button>
+                ) : null}
                 <Button type="button" variant="danger" onClick={() => void onKaldir()}>
                   Bağlantıyı kaldır
                 </Button>
@@ -491,7 +804,7 @@ export function WhatsappBaglantiPanel(): ReactElement {
               type="button"
               variant="ghost"
               size="sm"
-              disabled={busy || completeMu.isPending || !configQuery.data?.configured}
+              disabled={busy || completeMu.isPending || coexMu.isPending || !configQuery.data?.configured}
               onClick={() => void launchEmbeddedSignup()}
             >
               Bağlantıyı Tekrar Dene

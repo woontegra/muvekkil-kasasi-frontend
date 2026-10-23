@@ -23,6 +23,13 @@ export type WhatsAppBaglantiDurumResponse = {
   gercekGonderimAktif?: boolean
   /** BAGLI + webhook override yok — SuperAdmin UI için paylaşılan/test bağlantısı. */
   sharedWebhookTestConnection?: boolean
+  connectionMode?: 'CLOUD_API' | 'COEXISTENCE' | null
+  platformType?: string | null
+  isOnBizApp?: boolean | null
+  coexistenceOnboardedAt?: string | null
+  coexistenceDisconnectedAt?: string | null
+  /** Kayıtlı WABA + telefon var — Coexistence yeniden bağlantısı yapılabilir. */
+  yenidenBaglanabilir?: boolean
   templateOzet?: {
     onayli: number
     bekleyen: number
@@ -37,6 +44,103 @@ export type EmbeddedSignupConfigResponse = {
   configId: string | null
   graphVersion: string
   configured: boolean
+  metaUygulamaEksikleri?: string[]
+  coexistenceEnabled?: boolean
+}
+
+export type CoexistenceSyncTur = 'KISILER' | 'GECMIS'
+
+export type CoexistenceSyncDurum = {
+  durum: string
+  requestedAt: string | null
+  progress: number | null
+  itemsReceived: number
+  lastWebhookAt: string | null
+  hataOzeti: string | null
+}
+
+export type CoexistenceDurumResponse = {
+  ok: true
+  ozellikAktif: boolean
+  metaUygulamaHazir: boolean
+  metaUygulamaEksikleri: string[]
+  ortakMetaUygulamasi: boolean
+  connectionMode: string | null
+  tokenUygulamasiUyumlu: boolean
+  webhookMuvekkileYonlu: boolean
+  platformType: string | null
+  isOnBizApp: boolean | null
+  phoneStatus: string | null
+  metaStatusCheckedAt: string | null
+  onboardedAt: string | null
+  syncDeadline: string | null
+  syncWindowOpen: boolean
+  disconnectedAt: string | null
+  disconnectReason: string | null
+  yenidenBaglanabilir: boolean
+  eslestirme: Record<CoexistenceSyncTur, CoexistenceSyncDurum | null>
+}
+
+export type MesajDurumuResponse = {
+  ok: true
+  baglantiVar: boolean
+  connectionMode?: string | null
+  metaStatusCheckedAt?: string | null
+  lastWebhookAt?: string | null
+  sonGelenMesajAt?: string | null
+  son24SaatGelenMesaj?: number
+  sonGonderildiAt?: string | null
+  sonTeslimAt?: string | null
+  sonOkunduAt?: string | null
+  sonBasarisizAt?: string | null
+  sonTelefondanGonderimAt?: string | null
+  basariKriterleri?: {
+    bagli: boolean
+    metaConnectedCloudApi: boolean
+    gelenMesajAlindi: boolean
+    gidenMesajTeslimEdildi: boolean
+  }
+}
+
+export async function getMesajDurumu(): Promise<MesajDurumuResponse> {
+  return apiFetch<MesajDurumuResponse>('/api/v1/whatsapp-baglanti/mesaj-durumu')
+}
+
+export async function kaydetTelefon(pin: string): Promise<{ ok: true }> {
+  return apiFetch('/api/v1/whatsapp-baglanti/telefon-kaydi', {
+    method: 'POST',
+    body: JSON.stringify({ pin })
+  })
+}
+
+export async function getCoexistenceDurum(): Promise<CoexistenceDurumResponse> {
+  return apiFetch<CoexistenceDurumResponse>('/api/v1/whatsapp-baglanti/coexistence/durum')
+}
+
+export async function baglanCoexistence(body: {
+  mod: 'ILK_BAGLANTI' | 'YENIDEN_BAGLANTI'
+  code: string
+  wabaId: string
+  phoneNumberId?: string | null
+}): Promise<{ ok: true; uyarilar?: string[] }> {
+  return apiFetch('/api/v1/whatsapp-baglanti/coexistence/baglan', {
+    method: 'POST',
+    body: JSON.stringify(body)
+  })
+}
+
+export async function esitleCoexistence(tur: CoexistenceSyncTur): Promise<CoexistenceDurumResponse> {
+  return apiFetch('/api/v1/whatsapp-baglanti/coexistence/esitle', {
+    method: 'POST',
+    body: JSON.stringify({ tur })
+  })
+}
+
+export async function yenileCoexistenceMetaDurum(): Promise<CoexistenceDurumResponse> {
+  return apiFetch('/api/v1/whatsapp-baglanti/coexistence/meta-durum-yenile', {
+    method: 'POST',
+    body: '{}'
+  })
 }
 
 export async function getWhatsAppBaglantiDurum(): Promise<WhatsAppBaglantiDurumResponse> {
