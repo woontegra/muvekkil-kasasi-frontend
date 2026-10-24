@@ -69,7 +69,7 @@ export function ToastViewport(props: Props): ReactElement | null {
               <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-wide opacity-70">{KIND_LABEL[item.kind]}</p>
                 <p className="text-sm font-semibold leading-snug">{item.title}</p>
-                {item.description ? <p className="mt-0.5 text-xs leading-snug opacity-90">{item.description}</p> : null}
+                {item.description ? <p className="mt-0.5 whitespace-pre-line text-xs leading-snug opacity-90">{item.description}</p> : null}
               </div>
               {item.kind !== 'loading' ? (
                 <button

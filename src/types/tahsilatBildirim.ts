@@ -416,13 +416,39 @@ export type TahsilatBildirimPlanlaResult = {
 
   cancelled: number
 
+  ozet?: TahsilatBildirimPlanOzeti
+
 }
 
+export type TahsilatBildirimPlanAtlamaNedeni =
+  | 'PLAN_KAPALI'
+  | 'MUVEKKIL_IZNI_KAPALI'
+  | 'DOSYA_OTOMASYONU_KAPALI'
+  | 'TAKSIT_SESSIZDE'
+  | 'AKTIF_KURAL_YOK'
+  | 'HATIRLATMA_GUNU_GELMEDI'
+  | 'HATIRLATMA_GUNU_GECTI'
+  | 'ZATEN_PLANLANDI'
+  | 'BUGUN_ZATEN_ISLENDI'
 
+export type TahsilatBildirimPlanOzeti = {
+  acikTaksit: number
+  yeniPlanlananTaksit: number
+  saatiBekleyenYeniIs: number
+  nedenler: Partial<Record<TahsilatBildirimPlanAtlamaNedeni, number>>
+  enYakinPlanYmd: string | null
+}
+
+/** Bugünkü işlerden gönderim aşamasında atlananlar (planlama sonucu değil). */
+export type TahsilatBildirimGonderimAtlamaOzeti = {
+  sablonEksik: number
+  paraBirimiUyumsuz: number
+}
 
 export type TahsilatBildirimPlanlaResponse = {
   ok: true
   result: TahsilatBildirimPlanlaResult
+  gonderimAsamasi?: TahsilatBildirimGonderimAtlamaOzeti
   message?: string
 }
 

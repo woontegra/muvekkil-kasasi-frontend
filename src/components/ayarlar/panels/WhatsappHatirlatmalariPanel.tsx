@@ -21,7 +21,7 @@ import { friendlyClientErrorMessage } from '../../../api/client'
 import { APP_BASE } from '../../../config/appPaths'
 import { useAuth } from '../../../contexts/AuthContext'
 import { isYoneticiRole } from '../../../lib/isYonetici'
-import { whatsappAutomationReasonLabel } from '../../../lib/whatsapp'
+import { planlamaSonucuBildirimi } from '../../../lib/planlamaSonucuBildirimi'
 import {
   BILDIRIM_PENCERE_ARALIK_HATA,
   BILDIRIM_PENCERE_HATA,
@@ -310,16 +310,8 @@ export function WhatsappHatirlatmalariPanel(): ReactElement | null {
     mutationFn: planlaTahsilatBildirimleri,
     onSuccess: (res) => {
       invalidateTahsilatBildirim(qc)
-      if (res.result.skipped) {
-        toast.info(
-          whatsappAutomationReasonLabel(
-            res.result.reason,
-            typeof res.message === 'string' ? res.message : 'Planlama atlandı.'
-          )
-        )
-      } else {
-        toast.success(`Planlama tamamlandı. Yeni: ${res.result.created}, iptal: ${res.result.cancelled}.`)
-      }
+      const { kind, ...bildirim } = planlamaSonucuBildirimi(res)
+      toast[kind](bildirim)
     },
     onError: (err) => {
       toast.error(friendlyClientErrorMessage(err, 'Planlama çalıştırılamadı.'))
