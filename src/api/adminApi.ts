@@ -349,6 +349,26 @@ export async function adminWhatsAppWebhookOverrideDisableRequest(
   })
 }
 
+export type AdminWhatsAppControlledSessionTestResponse = {
+  ok: true
+  idempotent: boolean
+  jobId: string
+  durum: string
+  providerMessageId: string | null
+  telefonMaskeli?: string
+}
+
+/** Tek istek; backend SUPER_ADMIN + confirm + günlük idempotency + webhook hedefi doğrulaması yapar. */
+export async function adminWhatsAppControlledSessionTestRequest(input: {
+  tenantId: string
+  to: string
+}): Promise<AdminWhatsAppControlledSessionTestResponse> {
+  return adminApiFetch('/api/v1/admin/whatsapp/controlled-session-test', {
+    method: 'POST',
+    body: JSON.stringify({ tenantId: input.tenantId, to: input.to, confirm: true })
+  })
+}
+
 export type AdminWhatsAppKrediOzetResponse = {
   ok: true
   tenantId: string

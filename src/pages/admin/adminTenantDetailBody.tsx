@@ -9,6 +9,7 @@ import { lisansDurumuTr } from '../../utils/tenantLicenseDisplay'
 import { AdminTenantUserRow } from './AdminTenantUserRow'
 import { AdminWhatsAppWebhookOverridePanel } from '../../components/admin/AdminWhatsAppWebhookOverridePanel'
 import { AdminWhatsAppKrediPanel } from '../../components/admin/AdminWhatsAppKrediPanel'
+import { AdminWhatsAppControlledTestPanel } from '../../components/admin/AdminWhatsAppControlledTestPanel'
 
 type ExtendTur = 'GUN' | 'AY' | 'YIL' | 'OZEL'
 
@@ -330,6 +331,7 @@ export function AdminTenantDetailBody(props: AdminTenantDetailBodyProps): ReactE
           </Card>
           <AdminWhatsAppKrediPanel tenantId={id} enabled />
           <AdminWhatsAppWebhookOverridePanel tenantId={id} enabled={isSuper} />
+          <AdminWhatsAppControlledTestPanel tenantId={id} enabled={isSuper} />
         </div>
       )}
 
